@@ -1,0 +1,53 @@
+# Pulls the schedule from Monday.com and publishes data/schedule.json + data/artists.json.
+#
+# This never runs on its own. Someone presses "Run workflow" on GitHub (Actions tab), picks the
+# edition, and ticks the confirmation. build_feed.py then applies its own gate: an edition whose
+# public_from date in feed.config.json is unset or in the future cannot be published.
+#
+# Needs the repository secret MONDAY_TOKEN (set with: gh secret set MONDAY_TOKEN).
+name: Sync schedule from Monday
+
+on:
+  workflow_dispatch:
+    inputs:
+      edition:
+        description: "Edition to publish (key in feed.config.json)"
+        type: choice
+        options: ["2026", "2027"]
+        default: "2026"
+      confirm:
+        description: "I confirm this edition may be public"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stop unless confirmed
+        if: ${{ !inputs.confirm }}
+        run: |
+          echo "Tick the confirmation box to publish. Nothing was changed."
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - name: Build the feed from Monday
+        env:
+          MONDAY_TOKEN: ${{ secrets.MONDAY_TOKEN }}
+        run: python3 build_feed.py --edition "${{ inputs.edition }}" --publish
+
+      - name: Commit and publish if anything changed
+        run: |
+          git config user.name "schedule-sync[bot]"
+          git config user.email "schedule-sync@users.noreply.github.com"
+          git add data/schedule.json data/artists.json
+          if git diff --cached --quiet; then
+            echo "No changes: the public schedule already matches Monday."
+          else
+            git commit -m "Schedule sync (${{ inputs.edition }}) from Monday"
+            git push
+          fi

@@ -11,6 +11,10 @@
 //   FIL.stages                    stages in display order: { id, name, color, lat, lng } from locations.json (via routes.js)
 //   FIL.stageById[id]
 //   FIL.stageColor(id)            colour for a stage id (falls back to brand purple)
+//   FIL.ready(fn)                 loads data/schedule.json (data/preview/… with ?preview=1), sets
+//                                 window.SCHEDULE_DATA, then calls fn(). Pages that need the schedule
+//                                 wrap their code in this instead of a plain IIFE.
+//   FIL.stamp(iso)                "Nov 16, 7:37 PM" in the current language, for "schedule updated" lines
 //
 // The brand bar (logo, product name, page links) is built here from a placeholder:
 //   <div class="brand-bar" data-page="lineup"></div>
@@ -63,5 +67,33 @@
   }
   mountBrandBar();
 
-  window.FIL = { esc: esc, toMin: toMin, store: store, stages: stages, stageById: stageById, stageColor: stageColor };
+  // ---------- schedule data ----------
+  // The schedule is a JSON file written by build_feed.py, fetched at runtime so data and code can
+  // change independently. ?preview=1 reads the local preview build (never on the public site).
+  var preview = /[?&]preview=1\b/.test(location.search);
+  var DATA_URL = (preview ? 'data/preview/' : 'data/') + 'schedule.json';
+  var loading = null;
+  function ready(fn) {
+    if (window.SCHEDULE_DATA) { fn(); return; }
+    if (!loading) {
+      loading = fetch(DATA_URL, { cache: 'no-cache' }).then(function (r) {
+        if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+        return r.json();
+      }).then(function (d) { window.SCHEDULE_DATA = d; }, function (err) {
+        window.SCHEDULE_DATA = null;
+        window.SCHEDULE_ERROR = DATA_URL + ' — ' + (err && err.message || err);
+      });
+    }
+    loading.then(fn);
+  }
+  var stampFmt = null;
+  function stamp(iso) {
+    if (!iso) return '';
+    if (!stampFmt) stampFmt = new Intl.DateTimeFormat(window.I18N ? I18N.locale : undefined,
+      { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    return stampFmt.format(new Date(iso));
+  }
+
+  window.FIL = { esc: esc, toMin: toMin, store: store, stages: stages, stageById: stageById, stageColor: stageColor,
+                 ready: ready, stamp: stamp };
 })();

@@ -1,4 +1,7 @@
-"""Convert the festival schedule spreadsheet into schedule.js for lineup.html.
+"""Fallback importer: convert a schedule spreadsheet into data/schedule.json.
+
+The normal path is build_feed.py, which reads Monday.com directly. Keep this only for a
+spreadsheet handed over without Monday access.
 
 Usage:  python build_schedule.py [path\\to\\schedule.xlsx]        (python3 on Mac/Linux)
 Default input is assets\\schedule.xlsx. Uses only the Python standard library.
@@ -145,13 +148,13 @@ def main():
         dt = datetime.date.fromisoformat(d)
         days.append({"date": d, "label": dt.strftime("%a %b ") + str(dt.day), "weekday": dt.strftime("%A")})
 
-    out = {"built": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), "source": os.path.basename(src),
-           "days": days, "performances": perfs}
-    with open(os.path.join(HERE, "schedule.js"), "w", encoding="utf-8") as f:
-        f.write("window.SCHEDULE_DATA = ")
+    out = {"edition": "spreadsheet", "updated": datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat(),
+           "source": {"file": os.path.basename(src)}, "days": days, "performances": perfs}
+    os.makedirs(os.path.join(HERE, "data"), exist_ok=True)
+    with open(os.path.join(HERE, "data", "schedule.json"), "w", encoding="utf-8") as f:
         json.dump(out, f, indent=1, ensure_ascii=False)
-        f.write(";\n")
-    print("Wrote schedule.js: %d performances over %d days." % (len(perfs), len(days)))
+        f.write("\n")
+    print("Wrote data/schedule.json: %d performances over %d days." % (len(perfs), len(days)))
     for w in warnings:
         print("  WARNING:", w)
 

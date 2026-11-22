@@ -13,6 +13,7 @@ Static web app (no framework, no build) for Festival International de Louisiane 
 - Picking or changing options must not reset scroll position or re-zoom the map.
 
 ## Working notes
+- Schedule data: source of truth is Monday.com (board IDs/columns in `feed.config.json`). `build_feed.py` writes `data/schedule.json` + `data/artists.json`; pages load them at runtime via `FIL.ready()`. The 2027 lineup is confidential until announced: never set `public_from` for 2027 or commit `data/preview/`; the sync workflow is manual only. The Artist board holds SSNs and payment details, so only allowlisted columns are ever read.
 - Shared code lives in `common.js` (`FIL.esc`, `FIL.toMin`, `FIL.store`, `FIL.stages`/`stageById`/`stageColor`, brand bar from `<div class="brand-bar" data-page="…">`) and `brand.css` (colour tokens, fonts, base styles). Stage names, colours and order come from `locations.json` only. Pages keep only page-specific CSS/JS.
 - Git: branch `main`, commit identity set per-repo. This machine has `python` (Store install), not the `py` launcher, Git lives at `C:\Program Files\Git\cmd` and the GitHub CLI at `C:\Program Files\GitHub CLI` (both may need adding to PATH in a fresh shell).
 - Serve with `python serve.py` (no-cache headers). Test in a separate origin (http://127.0.0.1:8765) so test picks don't overwrite the user's saved picks on http://localhost:8765. localStorage keys start with `fil-`.

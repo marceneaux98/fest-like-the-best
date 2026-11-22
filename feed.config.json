@@ -1,0 +1,56 @@
+{
+  "_about": "Settings for build_feed.py, which reads the festival schedule from Monday.com and writes data/schedule.json + data/artists.json. Only the columns listed here are ever read; nothing else leaves Monday.",
+
+  "default_edition": "2026",
+  "editions": {
+    "2026": {
+      "schedule_board": 18415859443,
+      "artist_board": 18415859409,
+      "public_from": "2026-01-01",
+      "_note": "Year-end snapshot of the 2026 festival; used as sample data until 2027 is announced."
+    },
+    "2027": {
+      "schedule_board": 3458322583,
+      "artist_board": 3067392367,
+      "public_from": null,
+      "_note": "Live Programming Schedule. public_from is null, so --publish is refused: the 2027 lineup cannot reach the public site until a date is set here and committed."
+    }
+  },
+
+  "schedule_columns": {
+    "date": "date4",
+    "start": "hour",
+    "end": "dup__of_start_time",
+    "stage": "status66",
+    "appears_on_schedule": "status8",
+    "sponsor": "formula6",
+    "artist_links": ["link_to_artists4", "link_to_artists6", "link_to_artists7", "link_to_artists8"]
+  },
+  "appears_on_schedule_label": "Yes",
+
+  "artist_columns": {
+    "print_name": "text_188",
+    "origin": "text98",
+    "genre": "text0",
+    "bio_en": "bio___english__1",
+    "website": "link2",
+    "facebook": "link0",
+    "instagram": "link1",
+    "video": "link4"
+  },
+
+  "stage_ids": {
+    "fais do do": "faisdodo",
+    "internationale": "internationale",
+    "lafayette": "lafayette",
+    "scène des jeunes": "jeunes",
+    "biergarten": "biergarten",
+    "pavillon de cuisine": "pavillon",
+    "scène francosphère": "francosphere"
+  },
+
+  "validation": {
+    "earliest_normal_start": "11:00",
+    "_note": "A set starting before this time is flagged as a probable AM/PM slip (it is a warning, not an error)."
+  }
+}

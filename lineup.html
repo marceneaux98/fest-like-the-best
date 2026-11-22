@@ -17,8 +17,9 @@
   .title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   h1 { margin: 0; font-size: 1.4rem; letter-spacing: .01em; }
   h1 small { font-weight: 500; opacity: .85; font-size: .9rem; margin-left: 6px; }
-  .total { font-size: .9rem; opacity: .95; }
+  .total { font-size: .9rem; opacity: .95; text-align: right; }
   .total b { font-variant-numeric: tabular-nums; }
+  .total .stamp { display: block; font-size: .72rem; opacity: .8; margin-top: 2px; }
   .days { display: flex; gap: 4px; margin-top: 14px; overflow-x: auto; scrollbar-width: none; }
   .days::-webkit-scrollbar { display: none; }
   .day {
@@ -278,14 +279,13 @@
 
 <script src="i18n.js"></script>
 <script src="routes.js"></script>
-<script src="schedule.js"></script>
 <script src="common.js"></script>
 <script>
-(function () {
+FIL.ready(function () {
   var S = window.SCHEDULE_DATA, T = I18N.t, TN = I18N.tn;
   var esc = FIL.esc, toMin = FIL.toMin, load = FIL.store.get, save = FIL.store.set;
   var view = document.getElementById('view');
-  if (!S) { view.innerHTML = '<div class="empty">schedule.js not found — run: python build_schedule.py</div>'; return; }
+  if (!S) { view.innerHTML = '<div class="empty">Could not load the schedule (' + esc(window.SCHEDULE_ERROR || '') + '). Run python build_feed.py, and open the site through python serve.py.</div>'; return; }
 
   // Stages (name, colour, display order) come from locations.json via routes.js.
   var STAGES = FIL.stages, stageById = FIL.stageById;
@@ -377,7 +377,8 @@
         (n ? '<em class="badge">' + n + '</em>' : '') + '</button>';
     }).join('');
     var all = picks.size;
-    document.getElementById('total').innerHTML = all ? TN('lu_total', all) : esc(T('lu_total_none'));
+    document.getElementById('total').innerHTML = (all ? TN('lu_total', all) : esc(T('lu_total_none'))) +
+      (S.updated ? '<small class="stamp">' + esc(T('lu_updated', { when: FIL.stamp(S.updated) })) + '</small>' : '');
   }
 
   function renderLegend(dayPerfs) {
@@ -543,7 +544,7 @@
   });
 
   render();
-})();
+});
 </script>
 </body>
 </html>
