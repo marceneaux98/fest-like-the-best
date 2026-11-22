@@ -1,0 +1,11 @@
+# Dependabot opens a pull request when one of the GitHub Actions used in .github/workflows/
+# (checkout, setup-node, upload-artifact, ...) has a newer major version. The "Checks" workflow
+# runs on that pull request, so merging it is safe when the checks are green.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Actions"

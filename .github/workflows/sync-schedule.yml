@@ -33,7 +33,7 @@ jobs:
           echo "Tick the confirmation box to publish. Nothing was changed."
           exit 1
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build the feed from Monday
         env:
