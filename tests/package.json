@@ -1,0 +1,11 @@
+{
+  "name": "fest-like-the-best-checks",
+  "private": true,
+  "description": "Browser smoke test for the festival planner. Only GitHub Actions needs this; the app itself has no build step and does not use Node.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1"
+  }
+}

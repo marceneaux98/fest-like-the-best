@@ -5,3 +5,11 @@ __pycache__/
 .claude/settings.local.json
 Thumbs.db
 .DS_Store
+
+# Quality checks (GitHub Actions): Node packages and reports stay out of git
+node_modules/
+tests/playwright-report/
+tests/test-results/
+.lighthouseci/
+lighthouse-reports/
+server.log
