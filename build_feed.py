@@ -170,8 +170,10 @@ def build(cfg, edition_key, token):
                 col = c.get(ac[key]) or {}
                 return (col.get("text") or "").strip()
             def url(key):
+                # Only http(s) links are published: a pasted "javascript:" or "data:" URL must never reach the page.
                 col = c.get(ac[key]) or {}
-                return (col.get("url") or "").strip()
+                u = (col.get("url") or "").strip()
+                return u if u.lower().startswith(("http://", "https://")) else ""
             artists[a["id"]] = {
                 "name": txt("print_name") or a["name"].strip(),
                 "origin": txt("origin"),

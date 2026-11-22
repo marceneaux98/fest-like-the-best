@@ -210,7 +210,7 @@
 FIL.ready(function () {
   var S = window.SCHEDULE_DATA, R = window.ROUTE_DATA, T = I18N.t, TN = I18N.tn;
   var tl = document.getElementById('timeline');
-  if (!S || !R) { tl.innerHTML = '<div class="empty">Could not load the schedule or routes (' + (window.SCHEDULE_ERROR || 'routes.js missing') + '). Run python build_feed.py and python build_routes.py, and open the site through python serve.py.</div>'; return; }
+  if (!S || !R) { tl.innerHTML = '<div class="empty">Could not load the schedule or routes (' + FIL.esc(window.SCHEDULE_ERROR || 'routes.js missing') + '). Run python build_feed.py and python build_routes.py, and open the site through python serve.py.</div>'; return; }
 
   // Stage names and colours come from locations.json via routes.js (see common.js)
   var esc = FIL.esc, toMin = FIL.toMin, stageColor = FIL.stageColor;
