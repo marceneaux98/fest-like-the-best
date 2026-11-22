@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lineup · Fest like the Best</title>
+<style>
+  :root {
+    --blue: #0093d0;
+    --purple: #4f3693;
+    --orange: #f58220;
+    --ink: #1c1b22;
+    --muted: #6b6878;
+    --bg: #f6f5f9;
+    --card: #ffffff;
+    --line: #e4e2ea;
+    --danger: #d93a3a;
+    --hour: 96px;            /* grid height of one hour */
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--bg); color: var(--ink);
+    min-height: 100vh;
+  }
+  button { font: inherit; color: inherit; }
+
+  /* ---------- header ---------- */
+  header {
+    background: linear-gradient(120deg, var(--blue), var(--purple));
+    color: #fff; padding: 18px 24px 0;
+  }
+  .title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: 1.4rem; letter-spacing: .01em; }
+  h1 small { font-weight: 500; opacity: .85; font-size: .9rem; margin-left: 6px; }
+  .total { font-size: .9rem; opacity: .95; }
+  .total b { font-variant-numeric: tabular-nums; }
+  .days { display: flex; gap: 4px; margin-top: 14px; overflow-x: auto; scrollbar-width: none; }
+  .days::-webkit-scrollbar { display: none; }
+  .day {
+    border: none; background: rgba(255,255,255,.14); color: #fff; padding: 10px 16px 12px;
+    border-radius: 10px 10px 0 0; cursor: pointer; white-space: nowrap; text-align: left; line-height: 1.15;
+  }
+  .day span { display: block; font-size: .72rem; opacity: .85; text-transform: uppercase; letter-spacing: .06em; }
+  .day strong { font-size: 1rem; }
+  .day .badge {
+    display: inline-block; min-width: 18px; padding: 1px 6px; margin-left: 6px; border-radius: 999px;
+    background: var(--orange); color: #fff; font-size: .72rem; font-weight: 700; text-align: center; vertical-align: 2px;
+  }
+  .day[aria-selected="true"] { background: var(--bg); color: var(--ink); }
+
+  /* ---------- toolbar ---------- */
+  .toolbar {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    padding: 14px 24px; border-bottom: 1px solid var(--line); background: var(--bg);
+    position: sticky; top: 0; z-index: 20;
+  }
+  .search {
+    flex: 1 1 220px; min-width: 0; padding: 9px 12px; font-size: .95rem; border: 1px solid var(--line);
+    border-radius: 8px; background: #fff; color: var(--ink);
+  }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; }
+  .seg button { border: none; background: none; padding: 8px 14px; cursor: pointer; font-size: .88rem; color: var(--muted); }
+  .seg button[aria-pressed="true"] { background: var(--purple); color: #fff; }
+  .chk { display: inline-flex; align-items: center; gap: 6px; font-size: .88rem; color: var(--muted); cursor: pointer; white-space: nowrap; }
+  .chk input { accent-color: var(--purple); width: 16px; height: 16px; }
+
+  /* ---------- layout ---------- */
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 0; align-items: start; }
+  .board { padding: 16px 24px 40px; min-width: 0; }
+
+  /* ---------- grid view ---------- */
+  .grid-wrap {
+    overflow: auto; border: 1px solid var(--line); border-radius: 12px; background: #fff;
+    max-height: calc(100vh - 190px); min-height: 360px;
+  }
+  .grid .corner { left: 0; z-index: 4; }
+  .times { position: sticky; left: 0; z-index: 2; background: #fff; }
+  .grid { display: grid; position: relative; min-width: 840px; }
+  .grid .corner, .grid .stage-head {
+    position: sticky; top: 0; z-index: 3; background: #fff; border-bottom: 1px solid var(--line);
+    padding: 10px 8px; font-size: .8rem; font-weight: 700; text-align: center; line-height: 1.2;
+  }
+  .stage-head i { display: block; height: 4px; border-radius: 2px; margin: 6px auto 0; width: 40px; }
+  .times { border-right: 1px solid var(--line); }
+  .times div { position: absolute; right: 8px; font-size: .72rem; color: var(--muted); transform: translateY(-50%); font-variant-numeric: tabular-nums; }
+  .col { position: relative; border-right: 1px solid var(--line); }
+  .col:last-child { border-right: none; }
+  .hourline { position: absolute; left: 0; right: 0; border-top: 1px solid #f0eef4; }
+  .hourline.half { border-top-style: dashed; }
+
+  .set {
+    position: absolute; left: 4px; right: 4px; border-radius: 8px; padding: 6px 8px 6px 10px; cursor: pointer;
+    background: color-mix(in srgb, var(--stage) 12%, #fff); border: 1px solid color-mix(in srgb, var(--stage) 35%, #fff);
+    border-left: 4px solid var(--stage); overflow: hidden; text-align: left; display: flex; flex-direction: column; gap: 2px;
+    transition: box-shadow .12s, transform .12s;
+  }
+  .set:hover { box-shadow: 0 3px 10px rgba(0,0,0,.12); z-index: 2; }
+  .set:focus-visible { outline: 3px solid var(--orange); outline-offset: 1px; }
+  .set .act { font-weight: 700; font-size: .82rem; line-height: 1.15; }
+  .set .meta { font-size: .72rem; color: var(--muted); }
+  .set.picked { background: var(--stage); border-color: var(--stage); color: #fff; }
+  .set.picked .meta { color: rgba(255,255,255,.88); }
+  .set.picked::after {
+    content: "✓"; position: absolute; top: 5px; right: 7px; font-weight: 800; font-size: .85rem;
+  }
+  .set.conflict { box-shadow: 0 0 0 2px var(--danger); }
+  .set.dim { opacity: .28; }
+  .set.short .meta { display: none; }
+
+  /* ---------- list view ---------- */
+  .slot { margin-bottom: 18px; }
+  .slot h3 { margin: 0 0 8px; font-size: .8rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+  .card {
+    display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; text-align: left; cursor: pointer;
+    background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--stage); border-radius: 10px; padding: 10px 12px;
+  }
+  .card:hover { border-color: color-mix(in srgb, var(--stage) 50%, var(--line)); border-left-color: var(--stage); }
+  .card:focus-visible { outline: 3px solid var(--orange); outline-offset: 1px; }
+  .tick {
+    width: 22px; height: 22px; border-radius: 6px; border: 2px solid color-mix(in srgb, var(--stage) 60%, #fff);
+    display: grid; place-items: center; font-weight: 800; font-size: .8rem; color: #fff; margin-top: 1px;
+  }
+  .card.picked { background: color-mix(in srgb, var(--stage) 9%, #fff); }
+  .card.picked .tick { background: var(--stage); border-color: var(--stage); }
+  .card .act { font-weight: 700; font-size: .95rem; }
+  .card .meta { font-size: .8rem; color: var(--muted); margin-top: 2px; }
+  .card .also { font-size: .75rem; color: var(--purple); margin-top: 4px; }
+  .card .warn, .pick .warn { font-size: .75rem; color: var(--danger); font-weight: 600; margin-top: 4px; }
+  .empty { padding: 40px 16px; text-align: center; color: var(--muted); }
+
+  /* ---------- picks panel ---------- */
+  .panel {
+    position: sticky; top: 66px; margin: 16px 24px 24px 0; background: #fff; border: 1px solid var(--line);
+    border-radius: 12px; padding: 16px; max-height: calc(100vh - 90px); overflow-y: auto;
+  }
+  .panel h2 { margin: 0; font-size: 1rem; color: var(--purple); }
+  .panel .sub { margin: 2px 0 12px; font-size: .8rem; color: var(--muted); }
+  .pick {
+    border-left: 4px solid var(--stage); padding: 6px 0 6px 10px; margin-bottom: 8px; position: relative;
+  }
+  .pick .t { font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .pick .act { font-weight: 700; font-size: .9rem; padding-right: 22px; }
+  .pick .st { font-size: .78rem; color: var(--muted); }
+  .pick .x {
+    position: absolute; top: 4px; right: 0; border: none; background: none; cursor: pointer; color: var(--muted);
+    font-size: 1rem; line-height: 1; padding: 2px 4px; border-radius: 4px;
+  }
+  .pick .x:hover { background: var(--bg); color: var(--ink); }
+  .panel .none { font-size: .85rem; color: var(--muted); padding: 8px 0 4px; }
+  .panel-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .btn {
+    border: none; border-radius: 8px; padding: 10px 14px; cursor: pointer; font-weight: 600; font-size: .9rem;
+  }
+  .btn.primary { background: var(--orange); color: #fff; }
+  .btn.primary:disabled { background: #e9e6ef; color: var(--muted); cursor: not-allowed; }
+  .btn.ghost { background: none; color: var(--muted); border: 1px solid var(--line); }
+  .btn.ghost:hover { background: var(--bg); }
+  .soon { font-size: .75rem; color: var(--muted); text-align: center; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 12px; font-size: .78rem; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  /* Phone: picks summary + Plan button pinned to the bottom of the screen */
+  .dock { display: none; }
+  .dock-info { flex: 1; min-width: 0; text-align: left; border: none; background: none; cursor: pointer; padding: 0; }
+  .dock-info b { display: block; font-size: 1rem; }
+  .dock-info span { display: block; font-size: .78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dock-info span.bad { color: var(--danger); font-weight: 600; }
+  .dock .btn { flex: 0 0 auto; }
+
+  /* Other shows by an artist already in the plan */
+  .set.twin { border-style: dashed; border-left-style: solid; }
+  .twin-pill {
+    position: absolute; top: 4px; right: 4px; background: var(--purple); color: #fff; border-radius: 999px;
+    font-size: .62rem; font-weight: 700; padding: 1px 6px; line-height: 1.4; text-transform: uppercase;
+  }
+  .set.picked .twin-pill { display: none; }
+
+  /* "Also: Sat 2:15 PM · Sun 2 PM" pinned to the bottom of each grid block */
+  .set .act { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; flex-shrink: 0; }
+  .set .also-days {
+    margin-top: auto; padding-top: 3px; border-top: 1px dashed color-mix(in srgb, var(--stage) 40%, transparent);
+    font-size: .66rem; font-weight: 700; line-height: 1.25; color: color-mix(in srgb, var(--stage) 75%, #000);
+  }
+  .set.picked .also-days { color: rgba(255, 255, 255, .92); border-top-color: rgba(255, 255, 255, .45); }
+  .set.short .also-days { display: none; }
+  .set.has-also .act { -webkit-line-clamp: 2; }                 /* leave room for the "Also" line */
+  .set .meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+  /* 45–55 min blocks: one-line name, one-line "Also" */
+  .set.compact .act { -webkit-line-clamp: 1; }
+  .set.compact .also-days { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .twin-tag {
+    display: inline-block; margin-top: 6px; padding: 2px 8px; border-radius: 999px;
+    background: color-mix(in srgb, var(--purple) 12%, #fff); color: var(--purple); font-size: .75rem; font-weight: 600;
+  }
+
+  /* "Already in your schedule" dialog */
+  .dup {
+    border: none; border-radius: 16px; padding: 0; width: min(420px, calc(100vw - 32px));
+    box-shadow: 0 20px 50px rgba(28, 27, 34, .3); color: var(--ink);
+  }
+  .dup::backdrop { background: rgba(28, 27, 34, .45); }
+  .dup form { padding: 20px; }
+  .dup h2 {
+    margin: 0 0 8px; color: var(--purple); font-size: 1.15rem;
+    font-family: var(--font-headline, inherit); font-style: italic; font-weight: 700; text-transform: uppercase;
+  }
+  .dup p { margin: 0; font-size: .95rem; }
+  .dup ul { margin: 8px 0 12px; padding-left: 20px; font-weight: 600; }
+  .dup .dup-this { color: var(--muted); font-size: .88rem; }
+  .dup-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .btn.link { background: none; color: var(--muted); text-decoration: underline; padding-left: 6px; padding-right: 6px; }
+
+  @media (max-width: 900px) {
+    .dock {
+      display: flex; align-items: center; gap: 12px; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+      background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -4px 16px rgba(0,0,0,.08);
+      padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    }
+    body { padding-bottom: 80px; }
+    header { padding: 14px 16px 0; }
+    .toolbar { padding: 10px 16px; }
+    main { grid-template-columns: 1fr; }
+    .board { padding: 12px 16px 24px; }
+    .panel { position: static; margin: 0 16px 24px; max-height: none; }
+  }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,400;0,500;0,600;0,700;1,700&family=Saira+Condensed:wght@500;700;800&family=Yellowtail&display=swap">
+<link rel="stylesheet" href="brand.css">
+<link rel="icon" href="assets/swirl.png">
+<meta name="i18n-title" content="lu_doc_title">
+</head>
+<body>
+<div class="brand-bar">
+  <a class="brand-logo" href="lineup.html"><img src="assets/logo.png" alt="Festival International de Louisiane, presented by LFT Fiber"></a>
+  <span class="brand-tag">Fest like the Best</span>
+  <nav class="brand-nav" aria-label="Pages">
+    <a href="lineup.html" aria-current="page" data-i18n="nav_lineup">Lineup</a>
+    <a href="itinerary.html" data-i18n="nav_myday">My day</a>
+    <a href="planner.html" data-i18n="nav_map">Stage map</a>
+  </nav>
+</div>
+<header>
+  <div class="title-row">
+    <h1><span data-i18n="lu_title">Lineup 2026</span> <small data-i18n="lu_sub">Pick the sets you want to see</small></h1>
+    <div class="total" id="total"></div>
+  </div>
+  <nav class="days" id="days" role="tablist" data-i18n-aria="lu_days_aria" aria-label="Festival days"></nav>
+</header>
+
+<div class="toolbar">
+  <input class="search" id="search" type="search" data-i18n-ph="lu_search_ph" data-i18n-aria="lu_search_aria" placeholder="Search artists, countries, stages…" aria-label="Search">
+  <div class="seg" role="group" data-i18n-aria="lu_view_aria" aria-label="View">
+    <button type="button" id="viewGrid" aria-pressed="true" data-i18n="lu_grid">Grid</button>
+    <button type="button" id="viewList" aria-pressed="false" data-i18n="lu_list">List</button>
+  </div>
+  <label class="chk"><input type="checkbox" id="onlyPicked"> <span data-i18n="lu_only">Only my picks</span></label>
+</div>
+
+<main>
+  <section class="board">
+    <div class="legend" id="legend"></div>
+    <div id="view"></div>
+  </section>
+  <aside class="panel" aria-live="polite">
+    <h2 id="panelTitle"></h2>
+    <p class="sub" id="panelSub"></p>
+    <div id="picks"></div>
+    <div class="panel-actions">
+      <button class="btn primary" id="planBtn" type="button" disabled data-i18n="lu_plan_btn">Plan my route →</button>
+      <div class="soon" id="planHint"></div>
+      <button class="btn ghost" id="clearDay" type="button" data-i18n="lu_clear_day">Clear this day</button>
+    </div>
+  </aside>
+</main>
+<div class="dock" id="dock">
+  <button class="dock-info" id="dockInfo" type="button" data-i18n-aria="lu_dock_aria" aria-label="Review my picks for this day">
+    <b id="dockCount"></b><span id="dockSub"></span>
+  </button>
+  <button class="btn primary" id="dockPlan" type="button" data-i18n="lu_plan_btn">Plan my route →</button>
+</div>
+
+<!-- "Already in your schedule" prompt -->
+<dialog class="dup" id="dup" aria-labelledby="dupTitle">
+  <form method="dialog">
+    <h2 id="dupTitle" data-i18n="dup_title">Already in your schedule</h2>
+    <p id="dupBody"></p>
+    <ul id="dupList"></ul>
+    <p class="dup-this" id="dupThis"></p>
+    <div class="dup-btns">
+      <button class="btn primary" value="swap" data-i18n="dup_swap">Switch to this show</button>
+      <button class="btn ghost" value="keep" data-i18n="dup_keep">Keep both</button>
+      <button class="btn link" value="cancel" data-i18n="dup_cancel">Cancel</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="i18n.js"></script>
+<script src="routes.js"></script>
+<script src="schedule.js"></script>
+<script>
+(function () {
+  var S = window.SCHEDULE_DATA, R = window.ROUTE_DATA, T = I18N.t, TN = I18N.tn;
+  var view = document.getElementById('view');
+  if (!S) { view.innerHTML = '<div class="empty">schedule.js not found — run: py build_schedule.py</div>'; return; }
+
+  // Stage colours (from the site map). Display order follows locations.json (via routes.js).
+  var STAGES = [
+    { id: 'jeunes',         color: '#6aa832', name: 'Scène des Jeunes' },
+    { id: 'lafayette',      color: '#139a8f', name: 'Lafayette Stage' },
+    { id: 'biergarten',     color: '#c2185b', name: 'Biergarten' },
+    { id: 'faisdodo',       color: '#e8711a', name: 'Fais Do Do' },
+    { id: 'francosphere',   color: '#d6334b', name: 'FrancoSphere' },
+    { id: 'pavillon',       color: '#2e8f55', name: 'Pavillon' },
+    { id: 'internationale', color: '#0083c2', name: 'Internationale' }
+  ];
+  // Names from locations.json (via routes.js) win, so renaming a stage there renames it here too.
+  (R ? R.locations : []).forEach(function (l) { STAGES.forEach(function (s) { if (s.id === l.id) s.name = l.name; }); });
+  if (R) {
+    var order = R.locations.map(function (l) { return l.id; });
+    STAGES.sort(function (a, b) {
+      var ia = order.indexOf(a.id), ib = order.indexOf(b.id);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+  }
+  var stageById = {}; STAGES.forEach(function (s) { stageById[s.id] = s; });
+
+  var perfs = S.performances;
+  var byId = {}; perfs.forEach(function (p) { byId[p.id] = p; p.s = toMin(p.start); p.e = toMin(p.end); });
+
+  // Repeating entries that aren't artists, so picking them twice is normal.
+  var NOT_ARTISTS = /^(Dance to Festival Playlist|Opening Ceremonies)/i;
+
+  // ---------- state (remembered in this browser) ----------
+  function load(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  var picks = new Set(load('fil-picks', []).filter(function (id) { return byId[id]; }));
+  var state = {
+    day: load('fil-day', S.days[0].date),
+    view: load('fil-view', window.innerWidth < 760 ? 'list' : 'grid'),
+    q: '',
+    only: false
+  };
+  if (!S.days.some(function (d) { return d.date === state.day; })) state.day = S.days[0].date;
+
+  // ---------- helpers ----------
+  function toMin(t) { var a = t.split(':'); return +a[0] * 60 + +a[1]; }
+  function fmt(m) { return I18N.time(m, true); }
+  function fmtRange(p) {
+    var a = fmt(p.s), b = fmt(p.e);
+    // English: "4–5:15 PM" instead of "4 PM–5:15 PM" when both are AM or both PM
+    if (I18N.lang === 'en' && (p.s < 720) === (p.e < 720)) a = a.replace(/\s?(AM|PM)$/, '');
+    return a + '–' + b;
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function when(q) { return I18N.weekdayShort(q.date) + ' ' + fmt(q.s) + ' · ' + stageById[q.stage].name; }
+  function matches(p) {
+    if (state.only && !picks.has(p.id)) return false;
+    if (!state.q) return true;
+    var hay = (p.act + ' ' + p.origin + ' ' + stageById[p.stage].name + ' ' + p.note).toLowerCase();
+    return state.q.split(/\s+/).every(function (w) { return hay.indexOf(w) >= 0; });
+  }
+  function dayPicks(date) {
+    return perfs.filter(function (p) { return p.date === date && picks.has(p.id); }).sort(function (a, b) { return a.s - b.s; });
+  }
+  // Picked sets on the same day that overlap in time.
+  function conflictsOf(p) {
+    if (!picks.has(p.id)) return [];
+    return dayPicks(p.date).filter(function (q) { return q.id !== p.id && q.s < p.e && p.s < q.e; });
+  }
+  function otherShows(p) {
+    return perfs.filter(function (q) { return q.act === p.act && q.id !== p.id; });
+  }
+  // Other performances by the same artist that are already in the plan.
+  function pickedTwins(p) {
+    if (NOT_ARTISTS.test(p.act)) return [];
+    return otherShows(p).filter(function (q) { return picks.has(q.id); })
+      .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.s - b.s; });
+  }
+
+  function commit() { save('fil-picks', Array.from(picks)); render(); }
+  function toggle(id) {
+    if (picks.has(id)) { picks.delete(id); commit(); return; }
+    var p = byId[id], twins = pickedTwins(p);
+    if (!twins.length) { picks.add(id); commit(); return; }
+    askDuplicate(p, twins);
+  }
+
+  // ---------- "already in your schedule" prompt ----------
+  var dlg = document.getElementById('dup');
+  function askDuplicate(p, twins) {
+    if (!dlg.showModal) { picks.add(p.id); commit(); return; } // very old browsers: just add it
+    document.getElementById('dupBody').textContent = T('dup_body', { act: p.act });
+    document.getElementById('dupList').innerHTML = twins.map(function (q) { return '<li>' + esc(when(q)) + '</li>'; }).join('');
+    document.getElementById('dupThis').textContent = T('dup_this', { when: when(p) });
+    dlg.returnValue = '';
+    dlg.onclose = function () {
+      dlg.onclose = null;
+      if (dlg.returnValue === 'swap') { twins.forEach(function (q) { picks.delete(q.id); }); picks.add(p.id); }
+      else if (dlg.returnValue === 'keep') { picks.add(p.id); }
+      else return;
+      commit();
+    };
+    dlg.showModal();
+  }
+  dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close('cancel'); }); // tap outside = cancel
+
+  // ---------- rendering ----------
+  function renderDays() {
+    var el = document.getElementById('days');
+    el.innerHTML = S.days.map(function (d) {
+      var n = dayPicks(d.date).length;
+      return '<button class="day" role="tab" data-day="' + d.date + '" aria-selected="' + (d.date === state.day) + '">' +
+        '<span>' + esc(I18N.weekday(d.date)) + '</span><strong>' + esc(I18N.monthDay(d.date)) + '</strong>' +
+        (n ? '<em class="badge">' + n + '</em>' : '') + '</button>';
+    }).join('');
+    var all = picks.size;
+    document.getElementById('total').innerHTML = all ? TN('lu_total', all) : esc(T('lu_total_none'));
+  }
+
+  function renderLegend(dayPerfs) {
+    var used = STAGES.filter(function (s) { return dayPerfs.some(function (p) { return p.stage === s.id; }); });
+    document.getElementById('legend').innerHTML = state.view === 'list'
+      ? used.map(function (s) { return '<span><i style="background:' + s.color + '"></i>' + esc(s.name) + '</span>'; }).join('')
+      : '';
+  }
+
+  function renderGrid(dayPerfs) {
+    var stages = STAGES.filter(function (s) { return dayPerfs.some(function (p) { return p.stage === s.id; }); });
+    if (!dayPerfs.length) { view.innerHTML = '<div class="empty">' + esc(T('lu_empty_day')) + '</div>'; return; }
+    var t0 = Math.floor(Math.min.apply(null, dayPerfs.map(function (p) { return p.s; })) / 60) * 60;
+    var t1 = Math.ceil(Math.max.apply(null, dayPerfs.map(function (p) { return p.e; })) / 60) * 60;
+    var hourPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hour')) || 96;
+    var ppm = hourPx / 60, height = (t1 - t0) * ppm;
+
+    var h = '<div class="grid-wrap"><div class="grid" style="grid-template-columns: 64px repeat(' + stages.length + ', minmax(110px, 1fr))">';
+    h += '<div class="corner"></div>';
+    stages.forEach(function (s) { h += '<div class="stage-head">' + esc(s.name) + '<i style="background:' + s.color + '"></i></div>'; });
+
+    h += '<div class="times" style="height:' + height + 'px">';
+    for (var t = t0; t <= t1; t += 60) h += '<div style="top:' + Math.max(8, Math.min(height - 8, (t - t0) * ppm)) + 'px">' + esc(fmt(t)) + '</div>';
+    h += '</div>';
+
+    stages.forEach(function (s) {
+      h += '<div class="col" style="height:' + height + 'px">';
+      for (var t = t0; t < t1; t += 30) h += '<div class="hourline' + (t % 60 ? ' half' : '') + '" style="top:' + (t - t0) * ppm + 'px"></div>';
+      dayPerfs.filter(function (p) { return p.stage === s.id; }).forEach(function (p) {
+        var top = (p.s - t0) * ppm, ht = Math.max(22, (p.e - p.s) * ppm - 3);
+        var on = picks.has(p.id), twins = on ? [] : pickedTwins(p);
+        var cls = 'set' + (on ? ' picked' : '') + (twins.length ? ' twin' : '') + (otherShows(p).length ? ' has-also' : '') + (conflictsOf(p).length ? ' conflict' : '') +
+          (matches(p) ? '' : ' dim') + (ht < 48 ? ' short' : ht < 90 ? ' compact' : '');
+        var others = otherShows(p);
+        var tip = p.act + (p.origin ? ' (' + p.origin + ')' : '') + ' · ' + fmtRange(p) + (p.note ? '\n' + p.note : '') +
+          (others.length ? '\n' + T('lu_also', { list: others.map(function (q) { return (picks.has(q.id) ? '✓ ' : '') + when(q); }).join('; ') }) : '');
+        // Bottom line: the artist's other shows (day + time), ✓ = already in the plan
+        var alsoLine = others.length
+          ? '<span class="also-days">' + esc(T('lu_also', { list: others.map(function (q) {
+              return (picks.has(q.id) ? '✓ ' : '') + I18N.weekdayShort(q.date) + ' ' + fmt(q.s);
+            }).join(' · ') })) + '</span>'
+          : '';
+        h += '<button type="button" class="' + cls + '" data-id="' + p.id + '" style="--stage:' + s.color + ';top:' + (top + 1) + 'px;height:' + ht + 'px"' +
+          ' aria-pressed="' + on + '" title="' + esc(tip) + '">' +
+          '<span class="act">' + esc(p.act) + '</span><span class="meta">' + esc(fmtRange(p)) + (p.origin ? ' · ' + esc(p.origin) : '') + '</span>' +
+          alsoLine + '</button>';
+      });
+      h += '</div>';
+    });
+    view.innerHTML = h + '</div></div>';
+  }
+
+  function renderList(dayPerfs) {
+    var shown = dayPerfs.filter(matches);
+    if (!shown.length) {
+      view.innerHTML = '<div class="empty">' + esc(T(state.only ? 'lu_empty_picks' : 'lu_empty_search')) + '</div>';
+      return;
+    }
+    var groups = [], cur = null;
+    shown.forEach(function (p) {
+      if (!cur || cur.s !== p.s) { cur = { s: p.s, items: [] }; groups.push(cur); }
+      cur.items.push(p);
+    });
+    view.innerHTML = groups.map(function (g) {
+      return '<div class="slot"><h3>' + esc(fmt(g.s)) + '</h3><div class="cards">' + g.items.map(function (p) {
+        var s = stageById[p.stage], on = picks.has(p.id), c = conflictsOf(p);
+        var twins = on ? [] : pickedTwins(p);
+        var also = otherShows(p).filter(function (q) { return twins.indexOf(q) < 0; });
+        return '<button type="button" class="card' + (on ? ' picked' : '') + (twins.length ? ' twin' : '') + '" data-id="' + p.id + '" style="--stage:' + s.color + '" aria-pressed="' + on + '">' +
+          '<span class="tick">' + (on ? '✓' : '') + '</span><span>' +
+          '<div class="act">' + esc(p.act) + '</div>' +
+          '<div class="meta">' + esc(s.name) + ' · ' + esc(fmtRange(p)) + (p.origin ? ' · ' + esc(p.origin) : '') + '</div>' +
+          (twins.length ? '<div class="twin-tag">✓ ' + esc(T('dup_badge', { when: twins.map(when).join('; ') })) + '</div>' : '') +
+          (c.length ? '<div class="warn">' + esc(T('lu_overlaps', { acts: c.map(function (q) { return q.act; }).join(', ') })) + '</div>' : '') +
+          (also.length ? '<div class="also">' + esc(T('lu_also', { list: also.map(when).join('; ') })) + '</div>' : '') +
+          '</span></button>';
+      }).join('') + '</div></div>';
+    }).join('');
+  }
+
+  function renderPanel() {
+    var list = dayPicks(state.day), wd = I18N.weekday(state.day);
+    document.getElementById('panelTitle').textContent = T('lu_my_day', { weekday: wd });
+    var conflicts = list.filter(function (p) { return conflictsOf(p).length; }).length;
+    document.getElementById('panelSub').textContent = list.length
+      ? TN('sets', list.length) + ' · ' + (conflicts ? TN('overlapping', conflicts) : T('no_overlaps'))
+      : T('lu_nothing_day');
+    document.getElementById('picks').innerHTML = list.length ? list.map(function (p) {
+      var s = stageById[p.stage], c = conflictsOf(p);
+      return '<div class="pick" style="--stage:' + s.color + '"><div class="t">' + esc(fmtRange(p)) + '</div>' +
+        '<div class="act">' + esc(p.act) + '</div><div class="st">' + esc(s.name) + '</div>' +
+        (c.length ? '<div class="warn">' + esc(T('lu_overlaps', { acts: c.map(function (q) { return q.act; }).join(', ') })) + '</div>' : '') +
+        '<button class="x" type="button" data-remove="' + p.id + '" aria-label="' + esc(T('lu_remove', { act: p.act })) + '">×</button></div>';
+    }).join('') : '<div class="none">' + esc(T('lu_tap_build')) + '</div>';
+    document.getElementById('planBtn').disabled = list.length < 2;
+    document.getElementById('planHint').textContent = T(list.length < 2 ? 'lu_hint_need' : 'lu_hint_ok');
+    document.getElementById('clearDay').style.display = list.length ? '' : 'none';
+
+    // Phone dock
+    document.getElementById('dockCount').textContent = list.length
+      ? T('lu_dock_count', { sets: TN('sets', list.length), weekday: wd })
+      : T('lu_dock_none', { weekday: wd });
+    var sub = document.getElementById('dockSub');
+    sub.textContent = !list.length ? T('lu_dock_add') : conflicts ? TN('lu_dock_overlap', conflicts) : T('lu_dock_review');
+    sub.className = conflicts ? 'bad' : '';
+    document.getElementById('dockPlan').disabled = list.length < 2;
+  }
+
+  // Redrawing replaces the grid/list, which would reset the grid's own scroll box (and can nudge the page).
+  // When only picks/search changed (same day + view), put every scroll position and keyboard focus back.
+  var lastKey = null;
+  function render() {
+    var key = state.day + '|' + state.view, same = key === lastKey;
+    var gw = view.querySelector('.grid-wrap'), days = document.getElementById('days');
+    var keep = { x: window.scrollX, y: window.scrollY, gt: gw ? gw.scrollTop : 0, gl: gw ? gw.scrollLeft : 0, dl: days.scrollLeft };
+    var focusId = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.id : null;
+
+    var dayPerfs = perfs.filter(function (p) { return p.date === state.day; });
+    renderDays();
+    renderLegend(dayPerfs);
+    if (state.view === 'grid') renderGrid(dayPerfs); else renderList(dayPerfs);
+    renderPanel();
+    document.getElementById('viewGrid').setAttribute('aria-pressed', state.view === 'grid');
+    document.getElementById('viewList').setAttribute('aria-pressed', state.view === 'list');
+
+    days.scrollLeft = keep.dl;
+    if (same) {
+      var ngw = view.querySelector('.grid-wrap');
+      if (ngw) { ngw.scrollTop = keep.gt; ngw.scrollLeft = keep.gl; }
+      window.scrollTo(keep.x, keep.y);
+      if (focusId) {
+        var f = view.querySelector('[data-id="' + focusId + '"]');
+        if (f) f.focus({ preventScroll: true });
+      }
+    }
+    lastKey = key;
+  }
+
+  // ---------- events ----------
+  document.getElementById('days').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-day]'); if (!b) return;
+    state.day = b.dataset.day; save('fil-day', state.day); render();
+  });
+  view.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-id]'); if (b) toggle(b.dataset.id);
+  });
+  document.getElementById('picks').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-remove]'); if (b) toggle(b.dataset.remove);
+  });
+  document.getElementById('viewGrid').addEventListener('click', function () { state.view = 'grid'; save('fil-view', 'grid'); render(); });
+  document.getElementById('viewList').addEventListener('click', function () { state.view = 'list'; save('fil-view', 'list'); render(); });
+  document.getElementById('search').addEventListener('input', function (e) { state.q = e.target.value.trim().toLowerCase(); render(); });
+  document.getElementById('onlyPicked').addEventListener('change', function (e) { state.only = e.target.checked; render(); });
+  function goPlan() { location.href = 'itinerary.html?day=' + encodeURIComponent(state.day); }
+  document.getElementById('planBtn').addEventListener('click', goPlan);
+  document.getElementById('dockPlan').addEventListener('click', goPlan);
+  document.getElementById('dockInfo').addEventListener('click', function () {
+    document.querySelector('.panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  document.getElementById('clearDay').addEventListener('click', function () {
+    dayPicks(state.day).forEach(function (p) { picks.delete(p.id); });
+    commit();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

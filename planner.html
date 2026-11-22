@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stage Map · Fest like the Best</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root {
+    --blue: #0093d0;
+    --purple: #4f3693;
+    --orange: #f58220;
+    --ink: #1c1b22;
+    --muted: #6b6878;
+    --bg: #f6f5f9;
+    --card: #ffffff;
+    --line: #e4e2ea;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100vh;
+  }
+  aside { min-height: 0; }
+  aside {
+    background: var(--card);
+    border-right: 1px solid var(--line);
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  h1 { margin: 0; font-size: 1.25rem; color: var(--purple); letter-spacing: .01em; }
+  h1 span { color: var(--blue); }
+  .sub { margin: 4px 0 0; color: var(--muted); font-size: .85rem; }
+  label { display: block; font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
+  select {
+    width: 100%; padding: 10px 12px; font-size: 1rem; border: 1px solid var(--line);
+    border-radius: 8px; background: #fff; color: var(--ink);
+  }
+  .pickers { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
+  .pickers .stack { display: flex; flex-direction: column; gap: 12px; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  #swap {
+    height: 42px; width: 42px; border-radius: 8px; border: 1px solid var(--line); background: #fff;
+    cursor: pointer; font-size: 1.1rem; color: var(--purple); margin-bottom: 0;
+  }
+  #swap:hover { background: var(--bg); }
+  .result {
+    border-radius: 12px; padding: 16px; background: linear-gradient(135deg, var(--blue), var(--purple));
+    color: #fff; min-height: 110px;
+  }
+  .result .time { font-size: 2.4rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+  .result .time small { font-size: 1rem; font-weight: 500; opacity: .9; }
+  .result .meta { margin-top: 8px; font-size: .9rem; opacity: .92; }
+  .result.empty { background: var(--bg); color: var(--muted); border: 1px dashed var(--line); display: flex; align-items: center; justify-content: center; text-align: center; font-size: .9rem; }
+  .slider-row { display: flex; align-items: center; gap: 10px; }
+  .slider-row input { flex: 1; accent-color: var(--orange); }
+  #crowdVal { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 3.2em; text-align: right; }
+  .hint { font-size: .78rem; color: var(--muted); margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: .78rem; font-variant-numeric: tabular-nums; }
+  th, td { padding: 5px 4px; text-align: center; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; }
+  th.row { text-align: left; white-space: nowrap; }
+  td.self { color: #c9c6d3; }
+  td.cell { cursor: pointer; border-radius: 4px; }
+  td.cell:hover { background: var(--bg); }
+  td.active { background: var(--orange); color: #fff; font-weight: 700; }
+  label.toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--ink); text-transform: none; letter-spacing: 0; font-size: .9rem; margin-bottom: 8px; }
+  label.toggle input { accent-color: var(--purple); width: 16px; height: 16px; }
+  #overlayOpacityRow input { accent-color: var(--purple); }
+  #overlayOpacityRow.off { opacity: .4; pointer-events: none; }
+  #overlayOpacityVal { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 3.2em; text-align: right; }
+  .foot { margin-top: auto; font-size: .72rem; color: var(--muted); line-height: 1.5; }
+  #map { height: 100%; width: 100%; }
+  .pin {
+    background: var(--purple); color: #fff; border: 2px solid #fff; border-radius: 999px;
+    padding: 3px 9px; font: 600 12px system-ui, sans-serif; white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(0,0,0,.3); transform: translate(-50%, -50%); display: inline-block; cursor: pointer;
+  }
+  .pin.from { background: var(--blue); }
+  .pin.to { background: var(--orange); }
+  .leaflet-div-icon { background: none; border: none; }
+  .merch-pin {
+    display: inline-block; transform: translate(-50%, 80%); background: var(--orange); color: #fff; border: 2px solid #fff;
+    border-radius: 999px; padding: 1px 7px; font: 700 10px system-ui, sans-serif; letter-spacing: .06em;
+    box-shadow: 0 2px 5px rgba(0,0,0,.25); white-space: nowrap; pointer-events: none;
+  }
+  @media (max-width: 760px) {
+    /* Phone: logo bar, then the map, then the controls */
+    body { grid-template-columns: 1fr; grid-template-rows: auto 45vh auto; height: auto; }
+    aside { border-right: none; padding: 16px; order: 3; }
+    #map { height: 45vh; order: 2; }
+    .foot { display: none; }
+  }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,400;0,500;0,600;0,700;1,700&family=Saira+Condensed:wght@500;700;800&family=Yellowtail&display=swap">
+<link rel="stylesheet" href="brand.css">
+<link rel="icon" href="assets/swirl.png">
+<meta name="i18n-title" content="pl_doc_title">
+</head>
+<body>
+<div class="brand-bar">
+  <a class="brand-logo" href="lineup.html"><img src="assets/logo.png" alt="Festival International de Louisiane, presented by LFT Fiber"></a>
+  <span class="brand-tag">Fest like the Best</span>
+  <nav class="brand-nav" aria-label="Pages">
+    <a href="lineup.html" data-i18n="nav_lineup">Lineup</a>
+    <a href="itinerary.html" data-i18n="nav_myday">My day</a>
+    <a href="planner.html" aria-current="page" data-i18n="nav_map">Stage map</a>
+  </nav>
+</div>
+<aside>
+  <div>
+    <h1 data-i18n-html="pl_title_html">Stage <span>Map</span></h1>
+    <p class="sub" data-i18n="pl_sub">Walking time between any two stages. Pick two, or tap pins on the map.</p>
+  </div>
+
+  <div class="pickers">
+    <div class="stack">
+      <div><label for="from"><span class="dot" style="background:var(--blue)"></span><span data-i18n="pl_from">From</span></label><select id="from"></select></div>
+      <div><label for="to"><span class="dot" style="background:var(--orange)"></span><span data-i18n="pl_to">To</span></label><select id="to"></select></div>
+    </div>
+    <button id="swap" type="button" title="Swap" data-i18n-title="pl_swap" data-i18n-aria="pl_swap">&#8645;</button>
+  </div>
+
+  <div id="result" class="result empty"></div>
+
+  <div>
+    <label for="crowd" data-i18n="crowd_factor">Crowd factor</label>
+    <div class="slider-row">
+      <input id="crowd" type="range" min="1" max="2.5" step="0.05">
+      <span id="crowdVal"></span>
+    </div>
+    <div class="hint" data-i18n="pl_crowd_hint">1.0× = normal walking pace (~5 km/h). Raise it for festival crowds.</div>
+  </div>
+
+  <div id="overlayBox">
+    <label class="toggle"><input id="overlayOn" type="checkbox"> <span data-i18n="pl_overlay">Festival site map overlay</span></label>
+    <div class="slider-row" id="overlayOpacityRow">
+      <input id="overlayOpacity" type="range" min="0.1" max="1" step="0.05">
+      <span id="overlayOpacityVal"></span>
+    </div>
+    <div class="hint" id="overlayStatus" data-i18n="overlay_note">The illustrated map is approximate and not to scale.</div>
+  </div>
+
+  <div>
+    <label data-i18n="pl_matrix">All walk times (min, with crowd factor)</label>
+    <table id="matrix"></table>
+  </div>
+
+  <div class="foot" id="foot"></div>
+</aside>
+<div id="map"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="i18n.js"></script>
+<script src="routes.js"></script>
+<script src="overlay.js"></script>
+<script src="site-overlay.js"></script>
+<script>
+(function () {
+  var D = window.ROUTE_DATA;
+  if (!D) { document.getElementById('result').textContent = 'routes.js not found — run: py build_routes.py'; return; }
+
+  var locs = D.locations;
+  var byId = {}; locs.forEach(function (l) { byId[l.id] = l; });
+  var fromSel = document.getElementById('from'), toSel = document.getElementById('to');
+  var crowd = document.getElementById('crowd'), crowdVal = document.getElementById('crowdVal');
+  var resultEl = document.getElementById('result');
+
+  function getRoute(a, b) {
+    var r = D.routes[a + '|' + b];
+    if (r) return r;
+    r = D.routes[b + '|' + a];
+    if (r) return { meters: r.meters, seconds: r.seconds, path: r.path.slice().reverse() };
+    return null;
+  }
+  var T = I18N.t;
+  function mins(sec) { return sec * parseFloat(crowd.value) / 60; }
+  var nf1 = new Intl.NumberFormat(I18N.locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  var nf2 = new Intl.NumberFormat(I18N.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function fmtMin(m) { return m < 10 ? nf1.format(m) : Math.round(m).toString(); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  // Pickers
+  [fromSel, toSel].forEach(function (sel) {
+    sel.add(new Option('—', ''));
+    locs.forEach(function (l) { sel.add(new Option(l.name, l.id)); });
+  });
+
+  // Crowd factor (remembered per browser)
+  var saved = null;
+  try { saved = localStorage.getItem('crowdFactor'); } catch (e) {}
+  crowd.value = saved || D.crowd_factor_default || 1;
+
+  // Map
+  var map = L.map('map', { zoomControl: true });
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+  var bounds = L.latLngBounds(locs.map(function (l) { return [l.lat, l.lng]; }));
+  map.fitBounds(bounds, { padding: [60, 60] });
+
+  var markers = {};
+  locs.forEach(function (l) {
+    var m = L.marker([l.lat, l.lng], { icon: L.divIcon({ className: '', html: '<span class="pin" data-id="' + l.id + '">' + l.name + '</span>', iconSize: null }) }).addTo(map);
+    m.on('click', function () { pick(l.id); });
+    markers[l.id] = m;
+  });
+
+  // Merch booth tags under their stage pins
+  (D.merch_booths || []).forEach(function (b) {
+    var l = byId[b.at]; if (!l) return;
+    L.marker([l.lat, l.lng], { icon: L.divIcon({ className: '', html: '<span class="merch-pin" title="' + b.name + '">MERCH</span>', iconSize: null }),
+      interactive: false, zIndexOffset: 1500 }).addTo(map);
+  });
+
+  var routeLayer = null, routeCasing = null;
+
+  // Tapping pins: first sets From, second sets To, third starts over.
+  function pick(id) {
+    if (!fromSel.value || (fromSel.value && toSel.value)) { fromSel.value = id; toSel.value = ''; }
+    else if (id !== fromSel.value) { toSel.value = id; }
+    update();
+  }
+
+  function update() {
+    var a = fromSel.value, b = toSel.value;
+    crowdVal.textContent = nf2.format(parseFloat(crowd.value)) + '×';
+
+    Object.keys(markers).forEach(function (id) {
+      var el = markers[id].getElement(); if (!el) return;
+      var pin = el.querySelector('.pin');
+      pin.className = 'pin' + (id === a ? ' from' : id === b ? ' to' : '');
+      markers[id].setZIndexOffset(id === a || id === b ? 1000 : 0);
+    });
+
+    if (routeLayer) { map.removeLayer(routeLayer); map.removeLayer(routeCasing); routeLayer = routeCasing = null; }
+
+    var r = (a && b && a !== b) ? getRoute(a, b) : null;
+    if (!r) {
+      resultEl.className = 'result empty';
+      resultEl.textContent = T((a && b && a === b) ? 'pl_pick_diff' : 'pl_choose');
+    } else {
+      var m = mins(r.seconds), base = r.seconds / 60;
+      resultEl.className = 'result';
+      resultEl.innerHTML = '<div class="time">' + fmtMin(m) + ' <small>' + esc(T('pl_min_walk')) + '</small></div>' +
+        '<div class="meta">' + esc(byId[a].name) + ' → ' + esc(byId[b].name) + '<br>' +
+        esc(T('pl_meta', { m: r.meters, mi: nf2.format(r.meters * 0.000621371), n: fmtMin(base) })) + '</div>';
+      routeCasing = L.polyline(r.path, { color: '#fff', weight: 9, opacity: 0.9 }).addTo(map);
+      routeLayer = L.polyline(r.path, { color: '#542e91', weight: 5, opacity: 0.95 }).addTo(map);
+      map.fitBounds(routeLayer.getBounds(), { padding: [80, 80], maxZoom: 18 });
+    }
+    drawMatrix(a, b);
+  }
+
+  function drawMatrix(a, b) {
+    var t = document.getElementById('matrix');
+    var short = function (n) { return n.split(' ')[0].slice(0, 6); };
+    var h = '<tr><th></th>' + locs.map(function (l) { return '<th title="' + l.name + '">' + short(l.name) + '</th>'; }).join('') + '</tr>';
+    locs.forEach(function (r) {
+      h += '<tr><th class="row">' + r.name + '</th>';
+      locs.forEach(function (c) {
+        if (r.id === c.id) { h += '<td class="self">·</td>'; return; }
+        var rt = getRoute(r.id, c.id);
+        var on = (r.id === a && c.id === b) || (r.id === b && c.id === a);
+        h += '<td class="cell' + (on ? ' active' : '') + '" data-a="' + r.id + '" data-b="' + c.id + '">' + (rt ? fmtMin(mins(rt.seconds)) : '?') + '</td>';
+      });
+      h += '</tr>';
+    });
+    t.innerHTML = h;
+  }
+
+  document.getElementById('matrix').addEventListener('click', function (e) {
+    var td = e.target.closest('td.cell'); if (!td) return;
+    fromSel.value = td.dataset.a; toSel.value = td.dataset.b; update();
+  });
+  document.getElementById('swap').addEventListener('click', function () {
+    var t = fromSel.value; fromSel.value = toSel.value; toSel.value = t; update();
+  });
+  fromSel.addEventListener('change', update);
+  toSel.addEventListener('change', update);
+  crowd.addEventListener('input', function () {
+    try { localStorage.setItem('crowdFactor', crowd.value); } catch (e) {}
+    update();
+  });
+
+  // Festival site-map overlay (shared with itinerary.html; see site-overlay.js)
+  SiteMapOverlay.attach(map, {
+    toggle: document.getElementById('overlayOn'),
+    opacity: document.getElementById('overlayOpacity'),
+    opacityVal: document.getElementById('overlayOpacityVal'),
+    row: document.getElementById('overlayOpacityRow'),
+    status: document.getElementById('overlayStatus')
+  });
+
+  document.getElementById('foot').innerHTML = esc(T('pl_foot', { date: D.built })) + '<br>' +
+    'To change locations: edit <code>locations.json</code>, then run <code>py build_routes.py</code>.';
+
+  update();
+})();
+</script>
+</body>
+</html>

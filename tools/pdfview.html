@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PDF page viewer</title>
+<style>body{margin:0;background:#888} canvas{display:block;margin:0 auto;background:#fff}</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+// Usage: tools/pdfview.html?page=1&scale=1.5
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+var q = new URLSearchParams(location.search);
+pdfjsLib.getDocument('../assets/sitemap.pdf').promise.then(function (pdf) {
+  window.PDF_PAGES = pdf.numPages;
+  return pdf.getPage(parseInt(q.get('page') || '1', 10));
+}).then(function (page) {
+  var vp = page.getViewport({ scale: parseFloat(q.get('scale') || '1.5') });
+  var c = document.getElementById('c');
+  c.width = vp.width; c.height = vp.height;
+  window.PAGE_SIZE = [page.view[2], page.view[3]];
+  return page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+}).then(function () { window.RENDERED = true; });
+</script>
+</body>
+</html>

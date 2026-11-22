@@ -1,0 +1,57 @@
+# Fest like the Best
+
+A festival planner for Festival International de Louisiane 2026, presented by LFT Fiber. Patrons pick the sets they want to see, then get a walking plan between stages: when to leave, how much of each set they'll catch, how to handle overlaps, and when to visit merch.
+
+It's plain HTML, CSS and JavaScript with no build step. Python is only needed for the local web server and for regenerating the data files.
+
+## Run it
+
+1. Install **Python 3.8 or newer** if needed (`py --version` on Windows, `python3 --version` on Mac/Linux).
+2. In this folder, start the server:
+   ```
+   py serve.py          # Windows
+   python3 serve.py     # Mac / Linux
+   ```
+3. Open **http://localhost:8765/lineup.html**
+
+An internet connection is needed for the map tiles, fonts and the map/PDF libraries.
+
+| Page | What it is |
+|---|---|
+| `lineup.html` | Pick sets (grid or list), search, overlap warnings, "already in your schedule" prompt |
+| `itinerary.html` | My day: walking plan, leave-by times, overlap choices, merch suggestion, map |
+| `planner.html` | Stage map: walk time between any two stages, all-pairs table |
+| `phones.html` | All three pages side by side in phone frames, for reviewing the mobile layout |
+
+Language: menu in the top bar (Français, English, Español, Tiếng Việt; English is the default). Link to a language with `?lang=fr`.
+
+## Update the data
+
+| To change… | Edit | Then run |
+|---|---|---|
+| The schedule | Replace `assets/schedule.xlsx` (same columns) | `py build_schedule.py` → writes `schedule.js` and prints warnings for suspicious rows |
+| Stage pins, names, display order, merch booths | `locations.json` (list order = stage order everywhere) | `py build_routes.py` → fetches walking routes, writes `routes.js` |
+| Site map overlay alignment | `overlay.js` control points; open `planner.html?align` to see the error per point | — |
+| The site map itself | Replace `assets/sitemap.pdf` | — |
+| Colours, fonts, logo bar | `brand.css` | — |
+| Interface wording / translations | `i18n.js` (one dictionary per language; missing keys fall back to English) | — |
+
+## Files
+
+- `i18n.js`: all interface text in four languages, plus date/time formatting and the language menu
+- `brand.css`: brand colours (#1984C7 / #542E91 / #F26631), fonts, logo bar, title band
+- `site-overlay.js` + `overlay.js`: places the illustrated site map on the street map
+- `serve.py`: local server that always serves fresh files (no stale cache after a rebuild)
+- `build_schedule.py`, `build_routes.py`: data builders (standard library only, no installs)
+- `assets/`: logo (PDF + PNG), swirl icon, site map PDF, schedule spreadsheet
+- `tools/pdfview.html`: helper for viewing a PDF page in the browser
+
+## Known open items
+
+- Scène des Jeunes pin is estimated from the site map. Replace it with a real pin in `locations.json`.
+- Merch booth pins use their stage's pin. Add exact booth spots if they differ.
+- Breabach, Sat 8:45 AM at Fais Do Do looks like a spreadsheet typo (only set before 11 AM).
+- Translations are a first draft and need native-speaker review before launch.
+- Futura, Ando and Thirsty Script are licensed fonts; free look-alikes (Jost, Saira Condensed, Yellowtail) load unless the real fonts are installed or web-licensed.
+- Walking routes use OpenStreetMap streets and don't know about festival fencing or closed gates.
+- Picks are saved in each browser (localStorage), so they don't move between devices.

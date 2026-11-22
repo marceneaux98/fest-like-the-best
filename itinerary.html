@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Day · Fest like the Best</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root {
+    --blue: #0093d0;
+    --purple: #4f3693;
+    --orange: #f58220;
+    --ink: #1c1b22;
+    --muted: #6b6878;
+    --bg: #f6f5f9;
+    --card: #ffffff;
+    --line: #e4e2ea;
+    --danger: #d93a3a;
+    --warn: #b86200;
+    --ok: #2e8f55;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink);
+    display: grid; grid-template-columns: minmax(380px, 460px) 1fr; grid-template-rows: auto minmax(0, 1fr); height: 100vh;
+  }
+  button, select { font: inherit; color: inherit; }
+  aside { display: flex; flex-direction: column; min-height: 0; background: var(--bg); border-right: 1px solid var(--line); }
+
+  header { background: linear-gradient(120deg, var(--blue), var(--purple)); color: #fff; padding: 16px 20px 0; }
+  .top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  h1 { margin: 0; font-size: 1.25rem; }
+  .back { color: #fff; opacity: .9; font-size: .85rem; text-decoration: none; white-space: nowrap; }
+  .back:hover { opacity: 1; text-decoration: underline; }
+  .days { display: flex; gap: 4px; margin-top: 12px; overflow-x: auto; scrollbar-width: none; }
+  .days::-webkit-scrollbar { display: none; }
+  .day {
+    border: none; background: rgba(255,255,255,.14); color: #fff; padding: 8px 14px 10px; border-radius: 10px 10px 0 0;
+    cursor: pointer; white-space: nowrap; text-align: left; line-height: 1.15; font-size: .9rem;
+  }
+  .day span { display: block; font-size: .68rem; opacity: .85; text-transform: uppercase; letter-spacing: .06em; }
+  .day[aria-selected="true"] { background: var(--bg); color: var(--ink); }
+
+  .scroll { overflow-y: auto; padding: 16px 20px 28px; flex: 1; min-height: 0; }
+
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+  .stat { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .stat b { display: block; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .alert { border-radius: 10px; padding: 10px 12px; font-size: .85rem; margin-bottom: 12px; }
+  .alert.warn { background: #fff4e6; color: #7a4100; border: 1px solid #f7d2a6; }
+  .alert.ok { background: #ecf7f0; color: #1d5e38; border: 1px solid #c3e5cf; }
+
+  details.settings { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 16px; }
+  details.settings summary { cursor: pointer; font-size: .85rem; font-weight: 600; color: var(--purple); }
+  .set-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: .85rem; }
+  .set-row label { flex: 0 0 130px; color: var(--muted); }
+  .set-row input[type=range] { flex: 1; accent-color: var(--orange); }
+  .set-row output, .set-row .val { min-width: 3.4em; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .set-row select { padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+  .set-row.off { opacity: .4; pointer-events: none; }
+  .tiny { font-size: .75rem; color: var(--muted); margin-top: 6px; }
+
+  /* ---------- timeline ---------- */
+  .timeline { position: relative; }
+  .stop {
+    background: #fff; border: 1px solid var(--line); border-left: 5px solid var(--stage); border-radius: 12px;
+    padding: 12px 14px; position: relative;
+  }
+  .stop .when { font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums; display: flex; justify-content: space-between; gap: 8px; }
+  .stop .num {
+    position: absolute; left: -17px; top: 12px; width: 26px; height: 26px; border-radius: 50%; background: var(--stage);
+    color: #fff; font-weight: 800; font-size: .8rem; display: grid; place-items: center; border: 3px solid var(--bg);
+  }
+  .stop .act { font-weight: 800; font-size: 1.05rem; margin-top: 2px; }
+  .stop .where { font-size: .85rem; color: var(--muted); }
+  .bar { position: relative; height: 8px; background: #eeecf3; border-radius: 4px; margin: 10px 0 6px; overflow: hidden; }
+  .bar i { position: absolute; top: 0; bottom: 0; background: var(--stage); border-radius: 4px; }
+  .catch { font-size: .82rem; }
+  .catch.full { color: var(--ok); font-weight: 600; }
+  .catch.part { color: var(--warn); font-weight: 600; }
+  .catch.none { color: var(--danger); font-weight: 700; }
+  .arrive { font-size: .82rem; margin-top: 4px; }
+  .arrive b { font-variant-numeric: tabular-nums; }
+
+  .leg { margin: 0 0 0 14px; padding: 12px 0 12px 22px; border-left: 3px dotted #c9c4d6; position: relative; cursor: pointer; }
+  .leg:hover .leg-card, .leg.active .leg-card { border-color: var(--purple); box-shadow: 0 2px 10px rgba(79,54,147,.12); }
+  .leg-card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: .85rem; }
+  .leg-main { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+  .leg-main .leave { font-weight: 800; font-size: 1rem; font-variant-numeric: tabular-nums; }
+  .leg-main .walk { color: var(--muted); }
+  .leg .free { margin-top: 4px; color: var(--ok); font-size: .8rem; }
+  .leg .late { margin-top: 4px; color: var(--danger); font-size: .8rem; font-weight: 600; }
+  .leg .same { color: var(--muted); }
+  .choice { display: flex; margin-top: 8px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .choice button {
+    flex: 1; border: none; background: #fff; padding: 7px 6px; cursor: pointer; font-size: .75rem; line-height: 1.2; color: var(--muted);
+    border-right: 1px solid var(--line);
+  }
+  .choice button:last-child { border-right: none; }
+  .choice button[aria-pressed="true"] { background: var(--purple); color: #fff; font-weight: 600; }
+  .choice-why { font-size: .75rem; color: var(--warn); margin-top: 6px; font-weight: 600; }
+
+  .empty { text-align: center; color: var(--muted); padding: 40px 10px; }
+  .empty a { color: var(--purple); font-weight: 600; }
+
+  #map { height: 100%; width: 100%; }
+  .pin {
+    color: #fff; border: 2px solid #fff; border-radius: 999px; padding: 3px 9px; font: 700 12px system-ui, sans-serif;
+    white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.3); transform: translate(-50%, -50%); display: inline-block;
+  }
+  .pin.idle { background: #8d88a0; font-weight: 600; opacity: .85; }
+  .pin b { background: rgba(255,255,255,.25); border-radius: 999px; padding: 0 5px; margin-right: 5px; }
+  .leaflet-div-icon { background: none; border: none; }
+
+  /* ---------- merch ---------- */
+  .merch {
+    background: #fff; border: 1px solid var(--line); border-left: 5px solid var(--orange); border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 12px;
+  }
+  .merch h3 {
+    margin: 0; display: flex; align-items: center; gap: 6px; color: var(--orange);
+    font-family: var(--font-headline, inherit); font-style: italic; font-weight: 700; text-transform: uppercase; font-size: .95rem;
+  }
+  .merch p { margin: 6px 0 10px; font-size: .88rem; line-height: 1.4; }
+  .merch p b { font-variant-numeric: tabular-nums; }
+  .merch .btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .mbtn {
+    border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 6px 11px; cursor: pointer;
+    font-size: .82rem; font-weight: 600; color: var(--ink);
+  }
+  .mbtn:hover { background: var(--bg); }
+  .mbtn.primary { background: var(--orange); border-color: var(--orange); color: #fff; }
+  .mbtn.primary:hover { filter: brightness(.95); }
+  .mbtn.link { border: none; background: none; color: var(--purple); padding: 6px 4px; text-decoration: underline; }
+  .mopts { margin-top: 10px; display: grid; gap: 6px; }
+  .mopt {
+    display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; text-align: left; cursor: pointer;
+    border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 8px 10px; font-size: .82rem;
+  }
+  .mopt:hover { border-color: var(--orange); }
+  .mopt[aria-pressed="true"] { border-color: var(--orange); background: #fff4ee; }
+  .mopt b { font-variant-numeric: tabular-nums; grid-row: span 2; align-self: center; font-size: .95rem; }
+  .mopt span { color: var(--muted); }
+  .merch-line { color: var(--orange); font-weight: 700; margin-top: 6px; display: flex; gap: 6px; align-items: center; }
+  .merch-sub { color: var(--muted); margin-top: 4px; }
+  .stop.merchstop { --stage: var(--orange); border-style: dashed; border-left-style: solid; }
+  .stop.merchstop .act { color: var(--orange); }
+  .merch-pin {
+    display: inline-block; transform: translate(-50%, 80%); background: var(--orange); color: #fff; border: 2px solid #fff;
+    border-radius: 999px; padding: 1px 7px; font: 700 10px system-ui, sans-serif; letter-spacing: .06em;
+    box-shadow: 0 2px 5px rgba(0,0,0,.25); white-space: nowrap;
+  }
+  .merch-pin.off { opacity: .55; }
+
+  @media (max-width: 860px) {
+    /* Phone: logo bar, day title + tabs, map, then the plan */
+    body { grid-template-columns: 1fr; grid-template-rows: none; height: auto; }
+    aside { display: contents; }
+    .brand-bar { order: 1; }
+    header { order: 2; padding: 14px 16px 0; }
+    #map { order: 3; height: 40vh; }
+    .scroll { order: 4; overflow: visible; padding: 14px 16px 20px; }
+  }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,400;0,500;0,600;0,700;1,700&family=Saira+Condensed:wght@500;700;800&family=Yellowtail&display=swap">
+<link rel="stylesheet" href="brand.css">
+<link rel="icon" href="assets/swirl.png">
+<meta name="i18n-title" content="it_doc_title">
+</head>
+<body>
+<div class="brand-bar">
+  <a class="brand-logo" href="lineup.html"><img src="assets/logo.png" alt="Festival International de Louisiane, presented by LFT Fiber"></a>
+  <span class="brand-tag">Fest like the Best</span>
+  <nav class="brand-nav" aria-label="Pages">
+    <a href="lineup.html" data-i18n="nav_lineup">Lineup</a>
+    <a href="itinerary.html" aria-current="page" data-i18n="nav_myday">My day</a>
+    <a href="planner.html" data-i18n="nav_map">Stage map</a>
+  </nav>
+</div>
+<aside>
+  <header>
+    <div class="top">
+      <h1 id="title" data-i18n="it_title">My day plan</h1>
+      <a class="back" href="lineup.html" data-i18n="it_edit">← Edit picks</a>
+    </div>
+    <nav class="days" id="days" role="tablist" data-i18n-aria="it_days_aria" aria-label="Days with picks"></nav>
+  </header>
+  <div class="scroll">
+    <div id="summary"></div>
+    <details class="settings">
+      <summary data-i18n="it_settings">Walking &amp; map settings</summary>
+      <div class="set-row">
+        <label for="crowd" data-i18n="crowd_factor">Crowd factor</label>
+        <input id="crowd" type="range" min="1" max="2.5" step="0.05">
+        <output id="crowdVal"></output>
+      </div>
+      <div class="set-row">
+        <label for="buffer" data-i18n="it_buffer">Arrive early by</label>
+        <select id="buffer" data-minutes="0,5,10,15"></select>
+      </div>
+      <div class="set-row">
+        <label for="shop" data-i18n="it_shop">Merch shopping time</label>
+        <select id="shop" data-minutes="10,15,20,30"></select>
+      </div>
+      <div class="set-row">
+        <label for="overlayOn" data-i18n="it_overlay">Site map overlay</label>
+        <input id="overlayOn" type="checkbox">
+      </div>
+      <div class="set-row" id="overlayOpacityRow">
+        <label for="overlayOpacity" data-i18n="it_opacity">Overlay opacity</label>
+        <input id="overlayOpacity" type="range" min="0.1" max="1" step="0.05">
+        <span class="val" id="overlayOpacityVal"></span>
+      </div>
+      <div class="tiny" id="overlayStatus" data-i18n="it_settings_note">Walk times assume ~5 km/h × the crowd factor. Barriers and closures aren’t included.</div>
+    </details>
+    <div class="timeline" id="timeline"></div>
+  </div>
+</aside>
+<div id="map"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="i18n.js"></script>
+<script src="routes.js"></script>
+<script src="schedule.js"></script>
+<script src="overlay.js"></script>
+<script src="site-overlay.js"></script>
+<script>
+(function () {
+  var S = window.SCHEDULE_DATA, R = window.ROUTE_DATA, T = I18N.t, TN = I18N.tn;
+  var tl = document.getElementById('timeline');
+  if (!S || !R) { tl.innerHTML = '<div class="empty">Missing schedule.js or routes.js — run py build_schedule.py and py build_routes.py</div>'; return; }
+
+  // Same stage colours as lineup.html
+  var COLORS = { jeunes: '#6aa832', lafayette: '#139a8f', biergarten: '#c2185b', faisdodo: '#e8711a',
+                 francosphere: '#d6334b', pavillon: '#2e8f55', internationale: '#0083c2' };
+  var locs = {}; R.locations.forEach(function (l) { locs[l.id] = l; });
+
+  // ---------- stored state (shared with lineup.html / planner.html) ----------
+  function loadJSON(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function saveJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function loadRaw(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function saveRaw(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+  var perfs = S.performances.map(function (p) { return Object.assign({}, p, { s: toMin(p.start), e: toMin(p.end) }); });
+  var byId = {}; perfs.forEach(function (p) { byId[p.id] = p; });
+  var picks = new Set(loadJSON('fil-picks', []).filter(function (id) { return byId[id]; }));
+  var legModes = loadJSON('fil-legmodes', {});   // per pair of picks: 'early' | 'split' | 'end'
+
+  var crowd = document.getElementById('crowd'), buffer = document.getElementById('buffer'), shopSel = document.getElementById('shop');
+  [buffer, shopSel].forEach(function (sel) {
+    sel.dataset.minutes.split(',').forEach(function (n) { sel.add(new Option(T('min', { n: n }), n)); });
+  });
+  crowd.value = parseFloat(loadRaw('crowdFactor')) || R.crowd_factor_default || 1.3;
+  buffer.value = loadRaw('fil-buffer') || '5';
+  shopSel.value = loadRaw('fil-shop') || '15';
+
+  // Merch booths (from locations.json via routes.js). Each sits at a stage ("at").
+  var booths = (R.merch_booths || []).filter(function (b) { return locs[b.at]; });
+  var boothById = {}; booths.forEach(function (b) { boothById[b.id] = b; });
+  // Per day: undefined = show a suggestion, 'none' = patron said no thanks, {slot, booth} = chosen.
+  // slot is 'before', 'after', or the key of the walk between two picks.
+  var merchChoices = loadJSON('fil-merch', {});
+  var showMerchOptions = false;
+  var BAG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 8h13l-1 12.5h-11z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg>';
+
+  var daysWithPicks = S.days.filter(function (d) { return perfs.some(function (p) { return p.date === d.date && picks.has(p.id); }); });
+  var q = new URLSearchParams(location.search).get('day');
+  var day = (daysWithPicks.some(function (d) { return d.date === q; }) && q) ||
+            (daysWithPicks[0] && daysWithPicks[0].date) || null;
+
+  // ---------- helpers ----------
+  function toMin(t) { var a = t.split(':'); return +a[0] * 60 + +a[1]; }
+  var fmt = function (m) { return I18N.time(m); };
+  var dur = I18N.dur;
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function stageName(id) { return locs[id] ? locs[id].name : id; }
+  function distance(meters) {
+    // miles for English (US festival), kilometres for the other languages
+    var nf = new Intl.NumberFormat(I18N.locale, { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+    return I18N.lang === 'en' ? nf.format(meters * 0.000621371) + ' mi' : nf.format(meters / 1000) + ' km';
+  }
+  function route(a, b) {
+    if (a === b) return { meters: 0, seconds: 0, path: [] };
+    var r = R.routes[a + '|' + b]; if (r) return r;
+    r = R.routes[b + '|' + a];
+    return r ? { meters: r.meters, seconds: r.seconds, path: r.path.slice().reverse() } : null;
+  }
+
+  // ---------- the plan ----------
+  // For each pair of consecutive picks, work out when to leave. If there's not enough time
+  // to see all of the current set AND reach the next one by its start (minus the buffer),
+  // the patron chooses: leave early, split the difference, or stay to the end and arrive late.
+  function walkMin(a, b) { return route(a, b).seconds * parseFloat(crowd.value) / 60; }
+
+  // merch: null, or { slot, booth } — a merch stop folded into the plan.
+  function buildPlan(merch) {
+    var cf = parseFloat(crowd.value), buf = +buffer.value, shop = +shopSel.value;
+    var list = perfs.filter(function (p) { return p.date === day && picks.has(p.id); }).sort(function (a, b) { return a.s - b.s || a.e - b.e; });
+    var stops = list.map(function (p) { return { p: p }; }), legs = [];
+    if (!stops.length) return { stops: stops, legs: legs };
+    stops[0].arrive = stops[0].p.s - buf;
+
+    for (var i = 0; i < stops.length; i++) {
+      var cur = stops[i], next = stops[i + 1];
+      var watchFrom = Math.max(cur.arrive, cur.p.s);
+      if (!next) { cur.leave = cur.p.e; break; }
+
+      var key = cur.p.id + '>' + next.p.id;
+      var r = route(cur.p.stage, next.p.stage);
+      var walk = r.seconds * cf / 60, walkOnly = walk, merchInfo = null;
+      var mb = merch && merch.slot === key ? boothById[merch.booth] : null;
+      if (mb) {
+        // Detour: current stage -> booth -> shop -> next stage. Counts as "travel time" for this leg.
+        var r1 = route(cur.p.stage, mb.at), r2 = route(mb.at, next.p.stage);
+        var w1 = r1.seconds * cf / 60, w2 = r2.seconds * cf / 60;
+        walk = w1 + shop + w2; walkOnly = w1 + w2;
+        r = { meters: r1.meters + r2.meters, seconds: r1.seconds + r2.seconds, path: r1.path.concat(r2.path) };
+        merchInfo = { booth: mb, w1: w1, w2: w2, shop: shop, m1: r1.meters, m2: r2.meters };
+      }
+      var needArrive = next.p.s - buf;
+      var leaveEarly = needArrive - walk;          // latest departure to make the next start
+      var stayEnd = cur.p.e;
+      var tight = stayEnd > leaveEarly + 0.5;
+      var overlap = next.p.s < cur.p.e;
+      var mode = tight ? (legModes[key] || (overlap ? 'split' : 'early')) : 'free';
+      var leave = mode === 'early' ? leaveEarly : mode === 'split' ? (leaveEarly + stayEnd) / 2 : stayEnd;
+      leave = Math.floor(Math.min(leave, stayEnd));
+      if (leave < watchFrom) leave = Math.max(watchFrom, Math.floor(leaveEarly)); // can't leave before you arrive
+      leave = Math.max(leave, Math.floor(cur.arrive));
+      cur.leave = leave;
+
+      var arrive = leave + walk;
+      next.arrive = arrive;
+      legs.push({
+        from: cur, to: next, route: r, walk: walk, walkOnly: walkOnly, merch: merchInfo, leave: leave, arrive: arrive, key: key,
+        tight: tight, overlap: overlap, mode: mode,
+        free: Math.max(0, needArrive - arrive),      // spare time before you need to be at the next stage
+        late: Math.max(0, arrive - next.p.s)
+      });
+    }
+    stops.forEach(function (st) {
+      var from = Math.max(st.arrive, st.p.s), to = Math.min(st.leave, st.p.e);
+      st.watchFrom = from; st.watchTo = to;
+      st.watched = Math.max(0, to - from);
+      st.length = st.p.e - st.p.s;
+    });
+
+    // Merch before the first set or after the last one.
+    var plan = { stops: stops, legs: legs, pre: null, post: null };
+    var b = merch && boothById[merch.booth];
+    if (b && merch.slot === 'before') {
+      var first = stops[0].p, rb = route(b.at, first.stage), wb = rb.seconds * cf / 60;
+      var shopEnd = first.s - buf - wb;
+      plan.pre = { booth: b, start: shopEnd - shop, end: shopEnd, walk: wb, meters: rb.meters, path: rb.path, to: first };
+    }
+    if (b && merch.slot === 'after') {
+      var last = stops[stops.length - 1], ra = route(last.p.stage, b.at), wa = ra.seconds * cf / 60;
+      var startShop = last.leave + wa;
+      plan.post = { booth: b, start: startShop, end: startShop + shop, walk: wa, meters: ra.meters, path: ra.path, from: last.p };
+    }
+    return plan;
+  }
+
+  // Every sensible merch stop for the day, best booth per slot, in time order.
+  // In-between options only count if the detour + shopping fits in the free time without cutting a set.
+  var MIN_SPARE = 3; // minutes of slack a break must leave after the merch detour
+  function merchOptions(base) {
+    var shop = +shopSel.value, out = [];
+    if (!booths.length || !base.stops.length) return out;
+    function nearest(fn) { return booths.map(fn).sort(function (a, b) { return a.walk - b.walk; })[0]; }
+    var first = base.stops[0].p, last = base.stops[base.stops.length - 1];
+    var pre = nearest(function (b) { return { booth: b, walk: walkMin(b.at, first.stage) }; });
+    out.push({ slot: 'before', booth: pre.booth.id, start: first.s - +buffer.value - pre.walk - shop, slack: null,
+               where: T('it_where_before', { act: first.act }) });
+    base.legs.forEach(function (leg) {
+      if (leg.tight) return;
+      var best = null;
+      booths.forEach(function (b) {
+        var w1 = walkMin(leg.from.p.stage, b.at), w2 = walkMin(b.at, leg.to.p.stage);
+        var extra = w1 + shop + w2 - leg.walk;
+        if (extra > leg.free - MIN_SPARE) return; // keep a little slack so a slow line doesn't make you late
+        var opt = { slot: leg.key, booth: b.id, start: leg.leave + w1, slack: leg.free - extra,
+                    where: T('it_where_between', { a: leg.from.p.act, b: leg.to.p.act }) };
+        if (!best || opt.slack > best.slack) best = opt;
+      });
+      if (best) out.push(best);
+    });
+    var post = nearest(function (b) { return { booth: b, walk: walkMin(last.p.stage, b.at) }; });
+    out.push({ slot: 'after', booth: post.booth.id, start: last.leave + post.walk, slack: null,
+               where: T('it_where_after', { act: last.p.act }) });
+    return out;
+  }
+  // Suggestion: the in-between slot with the most spare time; otherwise before the first set.
+  function bestMerch(opts) {
+    var gaps = opts.filter(function (o) { return o.slack !== null; }).sort(function (a, b) { return b.slack - a.slack; });
+    return gaps[0] || opts[0] || null;
+  }
+
+  // ---------- map ----------
+  var map = L.map('map');
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+  map.fitBounds(L.latLngBounds(R.locations.map(function (l) { return [l.lat, l.lng]; })), { padding: [50, 50] });
+  SiteMapOverlay.attach(map, {
+    toggle: document.getElementById('overlayOn'),
+    opacity: document.getElementById('overlayOpacity'),
+    opacityVal: document.getElementById('overlayOpacityVal'),
+    row: document.getElementById('overlayOpacityRow'),
+    status: document.getElementById('overlayStatus')
+  });
+  var mapLayer = L.layerGroup().addTo(map), legLines = [];
+  var LINE = '#542e91', LINE_HI = '#f26631';
+
+  function drawMap(plan, chosenBooth, keepView) {
+    mapLayer.clearLayers(); legLines = [];
+    // Merch booths: small orange tags under their stage pins; the chosen one stays bright.
+    booths.forEach(function (b) {
+      var l = locs[b.at];
+      L.marker([l.lat, l.lng], { icon: L.divIcon({ className: '', html: '<span class="merch-pin' + (chosenBooth && chosenBooth !== b.id ? ' off' : '') + '">MERCH</span>', iconSize: null }),
+        zIndexOffset: 1500, interactive: false }).addTo(mapLayer);
+    });
+    [plan.pre, plan.post].forEach(function (m) {
+      if (m && m.path.length) L.polyline(m.path, { color: LINE_HI, weight: 4, opacity: .9, dashArray: '6 6' }).addTo(mapLayer);
+    });
+    // Stage pins: numbered with the stop(s) at that stage; unused stages greyed.
+    var nums = {};
+    plan.stops.forEach(function (st, i) { (nums[st.p.stage] = nums[st.p.stage] || []).push(i + 1); });
+    R.locations.forEach(function (l) {
+      var used = nums[l.id];
+      var html = '<span class="pin' + (used ? '' : ' idle') + '" style="' + (used ? 'background:' + COLORS[l.id] : '') + '">' +
+        (used ? '<b>' + used.join(', ') + '</b>' : '') + esc(l.name) + '</span>';
+      L.marker([l.lat, l.lng], { icon: L.divIcon({ className: '', html: html, iconSize: null }), zIndexOffset: used ? 1000 : 0, interactive: false }).addTo(mapLayer);
+    });
+    var all = [];
+    plan.legs.forEach(function (leg, i) {
+      if (!leg.route.path.length) { legLines.push(null); return; }
+      L.polyline(leg.route.path, { color: '#fff', weight: 9, opacity: .9 }).addTo(mapLayer);
+      var line = L.polyline(leg.route.path, { color: LINE, weight: 5, opacity: .85 }).addTo(mapLayer);
+      line.on('click', function () { highlight(i); });
+      legLines.push(line);
+      all = all.concat(leg.route.path);
+    });
+    plan.stops.forEach(function (st) { all.push([locs[st.p.stage].lat, locs[st.p.stage].lng]); });
+    if (all.length && !keepView) map.fitBounds(L.latLngBounds(all), { padding: [60, 60], maxZoom: 18 });
+  }
+
+  function highlight(i) {
+    legLines.forEach(function (l, j) {
+      if (!l) return;
+      l.setStyle(j === i ? { color: LINE_HI, weight: 7, opacity: 1 } : { color: LINE, weight: 5, opacity: i == null ? .85 : .35 });
+      if (j === i) { l.bringToFront(); map.fitBounds(l.getBounds(), { padding: [80, 80], maxZoom: 18 }); }
+    });
+    document.querySelectorAll('.leg').forEach(function (el) { el.classList.toggle('active', +el.dataset.leg === i); });
+  }
+
+  // ---------- page ----------
+  function renderDays() {
+    document.getElementById('days').innerHTML = daysWithPicks.map(function (d) {
+      return '<button class="day" role="tab" data-day="' + d.date + '" aria-selected="' + (d.date === day) + '"><span>' +
+        esc(I18N.weekday(d.date)) + '</span>' + esc(I18N.monthDay(d.date)) + '</button>';
+    }).join('');
+  }
+
+  function stopHTML(st, i) {
+    var p = st.p, c = COLORS[p.stage], name = stageName(p.stage);
+    var pct = function (m) { return Math.max(0, Math.min(100, (m - p.s) / st.length * 100)); };
+    var catchTxt, cls;
+    if (st.watched <= 0) { cls = 'none'; catchTxt = T('it_miss_all'); }
+    else if (st.watched >= st.length - 0.5) { cls = 'full'; catchTxt = T('it_full', { dur: dur(st.length) }); }
+    else {
+      cls = 'part';
+      var bits = [];
+      if (st.watchFrom > p.s + 0.5) bits.push(T('it_miss_first', { dur: dur(st.watchFrom - p.s) }));
+      if (st.watchTo < p.e - 0.5) bits.push(T('it_miss_last', { dur: dur(p.e - st.watchTo) }));
+      catchTxt = T('it_catch', { a: dur(st.watched), b: dur(st.length), bits: bits.join(', ') });
+    }
+    var arrive = i === 0
+      ? '<div class="arrive">' + T('it_be_at', { stage: esc(name), time: '<b>' + esc(fmt(st.arrive)) + '</b>' }) + '</div>'
+      : '';
+    return '<div class="stop" style="--stage:' + c + '"><span class="num">' + (i + 1) + '</span>' +
+      '<div class="when"><span>' + esc(fmt(p.s)) + ' – ' + esc(fmt(p.e)) + '</span><span>' + esc(p.origin || '') + '</span></div>' +
+      '<div class="act">' + esc(p.act) + '</div><div class="where">' + esc(name) + '</div>' +
+      '<div class="bar"><i style="left:' + pct(st.watchFrom) + '%;width:' + Math.max(0, pct(st.watchTo) - pct(st.watchFrom)) + '%"></i></div>' +
+      '<div class="catch ' + cls + '">' + esc(catchTxt) + '</div>' + arrive + '</div>';
+  }
+
+  function legHTML(leg, i) {
+    var toName = stageName(leg.to.p.stage), h = '';
+    if (leg.merch) {
+      var m = leg.merch, shopStart = leg.leave + m.w1;
+      h = '<div class="leg-main"><span class="leave">' + esc(T('it_leave', { time: fmt(leg.leave) })) + '</span><span class="walk">' +
+          esc(m.m1 ? T('it_to_booth', { n: Math.round(m.w1) }) : T('it_booth_here')) + '</span></div>' +
+        '<div class="merch-line">' + BAG + esc(T('it_shop_line', { a: fmt(shopStart), b: fmt(shopStart + m.shop), booth: T('it_booth_name', { stage: stageName(m.booth.at) }) })) + '</div>' +
+        '<div class="merch-sub">' + esc((m.m2 ? T('it_walk_to', { n: Math.round(m.w2), stage: toName }) : T('it_stay_to', { stage: toName })) +
+          T('it_arrive', { time: fmt(leg.arrive) })) + '</div>';
+    } else if (!leg.route.path.length) {
+      h = '<div class="leg-main"><span class="same">' + esc(T('it_stay_at', { stage: toName })) + '</span></div>';
+    } else {
+      h = '<div class="leg-main"><span class="leave">' + esc(T('it_leave', { time: fmt(leg.leave) })) + '</span>' +
+        '<span class="walk">' + esc(T('it_walk_arrive', { n: Math.round(leg.walk), m: leg.route.meters, time: fmt(leg.arrive) })) + '</span></div>';
+    }
+    if (leg.late > 0.5) h += '<div class="late">' + esc(T('it_late', { dur: dur(leg.late), act: leg.to.p.act })) + '</div>';
+    else if (leg.free >= 5) h += '<div class="free">' + esc(T(leg.route.path.length ? 'it_free_go' : 'it_free_break', { dur: dur(leg.free) }) +
+      (leg.free >= 20 ? T('it_free_food') : '')) + '</div>';
+
+    if (leg.tight) {
+      h += '<div class="choice-why">' + esc((leg.overlap ? T('it_why_overlap') : T('it_why_tight', { act: leg.from.p.act })) + ' ' + T('it_choose')) + '</div>' +
+        '<div class="choice" role="group">' +
+        ['early', 'split', 'end'].map(function (m) {
+          var label = m === 'early' ? T('it_opt_early', { act: esc(leg.to.p.act) }) : m === 'split' ? T('it_opt_split') : T('it_opt_end', { act: esc(leg.from.p.act) });
+          return '<button type="button" data-key="' + leg.key + '" data-mode="' + m + '" aria-pressed="' + (leg.mode === m) + '">' + label + '</button>';
+        }).join('') + '</div>';
+    }
+    return '<div class="leg" data-leg="' + i + '"><div class="leg-card">' + h + '</div></div>';
+  }
+
+  // Re-rendering after a choice (leg option, merch, settings) keeps the scroll position and the map view.
+  // Switching days starts fresh.
+  var lastDay = null;
+  function render() {
+    var sameDay = day === lastDay; lastDay = day;
+    var sc = document.querySelector('.scroll'), keepY = window.scrollY, keepS = sc.scrollTop;
+    renderInner(sameDay);
+    if (sameDay) { sc.scrollTop = keepS; window.scrollTo(window.scrollX, keepY); }
+  }
+  function renderInner(sameDay) {
+    renderDays();
+    document.getElementById('crowdVal').textContent = new Intl.NumberFormat(I18N.locale, { minimumFractionDigits: 2 }).format(parseFloat(crowd.value)) + '×';
+    if (!day) {
+      document.getElementById('summary').innerHTML = '';
+      tl.innerHTML = '<div class="empty">' + esc(T('it_empty')) + '<br><a href="lineup.html">' + esc(T('it_empty_link')) + '</a></div>';
+      mapLayer.clearLayers();
+      return;
+    }
+    document.getElementById('title').textContent = T('it_title_day', { weekday: I18N.weekday(day) });
+
+    // Merch: work out the options from the plan without a merch stop, then fold in the patron's choice.
+    var base = buildPlan(null), opts = merchOptions(base), choice = merchChoices[day];
+    if (choice && choice !== 'none' && !(choice.slot === 'before' || choice.slot === 'after' ||
+        base.legs.some(function (l) { return l.key === choice.slot; })) || (choice && choice.booth && !boothById[choice.booth])) {
+      choice = undefined; // picks changed since this was chosen
+    }
+    var plan = (choice && choice !== 'none') ? buildPlan(choice) : base;
+
+    var walkMinutes = plan.legs.reduce(function (a, l) { return a + l.walkOnly; }, 0) +
+                  (plan.pre ? plan.pre.walk : 0) + (plan.post ? plan.post.walk : 0);
+    var meters = plan.legs.reduce(function (a, l) { return a + l.route.meters; }, 0) +
+                 (plan.pre ? plan.pre.meters : 0) + (plan.post ? plan.post.meters : 0);
+    var music = plan.stops.reduce(function (a, s) { return a + s.watched; }, 0);
+    var unresolved = plan.legs.filter(function (l) { return l.tight; }).length;
+    var missed = plan.stops.filter(function (s) { return s.watched <= 0; }).length;
+    var h = '<div class="summary">' +
+      '<div class="stat"><b>' + plan.stops.length + '</b><span>' + esc(T('it_stat_sets')) + '</span></div>' +
+      '<div class="stat"><b>' + esc(dur(music)) + '</b><span>' + esc(T('it_stat_music')) + '</span></div>' +
+      '<div class="stat"><b>' + esc(T('min', { n: Math.round(walkMinutes) })) + '</b><span>' + esc(T('it_stat_walk', { dist: distance(meters) })) + '</span></div></div>';
+    if (missed) h += '<div class="alert warn">' + esc(TN('it_missed', missed)) + '</div>';
+    else if (unresolved) h += '<div class="alert warn">' + esc(TN('it_tight', unresolved)) + '</div>';
+    else if (plan.stops.length > 1) h += '<div class="alert ok">' + esc(T('it_all_fits')) + '</div>';
+    h += merchHTML(opts, choice, plan);
+    document.getElementById('summary').innerHTML = h;
+
+    var out = '';
+    if (plan.pre) {
+      out += merchStopHTML(plan.pre) + '<div class="leg static"><div class="leg-card"><div class="leg-main"><span class="leave">' + esc(T('it_leave', { time: fmt(plan.pre.end) })) + '</span>' +
+        '<span class="walk">' + esc(plan.pre.meters ? T('it_walk_to', { n: Math.round(plan.pre.walk), stage: stageName(plan.pre.to.stage) }) : T('it_stage_here')) + '</span></div></div></div>';
+    }
+    plan.stops.forEach(function (st, i) {
+      out += stopHTML(st, i);
+      if (plan.legs[i]) out += legHTML(plan.legs[i], i);
+    });
+    if (plan.post) {
+      out += '<div class="leg static"><div class="leg-card"><div class="leg-main"><span class="leave">' + esc(T('it_then')) + '</span>' +
+        '<span class="walk">' + esc(plan.post.meters ? T('it_to_booth', { n: Math.round(plan.post.walk) }) : T('it_booth_here')) + '</span></div></div></div>' +
+        merchStopHTML(plan.post);
+    }
+    tl.innerHTML = out;
+    var chosen = plan.pre || plan.post || (plan.legs.filter(function (l) { return l.merch; })[0] || {}).merch;
+    drawMap(plan, chosen ? chosen.booth.id : null, sameDay);
+  }
+
+  function merchStopHTML(m) {
+    return '<div class="stop merchstop"><span class="num">' + BAG + '</span>' +
+      '<div class="when"><span>' + esc(fmt(m.start)) + ' – ' + esc(fmt(m.end)) + '</span></div>' +
+      '<div class="act">' + esc(T('it_merch_stop')) + '</div><div class="where">' +
+      esc(T('it_merch_about', { booth: T('it_booth_name', { stage: stageName(m.booth.at) }), n: shopSel.value })) + '</div></div>';
+  }
+
+  function boothText(id) { return T('it_booth', { stage: stageName(boothById[id].at) }); }
+  function optHTML(o, choice) {
+    var on = choice && choice !== 'none' && choice.slot === o.slot && choice.booth === o.booth;
+    return '<button type="button" class="mopt" data-merch-pick="' + o.slot + '|' + o.booth + '" aria-pressed="' + !!on + '">' +
+      '<b>' + esc(fmt(o.start)) + '</b><div>' + esc(T('it_booth_name', { stage: stageName(boothById[o.booth].at) })) + '</div>' +
+      '<span>' + esc(o.where + (o.slack !== null ? ' · ' + T('it_spare', { n: Math.floor(o.slack) }) : '')) + '</span></button>';
+  }
+  function merchHTML(opts, choice, plan) {
+    if (!booths.length || !opts.length) return '';
+    var h = '<div class="merch"><h3>' + BAG + esc(T('it_merch_title')) + '</h3>';
+    if (choice === 'none') {
+      h += '<p>' + esc(T('it_merch_none')) + '</p><div class="btns"><button type="button" class="mbtn link" data-merch="options">' + esc(T('it_merch_find')) + '</button></div>';
+    } else if (choice) {
+      var at = plan.pre ? plan.pre.start : plan.post ? plan.post.start :
+        (function () { var l = plan.legs.filter(function (x) { return x.merch; })[0]; return l ? l.leave + l.merch.w1 : null; })();
+      var o = opts.filter(function (x) { return x.slot === choice.slot; })[0];
+      h += '<p>' + T('it_merch_set', { time: '<b>' + esc(fmt(at)) + '</b>', booth: esc(boothText(choice.booth)), where: esc(o ? o.where : '') }) + '</p>' +
+        '<div class="btns"><button type="button" class="mbtn" data-merch="options">' + esc(T('it_merch_change')) + '</button>' +
+        '<button type="button" class="mbtn link" data-merch="none">' + esc(T('it_merch_remove')) + '</button></div>';
+    } else {
+      var best = bestMerch(opts);
+      var vars = { time: '<b>' + esc(fmt(best.start)) + '</b>', booth: esc(boothText(best.booth)), where: esc(best.where), n: best.slack !== null ? Math.floor(best.slack) : '' };
+      h += '<p>' + T(best.slack !== null ? 'it_merch_best_fit' : 'it_merch_best_nofit', vars) + '</p>' +
+        '<div class="btns"><button type="button" class="mbtn primary" data-merch-pick="' + best.slot + '|' + best.booth + '">' + esc(T('it_merch_add')) + '</button>' +
+        '<button type="button" class="mbtn" data-merch="options">' + esc(T('it_merch_other')) + '</button>' +
+        '<button type="button" class="mbtn link" data-merch="none">' + esc(T('it_merch_no')) + '</button></div>';
+    }
+    if (showMerchOptions) h += '<div class="mopts">' + opts.map(function (o) { return optHTML(o, choice); }).join('') + '</div>';
+    return h + '</div>';
+  }
+
+  // ---------- events ----------
+  document.getElementById('days').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-day]'); if (!b) return;
+    day = b.dataset.day;
+    history.replaceState(null, '', '?day=' + day);
+    render();
+  });
+  tl.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-mode]');
+    if (b) { legModes[b.dataset.key] = b.dataset.mode; saveJSON('fil-legmodes', legModes); render(); return; }
+    var leg = e.target.closest('.leg[data-leg]');
+    if (leg) highlight(+leg.dataset.leg);
+  });
+  document.getElementById('summary').addEventListener('click', function (e) {
+    var pick = e.target.closest('[data-merch-pick]'), act = e.target.closest('[data-merch]');
+    if (pick) {
+      var parts = pick.dataset.merchPick.split('|');
+      merchChoices[day] = { slot: parts[0], booth: parts[1] };
+      showMerchOptions = false;
+    } else if (act && act.dataset.merch === 'options') {
+      showMerchOptions = !showMerchOptions;
+    } else if (act && act.dataset.merch === 'none') {
+      merchChoices[day] = 'none';
+      showMerchOptions = false;
+    } else return;
+    saveJSON('fil-merch', merchChoices);
+    render();
+  });
+  shopSel.addEventListener('change', function () { saveRaw('fil-shop', shopSel.value); render(); });
+  crowd.addEventListener('input', function () { saveRaw('crowdFactor', crowd.value); render(); });
+  buffer.addEventListener('change', function () { saveRaw('fil-buffer', buffer.value); render(); });
+
+  render();
+})();
+</script>
+</body>
+</html>

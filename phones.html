@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mobile Preview · Fest like the Best</title>
+<style>
+  :root { --ink: #1c1b22; --muted: #6b6878; --bg: #ecebf2; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: system-ui, sans-serif; }
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 24px; }
+  .bar h1 { margin: 0; font-size: 1.2rem; }
+  .bar p { margin: 2px 0 0; color: var(--muted); font-size: .85rem; }
+  .controls { display: flex; gap: 8px; align-items: center; font-size: .85rem; }
+  .controls select, .controls button {
+    font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid #d6d3e0; background: #fff; cursor: pointer;
+  }
+  .phones { display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; padding: 8px 16px 40px; }
+  figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  figcaption { font-weight: 700; font-size: .9rem; }
+  figcaption a { color: inherit; }
+  .device {
+    background: #111; border-radius: 44px; padding: 12px; box-shadow: 0 18px 40px rgba(30, 20, 60, .25);
+  }
+  .screen { border-radius: 32px; overflow: hidden; background: #fff; display: block; border: 0; }
+</style>
+<link rel="stylesheet" href="brand.css">
+<link rel="icon" href="assets/swirl.png">
+</head>
+<body>
+<div class="bar">
+  <div>
+    <h1>Mobile preview</h1>
+    <p>Each frame is a real, working copy of the page at phone size. Picks you make here are saved like on a phone.</p>
+  </div>
+  <div class="controls">
+    <label for="size">Phone</label>
+    <select id="size">
+      <option value="375x812">iPhone 13 mini / SE-ish (375×812)</option>
+      <option value="390x844" selected>iPhone 14 / 15 (390×844)</option>
+      <option value="430x932">iPhone Pro Max (430×932)</option>
+      <option value="360x780">Android small (360×780)</option>
+    </select>
+    <button id="reload" type="button">Reload all</button>
+  </div>
+</div>
+<div class="phones" id="phones"></div>
+<script>
+  var PAGES = [
+    { title: 'Lineup', src: 'lineup.html' },
+    { title: 'My day', src: 'itinerary.html' },
+    { title: 'Stage map', src: 'planner.html' }
+  ];
+  var holder = document.getElementById('phones'), size = document.getElementById('size');
+  try { var saved = localStorage.getItem('phoneSize'); if (saved) size.value = saved; } catch (e) {}
+  function draw() {
+    var wh = size.value.split('x'), w = +wh[0], h = +wh[1];
+    holder.innerHTML = PAGES.map(function (p) {
+      return '<figure><figcaption><a href="' + p.src + '" target="_blank" rel="noopener">' + p.title + '</a></figcaption>' +
+        '<div class="device"><iframe class="screen" title="' + p.title + ' on a phone" src="' + p.src + '" width="' + w + '" height="' + h + '"></iframe></div></figure>';
+    }).join('');
+  }
+  size.addEventListener('change', function () { try { localStorage.setItem('phoneSize', size.value); } catch (e) {} draw(); });
+  document.getElementById('reload').addEventListener('click', draw);
+  draw();
+</script>
+</body>
+</html>
