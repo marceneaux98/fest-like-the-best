@@ -1,8 +1,9 @@
 {
- "edition": "spreadsheet",
- "updated": "2026-11-22T15:45:08+00:00",
+ "edition": "2026",
+ "updated": "2026-11-22T15:47:49+00:00",
  "source": {
-  "file": "schedule.xlsx"
+  "schedule_board": 18415859443,
+  "artist_board": 18415859409
  },
  "days": [
   {
@@ -34,23 +35,29 @@
  "performances": [
   {
    "id": "2026-04-22-faisdodo-1830",
-   "act": "Rusty Metoyer & the Zydeco Krush",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "faisdodo",
    "date": "2026-04-22",
    "start": "18:30",
    "end": "19:45",
-   "note": "Presented by: National Endowment for the Arts"
+   "note": "- Presented by: National Endowment for the Arts",
+   "artists": [
+    "12164539528"
+   ]
   },
   {
    "id": "2026-04-22-faisdodo-2015",
-   "act": "Chris Ardoin & Zydeco Nu-Step",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "faisdodo",
    "date": "2026-04-22",
    "start": "20:15",
    "end": "21:30",
-   "note": "Presented by: National Endowment for the Arts"
+   "note": "- Presented by: National Endowment for the Arts",
+   "artists": [
+    "12164556851"
+   ]
   },
   {
    "id": "2026-04-23-biergarten-1745",
@@ -60,17 +67,23 @@
    "date": "2026-04-23",
    "start": "17:45",
    "end": "18:15",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164527057"
+   ]
   },
   {
    "id": "2026-04-23-faisdodo-1800",
-   "act": "Jourdan Thibodeaux et les Rôdailleurs",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "faisdodo",
    "date": "2026-04-23",
    "start": "18:00",
    "end": "19:00",
-   "note": "Presented by: National Endowment for the Arts"
+   "note": "- Presented by: National Endowment for the Arts",
+   "artists": [
+    "12164518843"
+   ]
   },
   {
    "id": "2026-04-23-internationale-1815",
@@ -80,17 +93,23 @@
    "date": "2026-04-23",
    "start": "18:15",
    "end": "19:15",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164519927"
+   ]
   },
   {
    "id": "2026-04-23-biergarten-1830",
-   "act": "$ideQue$t ft. Gino V. and Zach Edwards",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "biergarten",
    "date": "2026-04-23",
    "start": "18:30",
    "end": "19:30",
-   "note": "Presented by: National Endowment for the Arts"
+   "note": "- Presented by: National Endowment for the Arts",
+   "artists": [
+    "12164539402"
+   ]
   },
   {
    "id": "2026-04-23-faisdodo-1930",
@@ -100,7 +119,10 @@
    "date": "2026-04-23",
    "start": "19:30",
    "end": "20:45",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164539255"
+   ]
   },
   {
    "id": "2026-04-23-internationale-1930",
@@ -110,27 +132,34 @@
    "date": "2026-04-23",
    "start": "19:30",
    "end": "19:45",
-   "note": ""
+   "note": "",
+   "artists": []
   },
   {
    "id": "2026-04-23-biergarten-2000",
-   "act": "The Revelers",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "biergarten",
    "date": "2026-04-23",
    "start": "20:00",
    "end": "21:00",
-   "note": "Presented by: Festivals Acadiens et Creoles"
+   "note": "- Presented by: Festivals Acadiens et Creoles",
+   "artists": [
+    "12164533715"
+   ]
   },
   {
    "id": "2026-04-23-internationale-2000",
-   "act": "Zachary Richard",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "internationale",
    "date": "2026-04-23",
    "start": "20:00",
    "end": "21:15",
-   "note": "Presented by: National Endowment for the Arts"
+   "note": "- Presented by: National Endowment for the Arts",
+   "artists": [
+    "12164539378"
+   ]
   },
   {
    "id": "2026-04-23-faisdodo-2115",
@@ -140,37 +169,49 @@
    "date": "2026-04-23",
    "start": "21:15",
    "end": "22:30",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164539222"
+   ]
   },
   {
    "id": "2026-04-23-biergarten-2130",
-   "act": "Bas Clas",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "biergarten",
    "date": "2026-04-23",
    "start": "21:30",
    "end": "22:45",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164533790"
+   ]
   },
   {
    "id": "2026-04-23-internationale-2145",
-   "act": "Subatomic Sound System + Screechy Dan + Norwood Fisher",
-   "origin": "Jamaica/U.S.",
+   "act": "TBA",
+   "origin": "",
    "stage": "internationale",
    "date": "2026-04-23",
    "start": "21:45",
    "end": "22:45",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164518541"
+   ]
   },
   {
    "id": "2026-04-24-faisdodo-1715",
-   "act": "Beauséjour",
-   "origin": "New Brunswick",
+   "act": "TBA",
+   "origin": "",
    "stage": "faisdodo",
    "date": "2026-04-24",
    "start": "17:15",
    "end": "18:15",
-   "note": "Connexions Acadie*Louisiane Showcase"
+   "note": "- Connexions Acadie*Louisiane Showcase",
+   "artists": [
+    "12164518563"
+   ]
   },
   {
    "id": "2026-04-24-lafayette-1730",
@@ -180,7 +221,10 @@
    "date": "2026-04-24",
    "start": "17:30",
    "end": "18:45",
-   "note": "Connexions Acadie*Louisiane Showcase"
+   "note": "- Connexions Acadie*Louisiane Showcase",
+   "artists": [
+    "12164564013"
+   ]
   },
   {
    "id": "2026-04-24-internationale-1745",
@@ -190,7 +234,10 @@
    "date": "2026-04-24",
    "start": "17:45",
    "end": "18:45",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164539255"
+   ]
   },
   {
    "id": "2026-04-24-biergarten-1800",
@@ -200,7 +247,10 @@
    "date": "2026-04-24",
    "start": "18:00",
    "end": "18:30",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164553264"
+   ]
   },
   {
    "id": "2026-04-24-francosphere-1800",
@@ -210,17 +260,23 @@
    "date": "2026-04-24",
    "start": "18:00",
    "end": "19:00",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164518810"
+   ]
   },
   {
    "id": "2026-04-24-biergarten-1845",
-   "act": "Michael Juan Nunez",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "biergarten",
    "date": "2026-04-24",
    "start": "18:45",
    "end": "20:00",
-   "note": "Presented by: National Endowment for the Arts"
+   "note": "- Presented by: National Endowment for the Arts",
+   "artists": [
+    "12164519996"
+   ]
   },
   {
    "id": "2026-04-24-faisdodo-1845",
@@ -230,17 +286,23 @@
    "date": "2026-04-24",
    "start": "18:45",
    "end": "20:00",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164519927"
+   ]
   },
   {
    "id": "2026-04-24-francosphere-1915",
-   "act": "Sola Violins Int'l Fiddle Summit",
-   "origin": "Lousiana/Various",
+   "act": "TBA",
+   "origin": "",
    "stage": "francosphere",
    "date": "2026-04-24",
    "start": "19:15",
    "end": "20:00",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164560864"
+   ]
   },
   {
    "id": "2026-04-24-internationale-1915",
@@ -250,17 +312,23 @@
    "date": "2026-04-24",
    "start": "19:15",
    "end": "20:15",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164556757"
+   ]
   },
   {
    "id": "2026-04-24-lafayette-1915",
-   "act": "Sally Baby's Silver Dollars",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "lafayette",
    "date": "2026-04-24",
    "start": "19:15",
    "end": "20:30",
-   "note": "Presented by: National Endowment for the Arts"
+   "note": "- Presented by: National Endowment for the Arts",
+   "artists": [
+    "12164581358"
+   ]
   },
   {
    "id": "2026-04-24-biergarten-2015",
@@ -270,7 +338,10 @@
    "date": "2026-04-24",
    "start": "20:15",
    "end": "20:45",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164503073"
+   ]
   },
   {
    "id": "2026-04-24-faisdodo-2030",
@@ -280,17 +351,23 @@
    "date": "2026-04-24",
    "start": "20:30",
    "end": "21:45",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164560859"
+   ]
   },
   {
    "id": "2026-04-24-francosphere-2030",
-   "act": "Vishten",
-   "origin": "Prince Edward Island",
+   "act": "TBA",
+   "origin": "",
    "stage": "francosphere",
    "date": "2026-04-24",
    "start": "20:30",
    "end": "21:30",
-   "note": "Connexions Acadie*Louisiane Showcase"
+   "note": "- Connexions Acadie*Louisiane Showcase",
+   "artists": [
+    "12164563940"
+   ]
   },
   {
    "id": "2026-04-24-internationale-2045",
@@ -300,47 +377,62 @@
    "date": "2026-04-24",
    "start": "20:45",
    "end": "22:00",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164503074"
+   ]
   },
   {
    "id": "2026-04-24-biergarten-2100",
-   "act": "Dwight James & the Royals",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "biergarten",
    "date": "2026-04-24",
    "start": "21:00",
    "end": "22:00",
-   "note": "Presented by: National Endowment for the Arts"
+   "note": "- Presented by: National Endowment for the Arts",
+   "artists": [
+    "12164553342"
+   ]
   },
   {
    "id": "2026-04-24-lafayette-2100",
-   "act": "Las Cafeteras",
-   "origin": "U.S./Mexico",
+   "act": "TBA",
+   "origin": "",
    "stage": "lafayette",
    "date": "2026-04-24",
    "start": "21:00",
    "end": "22:15",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164560877"
+   ]
   },
   {
    "id": "2026-04-25-faisdodo-0845",
-   "act": "Breabach",
-   "origin": "Scotland",
+   "act": "TBA",
+   "origin": "",
    "stage": "faisdodo",
    "date": "2026-04-25",
    "start": "08:45",
    "end": "09:30",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164518626"
+   ]
   },
   {
    "id": "2026-04-25-lafayette-1145",
-   "act": "Acadiana Symphony Youth Orchestra",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "lafayette",
    "date": "2026-04-25",
    "start": "11:45",
    "end": "12:45",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164519929"
+   ]
   },
   {
    "id": "2026-04-25-francosphere-1200",
@@ -350,7 +442,10 @@
    "date": "2026-04-25",
    "start": "12:00",
    "end": "12:30",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164539524"
+   ]
   },
   {
    "id": "2026-04-25-jeunes-1200",
@@ -360,27 +455,36 @@
    "date": "2026-04-25",
    "start": "12:00",
    "end": "12:45",
-   "note": "Presented by: Mid-Atlantic Arts"
+   "note": "- Presented by: Mid-Atlantic Arts",
+   "artists": [
+    "12164560859"
+   ]
   },
   {
    "id": "2026-04-25-faisdodo-1215",
-   "act": "Geno Delafose & French Rockin' Boogie",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "faisdodo",
    "date": "2026-04-25",
    "start": "12:15",
    "end": "13:45",
-   "note": "Presented by: National Endowment for the Arts"
+   "note": "- Presented by: National Endowment for the Arts",
+   "artists": [
+    "12164553331"
+   ]
   },
   {
    "id": "2026-04-25-internationale-1245",
-   "act": "Vishten",
-   "origin": "Prince Edward Island",
+   "act": "TBA",
+   "origin": "",
    "stage": "internationale",
    "date": "2026-04-25",
    "start": "12:45",
    "end": "14:00",
-   "note": "Connexions Acadie*Louisiane Showcase"
+   "note": "- Connexions Acadie*Louisiane Showcase",
+   "artists": [
+    "12164563940"
+   ]
   },
   {
    "id": "2026-04-25-francosphere-1300",
@@ -390,37 +494,49 @@
    "date": "2026-04-25",
    "start": "13:00",
    "end": "14:00",
-   "note": "Presented by: National Endowment for the Arts"
+   "note": "- Presented by: National Endowment for the Arts",
+   "artists": [
+    "12164539221"
+   ]
   },
   {
    "id": "2026-04-25-pavillon-1300",
-   "act": "Mathieu Lippé",
-   "origin": "Québec",
+   "act": "TBA",
+   "origin": "",
    "stage": "pavillon",
    "date": "2026-04-25",
    "start": "13:00",
    "end": "14:00",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164539211"
+   ]
   },
   {
    "id": "2026-04-25-jeunes-1315",
-   "act": "F.I.R.E. Expressions Performing Arts Conservatory",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "jeunes",
    "date": "2026-04-25",
    "start": "13:15",
    "end": "14:00",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164533550"
+   ]
   },
   {
    "id": "2026-04-25-lafayette-1315",
-   "act": "Slap Dragon",
-   "origin": "Tennessee",
+   "act": "TBA",
+   "origin": "",
    "stage": "lafayette",
    "date": "2026-04-25",
    "start": "13:15",
    "end": "14:15",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164539396"
+   ]
   },
   {
    "id": "2026-04-25-biergarten-1400",
@@ -430,17 +546,23 @@
    "date": "2026-04-25",
    "start": "14:00",
    "end": "14:30",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164581350"
+   ]
   },
   {
    "id": "2026-04-25-faisdodo-1415",
-   "act": "Breabach",
-   "origin": "Scotland",
+   "act": "TBA",
+   "origin": "",
    "stage": "faisdodo",
    "date": "2026-04-25",
    "start": "14:15",
    "end": "15:30",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164518626"
+   ]
   },
   {
    "id": "2026-04-25-francosphere-1430",
@@ -450,7 +572,10 @@
    "date": "2026-04-25",
    "start": "14:30",
    "end": "15:45",
-   "note": "Connexions Acadie*Louisiane Showcase"
+   "note": "- Connexions Acadie*Louisiane Showcase",
+   "artists": [
+    "12164564013"
+   ]
   },
   {
    "id": "2026-04-25-internationale-1430",
@@ -460,27 +585,36 @@
    "date": "2026-04-25",
    "start": "14:30",
    "end": "15:45",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164581122"
+   ]
   },
   {
    "id": "2026-04-25-biergarten-1445",
-   "act": "Primera Linea",
-   "origin": "Cuba",
+   "act": "TBA",
+   "origin": "",
    "stage": "biergarten",
    "date": "2026-04-25",
    "start": "14:45",
    "end": "16:00",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164564130"
+   ]
   },
   {
    "id": "2026-04-25-lafayette-1445",
-   "act": "Blue Monday Allstars Celebrate Lee Allen Zeno",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "lafayette",
    "date": "2026-04-25",
    "start": "14:45",
    "end": "16:00",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164556832"
+   ]
   },
   {
    "id": "2026-04-25-pavillon-1445",
@@ -490,27 +624,36 @@
    "date": "2026-04-25",
    "start": "14:45",
    "end": "16:00",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164581408"
+   ]
   },
   {
    "id": "2026-04-25-jeunes-1500",
-   "act": "Burke Riley Trio",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "jeunes",
    "date": "2026-04-25",
    "start": "15:00",
    "end": "15:45",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164518543"
+   ]
   },
   {
    "id": "2026-04-25-faisdodo-1600",
-   "act": "Vieux Farka Touré",
-   "origin": "Mali",
+   "act": "TBA",
+   "origin": "",
    "stage": "faisdodo",
    "date": "2026-04-25",
    "start": "16:00",
    "end": "17:15",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164556847"
+   ]
   },
   {
    "id": "2026-04-25-biergarten-1615",
@@ -520,17 +663,23 @@
    "date": "2026-04-25",
    "start": "16:15",
    "end": "16:45",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164519854"
+   ]
   },
   {
    "id": "2026-04-25-francosphere-1615",
-   "act": "Jacques Surette",
-   "origin": "Nova Scotia",
+   "act": "TBA",
+   "origin": "",
    "stage": "francosphere",
    "date": "2026-04-25",
    "start": "16:15",
    "end": "17:15",
-   "note": "Connexions Acadie*Louisiane Showcase"
+   "note": "- Connexions Acadie*Louisiane Showcase",
+   "artists": [
+    "12164561040"
+   ]
   },
   {
    "id": "2026-04-25-internationale-1615",
@@ -540,17 +689,23 @@
    "date": "2026-04-25",
    "start": "16:15",
    "end": "17:30",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164560859"
+   ]
   },
   {
    "id": "2026-04-25-lafayette-1630",
-   "act": "Sally Baby's Silver Dollars",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "lafayette",
    "date": "2026-04-25",
    "start": "16:30",
    "end": "17:45",
-   "note": "Presented by: National Endowment of the Arts"
+   "note": "- Presented by: National Endowment of the Arts",
+   "artists": [
+    "12164581358"
+   ]
   },
   {
    "id": "2026-04-25-pavillon-1645",
@@ -560,57 +715,75 @@
    "date": "2026-04-25",
    "start": "16:45",
    "end": "18:00",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164581376"
+   ]
   },
   {
    "id": "2026-04-25-biergarten-1700",
-   "act": "Mike Dean Band",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "biergarten",
    "date": "2026-04-25",
    "start": "17:00",
    "end": "18:15",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164581238"
+   ]
   },
   {
    "id": "2026-04-25-faisdodo-1745",
-   "act": "Subatomic Sound System + Screechy Dan + Norwood Fisher",
-   "origin": "Jamaica/U.S.",
+   "act": "TBA",
+   "origin": "",
    "stage": "faisdodo",
    "date": "2026-04-25",
    "start": "17:45",
    "end": "19:00",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164518541"
+   ]
   },
   {
    "id": "2026-04-25-francosphere-1745",
-   "act": "Bonsoir, Catin",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "francosphere",
    "date": "2026-04-25",
    "start": "17:45",
    "end": "19:00",
-   "note": "Presented by: National Endowment for the Arts"
+   "note": "- Presented by: National Endowment for the Arts",
+   "artists": [
+    "12164520006"
+   ]
   },
   {
    "id": "2026-04-25-internationale-1800",
-   "act": "Las Cafeteras",
-   "origin": "U.S./Mexico",
+   "act": "TBA",
+   "origin": "",
    "stage": "internationale",
    "date": "2026-04-25",
    "start": "18:00",
    "end": "19:15",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164560877"
+   ]
   },
   {
    "id": "2026-04-25-lafayette-1815",
-   "act": "Delgres",
-   "origin": "France/Guadeloupe",
+   "act": "TBA",
+   "origin": "",
    "stage": "lafayette",
    "date": "2026-04-25",
    "start": "18:15",
    "end": "19:30",
-   "note": "Presented by Consulate General of France in Louisiana & Villa Albertine"
+   "note": "- Presented by Consulate General of France in Louisiana & Villa Albertine",
+   "artists": [
+    "12164533746"
+   ]
   },
   {
    "id": "2026-04-25-biergarten-1830",
@@ -620,27 +793,36 @@
    "date": "2026-04-25",
    "start": "18:30",
    "end": "19:00",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164518539"
+   ]
   },
   {
    "id": "2026-04-25-pavillon-1845",
-   "act": "KC Jones",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "pavillon",
    "date": "2026-04-25",
    "start": "18:45",
    "end": "20:00",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164533548"
+   ]
   },
   {
    "id": "2026-04-25-biergarten-1930",
-   "act": "Cashier",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "biergarten",
    "date": "2026-04-25",
    "start": "19:30",
    "end": "20:45",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164564078"
+   ]
   },
   {
    "id": "2026-04-25-faisdodo-1930",
@@ -650,7 +832,10 @@
    "date": "2026-04-25",
    "start": "19:30",
    "end": "20:45",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164556757"
+   ]
   },
   {
    "id": "2026-04-25-francosphere-1930",
@@ -660,7 +845,10 @@
    "date": "2026-04-25",
    "start": "19:30",
    "end": "20:45",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164564042"
+   ]
   },
   {
    "id": "2026-04-25-internationale-1945",
@@ -670,7 +858,10 @@
    "date": "2026-04-25",
    "start": "19:45",
    "end": "21:00",
-   "note": "Presented by: LFT Fiber"
+   "note": "- Presented by: LFT Fiber",
+   "artists": [
+    "12164581313"
+   ]
   },
   {
    "id": "2026-04-25-lafayette-2000",
@@ -680,47 +871,62 @@
    "date": "2026-04-25",
    "start": "20:00",
    "end": "21:15",
-   "note": "Presented by: National Endowment for the Arts"
+   "note": "- Presented by: National Endowment for the Arts",
+   "artists": [
+    "12164556830"
+   ]
   },
   {
    "id": "2026-04-26-faisdodo-1200",
-   "act": "Slap Dragon",
-   "origin": "Tennessee",
+   "act": "TBA",
+   "origin": "",
    "stage": "faisdodo",
    "date": "2026-04-26",
    "start": "12:00",
    "end": "13:15",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164539396"
+   ]
   },
   {
    "id": "2026-04-26-francosphere-1200",
-   "act": "The Babineaux Sisters",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "francosphere",
    "date": "2026-04-26",
    "start": "12:00",
    "end": "13:00",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164533657"
+   ]
   },
   {
    "id": "2026-04-26-lafayette-1215",
-   "act": "Steve Riley & the Mamou Playboys",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "lafayette",
    "date": "2026-04-26",
    "start": "12:15",
    "end": "13:30",
-   "note": "Presented by: National Endowment for the Arts"
+   "note": "- Presented by: National Endowment for the Arts",
+   "artists": [
+    "12164560865"
+   ]
   },
   {
    "id": "2026-04-26-internationale-1230",
-   "act": "Voices of Progressive Gospel Choir",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "internationale",
    "date": "2026-04-26",
    "start": "12:30",
    "end": "13:45",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164581330"
+   ]
   },
   {
    "id": "2026-04-26-jeunes-1230",
@@ -730,67 +936,88 @@
    "date": "2026-04-26",
    "start": "12:30",
    "end": "13:15",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164581122"
+   ]
   },
   {
    "id": "2026-04-26-pavillon-1230",
-   "act": "Jacques Surette",
-   "origin": "Nova Scotia",
+   "act": "TBA",
+   "origin": "",
    "stage": "pavillon",
    "date": "2026-04-26",
    "start": "12:30",
    "end": "13:30",
-   "note": "Connexions Acadie*Louisiane Showcase"
+   "note": "- Connexions Acadie*Louisiane Showcase",
+   "artists": [
+    "12164561040"
+   ]
   },
   {
    "id": "2026-04-26-biergarten-1245",
-   "act": "Battle of the Bands:  2nd place (DINGER) & 1st place (5AM)",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "biergarten",
    "date": "2026-04-26",
    "start": "12:45",
    "end": "14:00",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164518545"
+   ]
   },
   {
    "id": "2026-04-26-francosphere-1330",
-   "act": "Beau Cheval",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "francosphere",
    "date": "2026-04-26",
    "start": "13:30",
    "end": "14:45",
-   "note": "Presented by: National Endowment for the Arts"
+   "note": "- Presented by: National Endowment for the Arts",
+   "artists": [
+    "12164581279"
+   ]
   },
   {
    "id": "2026-04-26-faisdodo-1345",
-   "act": "Nathan & the Zydeco Cha Chas",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "faisdodo",
    "date": "2026-04-26",
    "start": "13:45",
    "end": "15:00",
-   "note": "Presented by: National Endowment for the Arts"
+   "note": "- Presented by: National Endowment for the Arts",
+   "artists": [
+    "12164527131"
+   ]
   },
   {
    "id": "2026-04-26-jeunes-1345",
-   "act": "Lafayette Lion Dance",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "jeunes",
    "date": "2026-04-26",
    "start": "13:45",
    "end": "14:30",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164533663"
+   ]
   },
   {
    "id": "2026-04-26-lafayette-1400",
-   "act": "Breabach",
-   "origin": "Scotland",
+   "act": "TBA",
+   "origin": "",
    "stage": "lafayette",
    "date": "2026-04-26",
    "start": "14:00",
    "end": "15:15",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164518626"
+   ]
   },
   {
    "id": "2026-04-26-biergarten-1415",
@@ -800,7 +1027,10 @@
    "date": "2026-04-26",
    "start": "14:15",
    "end": "14:45",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164553301"
+   ]
   },
   {
    "id": "2026-04-26-internationale-1415",
@@ -810,7 +1040,10 @@
    "date": "2026-04-26",
    "start": "14:15",
    "end": "15:30",
-   "note": "Presented by: National Endowment for the Arts"
+   "note": "- Presented by: National Endowment for the Arts",
+   "artists": [
+    "12164564073"
+   ]
   },
   {
    "id": "2026-04-26-pavillon-1430",
@@ -820,37 +1053,49 @@
    "date": "2026-04-26",
    "start": "14:30",
    "end": "15:30",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164533656"
+   ]
   },
   {
    "id": "2026-04-26-biergarten-1500",
-   "act": "School of Rock Lafayette",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "biergarten",
    "date": "2026-04-26",
    "start": "15:00",
    "end": "16:30",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164581208"
+   ]
   },
   {
    "id": "2026-04-26-jeunes-1500",
-   "act": "Mathieu Lippé",
-   "origin": "Québec",
+   "act": "TBA",
+   "origin": "",
    "stage": "jeunes",
    "date": "2026-04-26",
    "start": "15:00",
    "end": "15:45",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164539211"
+   ]
   },
   {
    "id": "2026-04-26-francosphere-1515",
-   "act": "Prends Courage",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "francosphere",
    "date": "2026-04-26",
    "start": "15:15",
    "end": "16:30",
-   "note": "Presented by: National Endowment for the Arts"
+   "note": "- Presented by: National Endowment for the Arts",
+   "artists": [
+    "12164581335"
+   ]
   },
   {
    "id": "2026-04-26-faisdodo-1530",
@@ -860,67 +1105,88 @@
    "date": "2026-04-26",
    "start": "15:30",
    "end": "16:45",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164581122"
+   ]
   },
   {
    "id": "2026-04-26-lafayette-1545",
-   "act": "Silver Birds Steel Orchestra",
-   "origin": "Jamaica",
+   "act": "TBA",
+   "origin": "",
    "stage": "lafayette",
    "date": "2026-04-26",
    "start": "15:45",
    "end": "17:00",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164519844"
+   ]
   },
   {
    "id": "2026-04-26-internationale-1600",
-   "act": "Delgres",
-   "origin": "France/Guadeloupe",
+   "act": "TBA",
+   "origin": "",
    "stage": "internationale",
    "date": "2026-04-26",
    "start": "16:00",
    "end": "17:15",
-   "note": "Presented by: Koerner Law Firm"
+   "note": "- Presented by: Koerner Law Firm",
+   "artists": [
+    "12164533746"
+   ]
   },
   {
    "id": "2026-04-26-pavillon-1630",
-   "act": "Beauséjour",
-   "origin": "New Brunswick",
+   "act": "TBA",
+   "origin": "",
    "stage": "pavillon",
    "date": "2026-04-26",
    "start": "16:30",
    "end": "17:30",
-   "note": "Connexions Acadie*Louisiane Showcase"
+   "note": "- Connexions Acadie*Louisiane Showcase",
+   "artists": [
+    "12164518563"
+   ]
   },
   {
    "id": "2026-04-26-biergarten-1700",
-   "act": "The Amazing Nuns",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "biergarten",
    "date": "2026-04-26",
    "start": "17:00",
    "end": "18:15",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164556758"
+   ]
   },
   {
    "id": "2026-04-26-francosphere-1700",
-   "act": "Corey Ledet Zydeco & Black Magic",
-   "origin": "Louisiana",
+   "act": "TBA",
+   "origin": "",
    "stage": "francosphere",
    "date": "2026-04-26",
    "start": "17:00",
    "end": "18:00",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164560996"
+   ]
   },
   {
    "id": "2026-04-26-faisdodo-1715",
-   "act": "Vieux Farka Touré",
-   "origin": "Mali",
+   "act": "TBA",
+   "origin": "",
    "stage": "faisdodo",
    "date": "2026-04-26",
    "start": "17:15",
    "end": "18:30",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164556847"
+   ]
   },
   {
    "id": "2026-04-26-lafayette-1730",
@@ -930,17 +1196,23 @@
    "date": "2026-04-26",
    "start": "17:30",
    "end": "18:45",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164539222"
+   ]
   },
   {
    "id": "2026-04-26-internationale-1745",
-   "act": "Stephen Marley",
-   "origin": "Jamaica",
+   "act": "TBA",
+   "origin": "",
    "stage": "internationale",
    "date": "2026-04-26",
    "start": "17:45",
    "end": "19:00",
-   "note": ""
+   "note": "",
+   "artists": [
+    "12164564098"
+   ]
   }
  ]
 }
