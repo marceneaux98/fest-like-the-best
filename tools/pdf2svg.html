@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PDF → SVG (dev tool)</title>
+<style>
+  body { font: 14px system-ui, sans-serif; margin: 0; background: #f4f4f5; color: #18181b; }
+  header { padding: 12px 16px; background: #fff; border-bottom: 1px solid #ddd; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  #log { white-space: pre-wrap; font: 12px ui-monospace, monospace; padding: 8px 16px; }
+  #out { padding: 16px; } #out svg { max-width: 100%; height: auto; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+  button { font: inherit; padding: 6px 12px; }
+</style>
+</head>
+<body>
+<header>
+  <strong>PDF → SVG</strong>
+  <span id="status">Loading…</span>
+  <button id="save" type="button" disabled>Save to assets/</button>
+</header>
+<div id="log"></div>
+<div id="out"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+// Dev tool: converts a vector PDF in assets/ to SVG with pdf.js's SVG back end and saves it
+// through serve.py's /__save endpoint (local only). Images in the PDF are skipped: this map's
+// images are tiny decorations, and the SVG back end crashes on inline images.
+//
+// Usage: tools/pdf2svg.html?file=sitemap-vector.pdf&out=sitemap-raw.svg[&save=1]
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+var q = new URLSearchParams(location.search);
+var file = (q.get('file') || 'sitemap-vector.pdf').replace(/[^\w.-]/g, '');
+var outName = (q.get('out') || 'sitemap-raw.svg').replace(/[^\w.-]/g, '');
+var logEl = document.getElementById('log'), statusEl = document.getElementById('status'), saveBtn = document.getElementById('save');
+function log(s) { logEl.textContent += s + '\n'; }
+
+var svgText = null;
+pdfjsLib.getDocument('../assets/' + file).promise.then(function (pdf) { return pdf.getPage(1); }).then(function (page) {
+  var vp = page.getViewport({ scale: 1 });
+  log('page size (pt): ' + vp.width + ' x ' + vp.height);
+  return page.getOperatorList().then(function (ops) {
+    var g = new pdfjsLib.SVGGraphics(page.commonObjs, page.objs);
+    var skipped = 0;
+    g.paintImageXObject = g.paintInlineImageXObject = g.paintImageMaskXObject = function () { skipped++; };
+    return g.getSVG(ops, vp).then(function (svg) {
+      svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      svgText = new XMLSerializer().serializeToString(svg);
+      log('operators: ' + ops.fnArray.length + ', images skipped: ' + skipped + ', svg: ' + Math.round(svgText.length / 1024) + ' KB');
+      document.getElementById('out').appendChild(svg);
+      statusEl.textContent = 'Converted ' + file;
+      saveBtn.disabled = false;
+      window.CONVERTED = true;
+      if (q.get('save') === '1') save();
+    });
+  });
+}).catch(function (err) { statusEl.textContent = 'Failed'; log(String(err && err.stack || err)); });
+
+function save() {
+  statusEl.textContent = 'Saving…';
+  return fetch('/__save/' + outName, { method: 'POST', headers: { 'X-FLTB-Save': '1', 'Content-Type': 'image/svg+xml' }, body: svgText })
+    .then(function (r) { return r.text().then(function (t) { statusEl.textContent = (r.ok ? 'OK: ' : 'Error: ') + t; window.SAVED = r.ok; }); });
+}
+saveBtn.addEventListener('click', save);
+</script>
+</body>
+</html>

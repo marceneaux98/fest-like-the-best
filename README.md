@@ -14,7 +14,7 @@ It's plain HTML, CSS and JavaScript with no build step. Python is only needed fo
    ```
 3. Open **http://localhost:8765/** (it opens the Lineup page)
 
-An internet connection is needed for the map tiles, fonts and the map/PDF libraries.
+An internet connection is needed for the fonts, the Leaflet map library and, in "Street map" style, the map tiles. The default "Festival map" style is the festival's own illustrated map and needs no tiles.
 
 | Page | What it is |
 |---|---|
@@ -38,8 +38,8 @@ The schedule's source of truth is the **Programming Schedule** board in Monday.c
 | Which boards/columns the feed reads, and when an edition may go public | `feed.config.json` | — |
 | The schedule, from a spreadsheet instead (fallback) | Replace `assets/schedule.xlsx` (same columns) | `python build_schedule.py` → writes `data/schedule.json` |
 | Stage pins, names, colours, display order, merch booths | `locations.json` (list order = stage order everywhere) | `python build_routes.py` → fetches walking routes, writes `routes.js` |
-| Site map overlay alignment | `overlay.js` control points; open `planner.html?align` to see the error per point | — |
-| The site map itself | Replace `assets/sitemap.pdf` | — |
+| Site map alignment | `overlay.js` control points; open `planner.html?align` to see the error per point | — |
+| The site map itself (new year's design) | Save the designer's **vector** PDF as `assets/sitemap-vector.pdf`; with the server running open `tools/pdf2svg.html?save=1` (writes `assets/sitemap-raw.svg`) | `python build_sitemap.py` → writes the layered `assets/sitemap.svg`; check layers in `tools/svgview.html?tint=1` and adjust the rules at the top of `build_sitemap.py` if a layer looks wrong |
 | Colours, fonts, logo bar | `brand.css` | — |
 | Interface wording / translations | `i18n.js` (one dictionary per language; missing keys fall back to English) | — |
 
@@ -60,7 +60,8 @@ The test code lives in `tests/` (Playwright needs Node, but only on GitHub; the 
 - `i18n.js`: all interface text in four languages, plus date/time formatting and the language menu
 - `common.js`: shared helpers (`FIL.*`): HTML escaping, time parsing, saved-state access, the stage list with colours, and the brand bar that every page shows
 - `brand.css`: brand colours (#1984C7 / #542E91 / #F26631), page colour tokens, fonts, base styles, logo bar, title band. Each page's own `<style>` holds only what is specific to that page.
-- `site-overlay.js` + `overlay.js`: places the illustrated site map on the street map
+- `site-overlay.js` + `overlay.js`: the illustrated festival map (`assets/sitemap.svg`) on the Leaflet map, with map styles (festival / street / both) and layer toggles (streets, areas, icons & vendors, labels, legend, logo)
+- `build_sitemap.py`, `tools/pdf2svg.html`, `tools/svgview.html`: turn the designer's vector PDF into the layered SVG and check the result
 - `serve.py`: local server that always serves fresh files (no stale cache after a rebuild)
 - `build_feed.py` + `feed.config.json`: the Monday.com feed (allowlisted columns, validation, publish gate); `.github/workflows/sync-schedule.yml` runs it on demand
 - `data/`: the published `schedule.json` and `artists.json`; `data/preview/` holds local previews and is never committed

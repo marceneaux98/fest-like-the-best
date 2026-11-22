@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Site map layers (dev tool)</title>
+<style>
+  body { font: 14px system-ui, sans-serif; margin: 0; background: #666; color: #111; }
+  header { position: sticky; top: 0; padding: 8px 12px; background: #fff; border-bottom: 1px solid #ccc; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; z-index: 2; }
+  label { display: inline-flex; gap: 4px; align-items: center; }
+  #host { padding: 12px; }
+  #host svg { width: 100%; height: auto; background: #fff; display: block; }
+  .tint #layer-background path, .tint #layer-background rect { fill: #cfd3dc !important; }
+  .tint #layer-zones path, .tint #layer-zones rect { fill: #f6c344 !important; }
+  .tint #layer-streets path { fill: #3fb0ff !important; }
+  .tint #layer-features path { fill: #e0399a !important; }
+  .tint #layer-labels path { fill: #111 !important; }
+  .tint #layer-logo path, .tint #layer-logo rect { fill: #2bb673 !important; }
+  .tint #layer-legend path, .tint #layer-legend rect { fill: #ff6a00 !important; }
+</style>
+</head>
+<body>
+<header>
+  <strong>assets/sitemap.svg</strong>
+  <span id="layers"></span>
+  <label><input type="checkbox" id="tint"> tint layers</label>
+  <span id="info"></span>
+</header>
+<div id="host"></div>
+<script>
+// Dev tool: shows assets/sitemap.svg with a checkbox per layer and a tint mode that colours each
+// layer differently, to check build_sitemap.py's tagging. ?tint=1&hide=legend,logo
+var q = new URLSearchParams(location.search);
+fetch('../assets/sitemap.svg', { cache: 'no-cache' }).then(function (r) { return r.text(); }).then(function (t) {
+  var host = document.getElementById('host');
+  host.innerHTML = t;
+  var svg = host.querySelector('svg');
+  var box = document.getElementById('layers'), hide = (q.get('hide') || '').split(',');
+  svg.querySelectorAll('g.layer').forEach(function (g) {
+    var id = g.id.replace('layer-', ''), n = g.querySelectorAll('path,rect').length;
+    var l = document.createElement('label');
+    var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = hide.indexOf(id) < 0;
+    g.style.display = cb.checked ? '' : 'none';
+    cb.addEventListener('change', function () { g.style.display = cb.checked ? '' : 'none'; });
+    l.appendChild(cb); l.appendChild(document.createTextNode(id + ' (' + n + ')'));
+    box.appendChild(l);
+  });
+  var tint = document.getElementById('tint');
+  tint.checked = q.get('tint') === '1';
+  document.body.classList.toggle('tint', tint.checked);
+  tint.addEventListener('change', function () { document.body.classList.toggle('tint', tint.checked); });
+  document.getElementById('info').textContent = Math.round(t.length / 1024) + ' KB';
+  window.SVG_READY = true;
+});
+</script>
+</body>
+</html>

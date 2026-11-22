@@ -123,11 +123,17 @@
   </div>
 
   <div id="overlayBox">
-    <label class="toggle"><input id="overlayOn" type="checkbox"> <span data-i18n="pl_overlay">Festival site map overlay</span></label>
-    <div class="slider-row" id="overlayOpacityRow">
-      <input id="overlayOpacity" type="range" min="0.1" max="1" step="0.05">
+    <label for="mapStyle" data-i18n="map_style">Map style</label>
+    <select id="mapStyle">
+      <option value="festival" data-i18n="map_style_festival">Festival map</option>
+      <option value="streets" data-i18n="map_style_streets">Street map</option>
+      <option value="both" data-i18n="map_style_both">Street map + festival map</option>
+    </select>
+    <div class="slider-row" id="overlayOpacityRow" style="margin-top:8px">
+      <input id="overlayOpacity" type="range" min="0.1" max="1" step="0.05" data-i18n-aria="it_opacity" aria-label="Overlay opacity">
       <span id="overlayOpacityVal"></span>
     </div>
+    <div id="mapLayers" role="group" data-i18n-aria="map_layers" aria-label="Show on the festival map"></div>
     <div class="hint" id="overlayStatus" data-i18n="overlay_note">The illustrated map is approximate and not to scale.</div>
   </div>
 
@@ -141,7 +147,6 @@
 <div id="map"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="i18n.js"></script>
 <script src="routes.js"></script>
 <script src="overlay.js"></script>
@@ -184,7 +189,7 @@
 
   // Map
   var map = L.map('map', { zoomControl: true });
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  var tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   }).addTo(map);
@@ -275,13 +280,15 @@
     update();
   });
 
-  // Festival site-map overlay (shared with itinerary.html; see site-overlay.js)
+  // Festival site map (shared with itinerary.html; see site-overlay.js)
   SiteMapOverlay.attach(map, {
-    toggle: document.getElementById('overlayOn'),
+    styleSelect: document.getElementById('mapStyle'),
     opacity: document.getElementById('overlayOpacity'),
     opacityVal: document.getElementById('overlayOpacityVal'),
-    row: document.getElementById('overlayOpacityRow'),
-    status: document.getElementById('overlayStatus')
+    opacityRow: document.getElementById('overlayOpacityRow'),
+    layersBox: document.getElementById('mapLayers'),
+    status: document.getElementById('overlayStatus'),
+    tiles: tiles
   });
 
   document.getElementById('foot').innerHTML = esc(T('pl_foot', { date: D.built })) + '<br>' +

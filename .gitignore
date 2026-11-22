@@ -1,5 +1,7 @@
 ﻿# Preview builds of an unannounced schedule stay on this machine only
 data/preview/
+# Intermediate output of tools/pdf2svg.html (build_sitemap.py turns it into assets/sitemap.svg)
+assets/sitemap-raw.svg
 __pycache__/
 *.pyc
 .claude/settings.local.json
