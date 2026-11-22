@@ -1,0 +1,116 @@
+# Quality checks for Fest like the Best. Runs on every push to main and on every pull request;
+# nothing here changes the site or touches Monday. Results: GitHub → Actions → "Checks" → the run's
+# Summary page shows the static-check report and the Lighthouse scores; the artifacts at the bottom
+# hold the Playwright report and the full Lighthouse HTML reports.
+#
+# Three independent jobs (README.md → "Checks" explains each for non-developers):
+#   static      tools/check_static.py: Python compiles, JSON parses, schedule is consistent,
+#               every data-i18n key exists in English, 2027 stays embargoed.
+#   smoke       Playwright drives a real Chromium: pick two Thursday sets, open My day, expect two
+#               stops and a leave-by time, no JavaScript errors (desktop and phone sizes).
+#   lighthouse  Lighthouse CI (mobile) on lineup.html and itinerary.html; fails only if
+#               accessibility < 90. Performance, best-practices and PWA are reported for information.
+name: Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: Static checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Python, JSON, schedule and translation keys
+        run: python3 tools/check_static.py
+
+  smoke:
+    name: Smoke test (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+
+      - name: Install Playwright (test runner + Chromium)
+        working-directory: tests
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Serve the site on http://127.0.0.1:8765
+        run: |
+          python3 serve.py 8765 > server.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8765/lineup.html > /dev/null && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8765/data/schedule.json > /dev/null
+
+      - name: Pick two sets, check the plan
+        working-directory: tests
+        run: npx playwright test
+
+      - name: Upload the Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            tests/playwright-report
+            tests/test-results
+          if-no-files-found: ignore
+          retention-days: 14
+
+  lighthouse:
+    name: Lighthouse (mobile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Serve the site on http://127.0.0.1:8765
+        run: |
+          python3 serve.py 8765 > server.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8765/lineup.html > /dev/null && break
+            sleep 1
+          done
+
+      # @lhci/cli 0.13 is the last release built on Lighthouse 11, the last Lighthouse with a PWA
+      # category (Lighthouse 12 removed it). Bump this once the PWA score is no longer wanted.
+      - name: Run Lighthouse on lineup.html and itinerary.html
+        working-directory: tests
+        run: |
+          npx --yes @lhci/cli@0.13.0 collect --config=lighthouserc.json
+          npx --yes @lhci/cli@0.13.0 upload --config=lighthouserc.json
+
+      - name: Score table (fails if accessibility < 90)
+        run: python3 tools/lighthouse_summary.py lighthouse-reports --min-accessibility 90
+
+      - name: Upload the Lighthouse HTML reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lighthouse-reports
+          path: lighthouse-reports
+          if-no-files-found: ignore
+          retention-days: 14
