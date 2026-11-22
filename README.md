@@ -6,13 +6,13 @@ It's plain HTML, CSS and JavaScript with no build step. Python is only needed fo
 
 ## Run it
 
-1. Install **Python 3.8 or newer** if needed (`py --version` on Windows, `python3 --version` on Mac/Linux).
+1. Install **Python 3.8 or newer** if needed (`python --version` on Windows, `python3 --version` on Mac/Linux).
 2. In this folder, start the server:
    ```
-   py serve.py          # Windows
+   python serve.py      # Windows
    python3 serve.py     # Mac / Linux
    ```
-3. Open **http://localhost:8765/lineup.html**
+3. Open **http://localhost:8765/** (it opens the Lineup page)
 
 An internet connection is needed for the map tiles, fonts and the map/PDF libraries.
 
@@ -29,8 +29,8 @@ Language: menu in the top bar (Français, English, Español, Tiếng Việt; Eng
 
 | To change… | Edit | Then run |
 |---|---|---|
-| The schedule | Replace `assets/schedule.xlsx` (same columns) | `py build_schedule.py` → writes `schedule.js` and prints warnings for suspicious rows |
-| Stage pins, names, display order, merch booths | `locations.json` (list order = stage order everywhere) | `py build_routes.py` → fetches walking routes, writes `routes.js` |
+| The schedule | Replace `assets/schedule.xlsx` (same columns) | `python build_schedule.py` → writes `schedule.js` and prints warnings for suspicious rows |
+| Stage pins, names, colours, display order, merch booths | `locations.json` (list order = stage order everywhere) | `python build_routes.py` → fetches walking routes, writes `routes.js` |
 | Site map overlay alignment | `overlay.js` control points; open `planner.html?align` to see the error per point | — |
 | The site map itself | Replace `assets/sitemap.pdf` | — |
 | Colours, fonts, logo bar | `brand.css` | — |
@@ -39,7 +39,8 @@ Language: menu in the top bar (Français, English, Español, Tiếng Việt; Eng
 ## Files
 
 - `i18n.js`: all interface text in four languages, plus date/time formatting and the language menu
-- `brand.css`: brand colours (#1984C7 / #542E91 / #F26631), fonts, logo bar, title band
+- `common.js`: shared helpers (`FIL.*`): HTML escaping, time parsing, saved-state access, the stage list with colours, and the brand bar that every page shows
+- `brand.css`: brand colours (#1984C7 / #542E91 / #F26631), page colour tokens, fonts, base styles, logo bar, title band. Each page's own `<style>` holds only what is specific to that page.
 - `site-overlay.js` + `overlay.js`: places the illustrated site map on the street map
 - `serve.py`: local server that always serves fresh files (no stale cache after a rebuild)
 - `build_schedule.py`, `build_routes.py`: data builders (standard library only, no installs)

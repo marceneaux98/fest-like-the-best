@@ -33,7 +33,7 @@
     crowd_factor: 'Crowd factor',
     overlay_note: 'The illustrated map is approximate and not to scale.',
     overlay_loading: 'Loading site map…',
-    overlay_server: 'The overlay needs the local server: run py serve.py',
+    overlay_server: 'The overlay needs the local server: run python serve.py',
     overlay_fail: 'Could not load the site map: {err}',
     overlay_unavailable: 'Overlay unavailable.',
 
@@ -163,7 +163,7 @@
     crowd_factor: 'Facteur foule',
     overlay_note: 'La carte illustrée est approximative et n’est pas à l’échelle.',
     overlay_loading: 'Chargement de la carte du site…',
-    overlay_server: 'La superposition nécessite le serveur local : lancez py serve.py',
+    overlay_server: 'La superposition nécessite le serveur local : lancez python serve.py',
     overlay_fail: 'Impossible de charger la carte du site : {err}',
     overlay_unavailable: 'Superposition indisponible.',
 
@@ -293,7 +293,7 @@
     crowd_factor: 'Factor multitud',
     overlay_note: 'El mapa ilustrado es aproximado y no está a escala.',
     overlay_loading: 'Cargando el mapa del sitio…',
-    overlay_server: 'La superposición necesita el servidor local: ejecuta py serve.py',
+    overlay_server: 'La superposición necesita el servidor local: ejecuta python serve.py',
     overlay_fail: 'No se pudo cargar el mapa del sitio: {err}',
     overlay_unavailable: 'Superposición no disponible.',
 
@@ -423,7 +423,7 @@
     crowd_factor: 'Hệ số đông người',
     overlay_note: 'Bản đồ minh họa chỉ mang tính tương đối, không theo tỷ lệ.',
     overlay_loading: 'Đang tải bản đồ khu vực…',
-    overlay_server: 'Lớp phủ cần máy chủ cục bộ: chạy py serve.py',
+    overlay_server: 'Lớp phủ cần máy chủ cục bộ: chạy python serve.py',
     overlay_fail: 'Không tải được bản đồ khu vực: {err}',
     overlay_unavailable: 'Không có lớp phủ.',
 

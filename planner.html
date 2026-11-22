@@ -6,22 +6,9 @@
 <title>Stage Map · Fest like the Best</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-  :root {
-    --blue: #0093d0;
-    --purple: #4f3693;
-    --orange: #f58220;
-    --ink: #1c1b22;
-    --muted: #6b6878;
-    --bg: #f6f5f9;
-    --card: #ffffff;
-    --line: #e4e2ea;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; }
+  /* Colours, fonts and base styles come from brand.css */
+  html, body { height: 100%; }
   body {
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-    background: var(--bg);
-    color: var(--ink);
     display: grid;
     grid-template-columns: 360px 1fr;
     grid-template-rows: auto minmax(0, 1fr);
@@ -109,15 +96,7 @@
 <meta name="i18n-title" content="pl_doc_title">
 </head>
 <body>
-<div class="brand-bar">
-  <a class="brand-logo" href="lineup.html"><img src="assets/logo.png" alt="Festival International de Louisiane, presented by LFT Fiber"></a>
-  <span class="brand-tag">Fest like the Best</span>
-  <nav class="brand-nav" aria-label="Pages">
-    <a href="lineup.html" data-i18n="nav_lineup">Lineup</a>
-    <a href="itinerary.html" data-i18n="nav_myday">My day</a>
-    <a href="planner.html" aria-current="page" data-i18n="nav_map">Stage map</a>
-  </nav>
-</div>
+<div class="brand-bar" data-page="planner"></div>
 <aside>
   <div>
     <h1 data-i18n-html="pl_title_html">Stage <span>Map</span></h1>
@@ -167,13 +146,14 @@
 <script src="routes.js"></script>
 <script src="overlay.js"></script>
 <script src="site-overlay.js"></script>
+<script src="common.js"></script>
 <script>
 (function () {
   var D = window.ROUTE_DATA;
-  if (!D) { document.getElementById('result').textContent = 'routes.js not found — run: py build_routes.py'; return; }
+  if (!D) { document.getElementById('result').textContent = 'routes.js not found — run: python build_routes.py'; return; }
 
-  var locs = D.locations;
-  var byId = {}; locs.forEach(function (l) { byId[l.id] = l; });
+  var esc = FIL.esc;
+  var locs = FIL.stages, byId = FIL.stageById;
   var fromSel = document.getElementById('from'), toSel = document.getElementById('to');
   var crowd = document.getElementById('crowd'), crowdVal = document.getElementById('crowdVal');
   var resultEl = document.getElementById('result');
@@ -190,7 +170,6 @@
   var nf1 = new Intl.NumberFormat(I18N.locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   var nf2 = new Intl.NumberFormat(I18N.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   function fmtMin(m) { return m < 10 ? nf1.format(m) : Math.round(m).toString(); }
-  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
   // Pickers
   [fromSel, toSel].forEach(function (sel) {
@@ -306,7 +285,7 @@
   });
 
   document.getElementById('foot').innerHTML = esc(T('pl_foot', { date: D.built })) + '<br>' +
-    'To change locations: edit <code>locations.json</code>, then run <code>py build_routes.py</code>.';
+    'To change locations: edit <code>locations.json</code>, then run <code>python build_routes.py</code>.';
 
   update();
 })();

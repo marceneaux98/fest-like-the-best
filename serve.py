@@ -1,7 +1,7 @@
 """Local server for the festival pages that never lets the browser use stale data files.
 
-Usage:  py serve.py            (then open http://localhost:8765/lineup.html)
-        py serve.py 9000       (different port)
+Usage:  python serve.py            (then open http://localhost:8765/ ; python3 on Mac/Linux)
+        python serve.py 9000       (different port)
 """
 import functools
 import http.server
@@ -20,7 +20,7 @@ def main():
     here = os.path.dirname(os.path.abspath(__file__))
     handler = functools.partial(NoCacheHandler, directory=here)
     with http.server.ThreadingHTTPServer(("127.0.0.1", port), handler) as httpd:
-        print("Serving on http://localhost:%d/lineup.html  (Ctrl+C to stop)" % port)
+        print("Serving on http://localhost:%d/  (Ctrl+C to stop)" % port)
         httpd.serve_forever()
 
 

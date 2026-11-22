@@ -13,6 +13,8 @@ Static web app (no framework, no build) for Festival International de Louisiane 
 - Picking or changing options must not reset scroll position or re-zoom the map.
 
 ## Working notes
-- Serve with `py serve.py` (no-cache headers). Test in a separate origin (http://127.0.0.1:8765) so test picks don't overwrite the user's saved picks on http://localhost:8765. localStorage keys start with `fil-`.
+- Shared code lives in `common.js` (`FIL.esc`, `FIL.toMin`, `FIL.store`, `FIL.stages`/`stageById`/`stageColor`, brand bar from `<div class="brand-bar" data-page="…">`) and `brand.css` (colour tokens, fonts, base styles). Stage names, colours and order come from `locations.json` only. Pages keep only page-specific CSS/JS.
+- Git: branch `main`, commit identity set per-repo. This machine has `python` (Store install), not the `py` launcher, and Git lives at `C:\Program Files\Git\cmd` (may need adding to PATH in a fresh shell).
+- Serve with `python serve.py` (no-cache headers). Test in a separate origin (http://127.0.0.1:8765) so test picks don't overwrite the user's saved picks on http://localhost:8765. localStorage keys start with `fil-`.
 - Python here may be old (3.8) and pip installs may be blocked; keep scripts standard-library only.
 - Check pages at phone width (375px) as well as desktop; `phones.html` shows all three.

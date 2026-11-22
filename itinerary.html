@@ -6,26 +6,11 @@
 <title>My Day · Fest like the Best</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-  :root {
-    --blue: #0093d0;
-    --purple: #4f3693;
-    --orange: #f58220;
-    --ink: #1c1b22;
-    --muted: #6b6878;
-    --bg: #f6f5f9;
-    --card: #ffffff;
-    --line: #e4e2ea;
-    --danger: #d93a3a;
-    --warn: #b86200;
-    --ok: #2e8f55;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; }
+  /* Colours, fonts and base styles come from brand.css */
+  html, body { height: 100%; }
   body {
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink);
     display: grid; grid-template-columns: minmax(380px, 460px) 1fr; grid-template-rows: auto minmax(0, 1fr); height: 100vh;
   }
-  button, select { font: inherit; color: inherit; }
   aside { display: flex; flex-direction: column; min-height: 0; background: var(--bg); border-right: 1px solid var(--line); }
 
   header { background: linear-gradient(120deg, var(--blue), var(--purple)); color: #fff; padding: 16px 20px 0; }
@@ -172,15 +157,7 @@
 <meta name="i18n-title" content="it_doc_title">
 </head>
 <body>
-<div class="brand-bar">
-  <a class="brand-logo" href="lineup.html"><img src="assets/logo.png" alt="Festival International de Louisiane, presented by LFT Fiber"></a>
-  <span class="brand-tag">Fest like the Best</span>
-  <nav class="brand-nav" aria-label="Pages">
-    <a href="lineup.html" data-i18n="nav_lineup">Lineup</a>
-    <a href="itinerary.html" aria-current="page" data-i18n="nav_myday">My day</a>
-    <a href="planner.html" data-i18n="nav_map">Stage map</a>
-  </nav>
-</div>
+<div class="brand-bar" data-page="itinerary"></div>
 <aside>
   <header>
     <div class="top">
@@ -229,22 +206,19 @@
 <script src="schedule.js"></script>
 <script src="overlay.js"></script>
 <script src="site-overlay.js"></script>
+<script src="common.js"></script>
 <script>
 (function () {
   var S = window.SCHEDULE_DATA, R = window.ROUTE_DATA, T = I18N.t, TN = I18N.tn;
   var tl = document.getElementById('timeline');
-  if (!S || !R) { tl.innerHTML = '<div class="empty">Missing schedule.js or routes.js — run py build_schedule.py and py build_routes.py</div>'; return; }
+  if (!S || !R) { tl.innerHTML = '<div class="empty">Missing schedule.js or routes.js — run python build_schedule.py and python build_routes.py</div>'; return; }
 
-  // Same stage colours as lineup.html
-  var COLORS = { jeunes: '#6aa832', lafayette: '#139a8f', biergarten: '#c2185b', faisdodo: '#e8711a',
-                 francosphere: '#d6334b', pavillon: '#2e8f55', internationale: '#0083c2' };
-  var locs = {}; R.locations.forEach(function (l) { locs[l.id] = l; });
+  // Stage names and colours come from locations.json via routes.js (see common.js)
+  var esc = FIL.esc, toMin = FIL.toMin, stageColor = FIL.stageColor;
+  var locs = FIL.stageById;
 
   // ---------- stored state (shared with lineup.html / planner.html) ----------
-  function loadJSON(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
-  function saveJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-  function loadRaw(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-  function saveRaw(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  var loadJSON = FIL.store.get, saveJSON = FIL.store.set, loadRaw = FIL.store.raw, saveRaw = FIL.store.setRaw;
 
   var perfs = S.performances.map(function (p) { return Object.assign({}, p, { s: toMin(p.start), e: toMin(p.end) }); });
   var byId = {}; perfs.forEach(function (p) { byId[p.id] = p; });
@@ -274,10 +248,8 @@
             (daysWithPicks[0] && daysWithPicks[0].date) || null;
 
   // ---------- helpers ----------
-  function toMin(t) { var a = t.split(':'); return +a[0] * 60 + +a[1]; }
   var fmt = function (m) { return I18N.time(m); };
   var dur = I18N.dur;
-  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function stageName(id) { return locs[id] ? locs[id].name : id; }
   function distance(meters) {
     // miles for English (US festival), kilometres for the other languages
@@ -433,7 +405,7 @@
     plan.stops.forEach(function (st, i) { (nums[st.p.stage] = nums[st.p.stage] || []).push(i + 1); });
     R.locations.forEach(function (l) {
       var used = nums[l.id];
-      var html = '<span class="pin' + (used ? '' : ' idle') + '" style="' + (used ? 'background:' + COLORS[l.id] : '') + '">' +
+      var html = '<span class="pin' + (used ? '' : ' idle') + '" style="' + (used ? 'background:' + stageColor(l.id) : '') + '">' +
         (used ? '<b>' + used.join(', ') + '</b>' : '') + esc(l.name) + '</span>';
       L.marker([l.lat, l.lng], { icon: L.divIcon({ className: '', html: html, iconSize: null }), zIndexOffset: used ? 1000 : 0, interactive: false }).addTo(mapLayer);
     });
@@ -468,7 +440,7 @@
   }
 
   function stopHTML(st, i) {
-    var p = st.p, c = COLORS[p.stage], name = stageName(p.stage);
+    var p = st.p, c = stageColor(p.stage), name = stageName(p.stage);
     var pct = function (m) { return Math.max(0, Math.min(100, (m - p.s) / st.length * 100)); };
     var catchTxt, cls;
     if (st.watched <= 0) { cls = 'none'; catchTxt = T('it_miss_all'); }

@@ -15,10 +15,18 @@
   --fil-cyan: #46c3ec;     /* 2026 site map streets */
   --lft-orange: var(--fil-orange);
 
-  /* page tokens used throughout the existing pages */
+  /* page tokens used throughout the pages */
   --blue: var(--fil-blue);
   --purple: var(--fil-purple);
   --orange: var(--fil-orange);
+  --ink: #1c1b22;          /* text */
+  --muted: #6b6878;        /* secondary text */
+  --bg: #f6f5f9;           /* page background */
+  --card: #ffffff;
+  --line: #e4e2ea;         /* borders */
+  --danger: #d93a3a;
+  --warn: #b86200;
+  --ok: #2e8f55;
 
   --font-headline: "Futura PT", "Futura", "Jost", "Century Gothic", system-ui, sans-serif;  /* use bold italic */
   --font-body: "Futura PT", "Futura", "Jost", "Century Gothic", system-ui, sans-serif;      /* use medium */
@@ -26,7 +34,11 @@
   --font-script: "Thirsty Script", "Yellowtail", cursive;
 }
 
-body { font-family: var(--font-body); }
+/* ---------- base ---------- */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: var(--font-body); background: var(--bg); color: var(--ink); }
+button, select { font: inherit; color: inherit; }
 
 /* ---------- brand bar: logo + page links ---------- */
 .brand-bar {

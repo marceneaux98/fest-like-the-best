@@ -5,26 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lineup · Fest like the Best</title>
 <style>
-  :root {
-    --blue: #0093d0;
-    --purple: #4f3693;
-    --orange: #f58220;
-    --ink: #1c1b22;
-    --muted: #6b6878;
-    --bg: #f6f5f9;
-    --card: #ffffff;
-    --line: #e4e2ea;
-    --danger: #d93a3a;
-    --hour: 96px;            /* grid height of one hour */
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; }
-  body {
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-    background: var(--bg); color: var(--ink);
-    min-height: 100vh;
-  }
-  button { font: inherit; color: inherit; }
+  /* Colours, fonts and base styles come from brand.css */
+  :root { --hour: 96px; }            /* grid height of one hour */
+  body { min-height: 100vh; }
 
   /* ---------- header ---------- */
   header {
@@ -237,15 +220,7 @@
 <meta name="i18n-title" content="lu_doc_title">
 </head>
 <body>
-<div class="brand-bar">
-  <a class="brand-logo" href="lineup.html"><img src="assets/logo.png" alt="Festival International de Louisiane, presented by LFT Fiber"></a>
-  <span class="brand-tag">Fest like the Best</span>
-  <nav class="brand-nav" aria-label="Pages">
-    <a href="lineup.html" aria-current="page" data-i18n="nav_lineup">Lineup</a>
-    <a href="itinerary.html" data-i18n="nav_myday">My day</a>
-    <a href="planner.html" data-i18n="nav_map">Stage map</a>
-  </nav>
-</div>
+<div class="brand-bar" data-page="lineup"></div>
 <header>
   <div class="title-row">
     <h1><span data-i18n="lu_title">Lineup 2026</span> <small data-i18n="lu_sub">Pick the sets you want to see</small></h1>
@@ -304,32 +279,17 @@
 <script src="i18n.js"></script>
 <script src="routes.js"></script>
 <script src="schedule.js"></script>
+<script src="common.js"></script>
 <script>
 (function () {
-  var S = window.SCHEDULE_DATA, R = window.ROUTE_DATA, T = I18N.t, TN = I18N.tn;
+  var S = window.SCHEDULE_DATA, T = I18N.t, TN = I18N.tn;
+  var esc = FIL.esc, toMin = FIL.toMin, load = FIL.store.get, save = FIL.store.set;
   var view = document.getElementById('view');
-  if (!S) { view.innerHTML = '<div class="empty">schedule.js not found — run: py build_schedule.py</div>'; return; }
+  if (!S) { view.innerHTML = '<div class="empty">schedule.js not found — run: python build_schedule.py</div>'; return; }
 
-  // Stage colours (from the site map). Display order follows locations.json (via routes.js).
-  var STAGES = [
-    { id: 'jeunes',         color: '#6aa832', name: 'Scène des Jeunes' },
-    { id: 'lafayette',      color: '#139a8f', name: 'Lafayette Stage' },
-    { id: 'biergarten',     color: '#c2185b', name: 'Biergarten' },
-    { id: 'faisdodo',       color: '#e8711a', name: 'Fais Do Do' },
-    { id: 'francosphere',   color: '#d6334b', name: 'FrancoSphere' },
-    { id: 'pavillon',       color: '#2e8f55', name: 'Pavillon' },
-    { id: 'internationale', color: '#0083c2', name: 'Internationale' }
-  ];
-  // Names from locations.json (via routes.js) win, so renaming a stage there renames it here too.
-  (R ? R.locations : []).forEach(function (l) { STAGES.forEach(function (s) { if (s.id === l.id) s.name = l.name; }); });
-  if (R) {
-    var order = R.locations.map(function (l) { return l.id; });
-    STAGES.sort(function (a, b) {
-      var ia = order.indexOf(a.id), ib = order.indexOf(b.id);
-      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
-    });
-  }
-  var stageById = {}; STAGES.forEach(function (s) { stageById[s.id] = s; });
+  // Stages (name, colour, display order) come from locations.json via routes.js.
+  var STAGES = FIL.stages, stageById = FIL.stageById;
+  if (!STAGES.length) { view.innerHTML = '<div class="empty">routes.js not found — run: python build_routes.py</div>'; return; }
 
   var perfs = S.performances;
   var byId = {}; perfs.forEach(function (p) { byId[p.id] = p; p.s = toMin(p.start); p.e = toMin(p.end); });
@@ -338,8 +298,6 @@
   var NOT_ARTISTS = /^(Dance to Festival Playlist|Opening Ceremonies)/i;
 
   // ---------- state (remembered in this browser) ----------
-  function load(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
-  function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   var picks = new Set(load('fil-picks', []).filter(function (id) { return byId[id]; }));
   var state = {
     day: load('fil-day', S.days[0].date),
@@ -350,7 +308,6 @@
   if (!S.days.some(function (d) { return d.date === state.day; })) state.day = S.days[0].date;
 
   // ---------- helpers ----------
-  function toMin(t) { var a = t.split(':'); return +a[0] * 60 + +a[1]; }
   function fmt(m) { return I18N.time(m, true); }
   function fmtRange(p) {
     var a = fmt(p.s), b = fmt(p.e);
@@ -358,7 +315,6 @@
     if (I18N.lang === 'en' && (p.s < 720) === (p.e < 720)) a = a.replace(/\s?(AM|PM)$/, '');
     return a + '–' + b;
   }
-  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function when(q) { return I18N.weekdayShort(q.date) + ' ' + fmt(q.s) + ' · ' + stageById[q.stage].name; }
   function matches(p) {
     if (state.only && !picks.has(p.id)) return false;

@@ -1,6 +1,6 @@
 """Convert the festival schedule spreadsheet into schedule.js for lineup.html.
 
-Usage:  py build_schedule.py [path\\to\\schedule.xlsx]
+Usage:  python build_schedule.py [path\\to\\schedule.xlsx]        (python3 on Mac/Linux)
 Default input is assets\\schedule.xlsx. Uses only the Python standard library.
 
 The sheet is expected to have blocks of rows with these headers:

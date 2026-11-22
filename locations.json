@@ -1,5 +1,5 @@
 {
-  "_note": "Edit names/coordinates here, then run: py build_routes.py",
+  "_note": "Edit names/colours/coordinates here, then run: python build_routes.py",
   "crowd_factor_default": 1.3,
   "merch_booths": [
     { "id": "merch-pavillon",  "name": "Merch booth · Pavillon",   "at": "pavillon" },
@@ -7,14 +7,14 @@
     { "id": "merch-faisdodo",  "name": "Merch booth · Fais Do Do", "at": "faisdodo" }
   ],
   "_merch_note": "Each booth uses its stage's pin for walking routes ('at'). Shop time default is set in itinerary.html settings.",
-  "_order_note": "The order of this list is the stage order shown everywhere (lineup columns, legends, dropdowns, tables).",
+  "_order_note": "The order of this list is the stage order shown everywhere (lineup columns, legends, dropdowns, tables). 'color' is the stage colour used on the lineup grid, the plan and the map pins (taken from the printed site map).",
   "locations": [
-    { "id": "internationale", "name": "Internationale",  "lat": 30.225523,  "lng": -92.016788 },
-    { "id": "faisdodo",       "name": "Fais Do Do",      "lat": 30.222427,  "lng": -92.018832 },
-    { "id": "lafayette",      "name": "Lafayette Stage", "lat": 30.224638,  "lng": -92.020794 },
-    { "id": "biergarten",     "name": "Biergarten",      "lat": 30.2255631, "lng": -92.0189397 },
-    { "id": "francosphere",   "name": "FrancoSphere",    "lat": 30.223562,  "lng": -92.018800 },
-    { "id": "pavillon",       "name": "Pavillon",        "lat": 30.224573,  "lng": -92.017523 },
-    { "id": "jeunes",         "name": "Scène des Jeunes", "lat": 30.223567, "lng": -92.021992, "_note": "APPROXIMATE - estimated from the site map; replace with a real pin" }
+    { "id": "internationale", "name": "Internationale",  "color": "#0083c2", "lat": 30.225523,  "lng": -92.016788 },
+    { "id": "faisdodo",       "name": "Fais Do Do",      "color": "#e8711a", "lat": 30.222427,  "lng": -92.018832 },
+    { "id": "lafayette",      "name": "Lafayette Stage", "color": "#139a8f", "lat": 30.224638,  "lng": -92.020794 },
+    { "id": "biergarten",     "name": "Biergarten",      "color": "#c2185b", "lat": 30.2255631, "lng": -92.0189397 },
+    { "id": "francosphere",   "name": "FrancoSphere",    "color": "#d6334b", "lat": 30.223562,  "lng": -92.018800 },
+    { "id": "pavillon",       "name": "Pavillon",        "color": "#2e8f55", "lat": 30.224573,  "lng": -92.017523 },
+    { "id": "jeunes",         "name": "Scène des Jeunes", "color": "#6aa832", "lat": 30.223567, "lng": -92.021992, "_note": "APPROXIMATE - estimated from the site map; replace with a real pin" }
   ]
 }

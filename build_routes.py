@@ -1,6 +1,6 @@
 """Fetch walking routes between every pair of locations and save them to routes.js.
 
-Usage:  py build_routes.py
+Usage:  python build_routes.py        (python3 on Mac/Linux)
 Reads locations.json, calls the free OpenStreetMap walking router (no key needed),
 and writes routes.js, which planner.html loads.
 """

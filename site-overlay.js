@@ -14,7 +14,7 @@
   var EN = {
     overlay_note: 'The illustrated map is approximate and not to scale.',
     overlay_loading: 'Loading site map…',
-    overlay_server: 'The overlay needs the local server: run py serve.py',
+    overlay_server: 'The overlay needs the local server: run python serve.py',
     overlay_fail: 'Could not load the site map: {err}',
     overlay_unavailable: 'Overlay unavailable.'
   };
