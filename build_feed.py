@@ -83,11 +83,16 @@ class Monday:
         ids = [str(i) for i in ids]
         for i in range(0, len(ids), 100):
             chunk = ids[i:i + 100]
+            # items(ids:) silently returns only 25 unless limit is raised to match the chunk.
             data = self.query("""
-              query($ids:[ID!], $cols:[String!]) { items(ids:$ids) { id name
+              query($ids:[ID!], $cols:[String!]) { items(ids:$ids, limit: 100) { id name
                 column_values(ids:$cols) { id type text ... on LinkValue { url } ... on LongTextValue { text } } } }""",
                               {"ids": chunk, "cols": column_ids})
             out.extend(data["items"])
+        missing = set(ids) - {it["id"] for it in out}
+        if missing:
+            print("  WARNING: %d linked artist(s) could not be read (not on the artist board, or no access): %s"
+                  % (len(missing), ", ".join(sorted(missing)[:5]) + (" …" if len(missing) > 5 else "")))
         return out
 
 
