@@ -43,6 +43,18 @@ The schedule's source of truth is the **Programming Schedule** board in Monday.c
 | Colours, fonts, logo bar | `brand.css` | — |
 | Interface wording / translations | `i18n.js` (one dictionary per language; missing keys fall back to English) | — |
 
+## Checks
+
+Every push to `main` and every pull request runs three automatic checks on GitHub (nothing to install; they run on GitHub's computers). See them at **GitHub → Actions → "Checks"**: green tick = all good, red cross = open the run, and the **Summary** page says what failed in plain words. Dependabot also opens a pull request about once a week when one of the GitHub Actions the workflows use has a newer version; the checks run on that pull request too, so it is safe to merge when green.
+
+| Check | What it does | If it fails |
+|---|---|---|
+| **Static checks** | Makes sure every Python script still compiles, that `data/schedule.json`, `data/artists.json`, `locations.json` and `feed.config.json` are valid JSON, that every set in the schedule is on a known stage with an end time after its start, that every piece of translatable text in the pages has an English entry in `i18n.js`, and that the 2027 edition is still embargoed. | The Summary lists each problem with the file and key or set involved. Usually a typo in a data file or a translation key. Run `python tools/check_static.py` locally to see the same report. |
+| **Smoke test** | Opens the site in a real browser (Playwright + Chromium), picks two Thursday sets on different stages, opens *My day* and confirms the plan shows both stops and a "Leave …" time, with no JavaScript errors. Runs once at desktop size and once at phone size. | Something in the pick → plan flow is broken for patrons. The run's *playwright-report* artifact (bottom of the run page) has a screenshot and a step-by-step trace of where it stopped. |
+| **Lighthouse (mobile)** | Google's page-quality audit on `lineup.html` and `itinerary.html` as a phone would load them. The Summary shows four scores out of 100: performance, accessibility, best practices and PWA (how close the site is to an installable app). | Only **accessibility below 90** fails the check; the other three are shown for information. The *lighthouse-reports* artifact holds the full HTML reports, each with the list of things to fix. |
+
+The test code lives in `tests/` (Playwright needs Node, but only on GitHub; the app itself still has no build step) and `tools/`. The Monday sync workflow is separate and still runs only when someone presses *Run workflow*.
+
 ## Files
 
 - `i18n.js`: all interface text in four languages, plus date/time formatting and the language menu
@@ -55,6 +67,7 @@ The schedule's source of truth is the **Programming Schedule** board in Monday.c
 - `build_schedule.py`, `build_routes.py`: spreadsheet fallback and walking-route builder (standard library only, no installs)
 - `assets/`: logo (PDF + PNG), swirl icon, site map PDF, schedule spreadsheet
 - `tools/pdfview.html`: helper for viewing a PDF page in the browser
+- `tools/check_static.py`, `tools/lighthouse_summary.py`, `tests/`: the automatic checks (see *Checks* above); `.github/workflows/checks.yml` runs them, `.github/dependabot.yml` keeps the Actions versions current
 
 ## Known open items
 
