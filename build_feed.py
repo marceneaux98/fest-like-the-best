@@ -155,7 +155,7 @@ def build(cfg, edition_key, token):
         perfs.append({
             "id": "%s-%s-%s" % (date, stage, start.replace(":", "")),
             "act": act, "origin": "", "stage": stage, "date": date, "start": start, "end": end,
-            "note": (c[sc["sponsor"]].get("display_value") or "").strip(),
+            "note": (c[sc["sponsor"]].get("display_value") or "").strip().lstrip("-–— ").strip(),
             "artists": [str(x) for x in links],
             "_label": label,
         })
