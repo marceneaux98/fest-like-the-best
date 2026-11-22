@@ -9,10 +9,11 @@
 <canvas id="c"></canvas>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
-// Usage: tools/pdfview.html?page=1&scale=1.5
+// Usage: tools/pdfview.html?page=1&scale=1.5&file=sitemap-vector.pdf   (file = a PDF in assets/)
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 var q = new URLSearchParams(location.search);
-pdfjsLib.getDocument('../assets/sitemap.pdf').promise.then(function (pdf) {
+var file = (q.get('file') || 'sitemap.pdf').replace(/[^\w.-]/g, '');
+pdfjsLib.getDocument('../assets/' + file).promise.then(function (pdf) {
   window.PDF_PAGES = pdf.numPages;
   return pdf.getPage(parseInt(q.get('page') || '1', 10));
 }).then(function (page) {
