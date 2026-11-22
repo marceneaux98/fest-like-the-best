@@ -1,0 +1,20 @@
+{
+  "_about": "Lighthouse CI settings used by .github/workflows/checks.yml. Mobile emulation is Lighthouse's default (no preset), matching how most patrons use the planner. tools/lighthouse_summary.py turns the reports in outputDir into the job summary and applies the accessibility threshold.",
+  "ci": {
+    "collect": {
+      "url": [
+        "http://127.0.0.1:8765/lineup.html",
+        "http://127.0.0.1:8765/itinerary.html"
+      ],
+      "numberOfRuns": 1,
+      "settings": {
+        "onlyCategories": ["performance", "accessibility", "best-practices", "pwa"]
+      }
+    },
+    "upload": {
+      "target": "filesystem",
+      "outputDir": "../lighthouse-reports",
+      "reportFilenamePattern": "%%PATHNAME%%.report.%%EXTENSION%%"
+    }
+  }
+}
