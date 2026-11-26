@@ -1,8 +1,10 @@
-# Pulls the schedule from Monday.com and publishes data/schedule.json + data/artists.json.
+# Pulls the schedule from Monday.com and publishes data/schedule.json + data/artists.json, plus one
+# web-sized photo per artist in assets/artists/.
 #
 # This never runs on its own. Someone presses "Run workflow" on GitHub (Actions tab), picks the
-# edition, and ticks the confirmation. build_feed.py then applies its own gate: an edition whose
-# public_from date in feed.config.json is unset or in the future cannot be published.
+# edition, and ticks the confirmation. An edition whose public_from date in feed.config.json is unset
+# or in the future is refused before anything is read from Monday (and build_feed.py checks again),
+# so neither the schedule nor the photos of an unannounced lineup can be committed.
 #
 # Needs the repository secret MONDAY_TOKEN (set with: gh secret set MONDAY_TOKEN).
 name: Sync schedule from Monday
@@ -26,6 +28,8 @@ permissions:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    env:
+      EDITION: ${{ inputs.edition }}
     steps:
       - name: Stop unless confirmed
         if: ${{ !inputs.confirm }}
@@ -35,19 +39,38 @@ jobs:
 
       - uses: actions/checkout@v7
 
+      - name: Stop unless this edition may be public
+        run: |
+          python3 - <<'EOF'
+          import datetime, json, os, sys
+          ed = os.environ["EDITION"]
+          pf = json.load(open("feed.config.json"))["editions"].get(ed, {}).get("public_from")
+          if not pf or pf > datetime.date.today().isoformat():
+              print("Edition %s is not public yet (public_from: %s). Nothing was read from Monday or changed." % (ed, pf))
+              sys.exit(1)
+          print("Edition %s is public since %s." % (ed, pf))
+          EOF
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install Pillow (resizes the artist photos)
+        run: python -m pip install --disable-pip-version-check pillow
+
       - name: Build the feed from Monday
         env:
           MONDAY_TOKEN: ${{ secrets.MONDAY_TOKEN }}
-        run: python3 build_feed.py --edition "${{ inputs.edition }}" --publish
+        run: python build_feed.py --edition "$EDITION" --publish
 
       - name: Commit and publish if anything changed
         run: |
           git config user.name "schedule-sync[bot]"
           git config user.email "schedule-sync@users.noreply.github.com"
-          git add data/schedule.json data/artists.json
+          git add data/schedule.json data/artists.json assets/artists
           if git diff --cached --quiet; then
             echo "No changes: the public schedule already matches Monday."
           else
-            git commit -m "Schedule sync (${{ inputs.edition }}) from Monday"
+            git commit -m "Schedule sync ($EDITION) from Monday"
             git push
           fi

@@ -77,20 +77,32 @@
   .hourline.half { border-top-style: dashed; }
 
   .set {
-    position: absolute; left: 4px; right: 4px; border-radius: 8px; padding: 6px 8px 6px 10px; cursor: pointer;
+    position: absolute; left: 4px; right: 4px; border-radius: 8px;
     background: color-mix(in srgb, var(--stage) 12%, #fff); border: 1px solid color-mix(in srgb, var(--stage) 35%, #fff);
-    border-left: 4px solid var(--stage); overflow: hidden; text-align: left; display: flex; flex-direction: column; gap: 2px;
+    border-left: 4px solid var(--stage); overflow: hidden;
     transition: box-shadow .12s, transform .12s;
   }
+  /* The whole block adds/removes the set; the "i" in its corner opens the artist sheet (artist.js) */
+  .set-hit {
+    display: flex; flex-direction: column; gap: 2px; width: 100%; height: 100%; padding: 6px 8px 6px 10px;
+    border: none; background: none; color: inherit; text-align: left; cursor: pointer;
+  }
   .set:hover { box-shadow: 0 3px 10px rgba(0,0,0,.12); z-index: 2; }
-  .set:focus-visible { outline: 3px solid var(--orange); outline-offset: 1px; }
+  .set:has(.set-hit:focus-visible) { outline: 3px solid var(--orange); outline-offset: 1px; }
+  .set-hit:focus-visible { outline: none; }
+  .set .info-btn { position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; color: color-mix(in srgb, var(--stage) 72%, #000); }
+  .set .info-btn svg { width: 17px; height: 17px; }
+  .set.picked .info-btn { background: rgba(255,255,255,.22); color: #fff; }
+  .set.picked .info-btn:hover { background: rgba(255,255,255,.38); }
+  .set.short .info-btn { top: 0; right: 1px; width: 20px; height: 20px; }
+  .set.short .info-btn svg { width: 15px; height: 15px; }
+  /* keep the first line of the name clear of the "i" */
+  .set .act::before { content: ""; float: right; width: 22px; height: 1em; }
+  .set .tk { font-weight: 800; }
   .set .act { font-weight: 700; font-size: .82rem; line-height: 1.15; }
   .set .meta { font-size: .72rem; color: var(--muted); }
   .set.picked { background: var(--stage); border-color: var(--stage); color: #fff; }
   .set.picked .meta { color: rgba(255,255,255,.88); }
-  .set.picked::after {
-    content: "✓"; position: absolute; top: 5px; right: 7px; font-weight: 800; font-size: .85rem;
-  }
   .set.conflict { box-shadow: 0 0 0 2px var(--danger); }
   .set.dim { opacity: .28; }
   .set.short .meta { display: none; }
@@ -100,11 +112,21 @@
   .slot h3 { margin: 0 0 8px; font-size: .8rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
   .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
   .card {
+    position: relative;
+    background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--stage); border-radius: 10px;
+  }
+  .card-hit {
     display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; text-align: left; cursor: pointer;
-    background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--stage); border-radius: 10px; padding: 10px 12px;
+    width: 100%; height: 100%; padding: 10px 46px 10px 12px; border: none; background: none; color: inherit; border-radius: inherit;
   }
   .card:hover { border-color: color-mix(in srgb, var(--stage) 50%, var(--line)); border-left-color: var(--stage); }
-  .card:focus-visible { outline: 3px solid var(--orange); outline-offset: 1px; }
+  .card:has(.card-hit:focus-visible) { outline: 3px solid var(--orange); outline-offset: 1px; }
+  .card-hit:focus-visible { outline: none; }
+  .card .info-btn {
+    position: absolute; top: 6px; right: 6px; width: 34px; height: 34px;
+    background: color-mix(in srgb, var(--stage) 10%, #fff); color: color-mix(in srgb, var(--stage) 72%, #000);
+  }
+  .card .info-btn:hover { background: color-mix(in srgb, var(--stage) 20%, #fff); }
   .tick {
     width: 22px; height: 22px; border-radius: 6px; border: 2px solid color-mix(in srgb, var(--stage) 60%, #fff);
     display: grid; place-items: center; font-weight: 800; font-size: .8rem; color: #fff; margin-top: 1px;
@@ -285,6 +307,7 @@
 <script src="i18n.js"></script>
 <script src="routes.js"></script>
 <script src="common.js"></script>
+<script src="artist.js"></script>
 <script>
 FIL.ready(function () {
   var S = window.SCHEDULE_DATA, T = I18N.t, TN = I18N.tn;
@@ -314,12 +337,8 @@ FIL.ready(function () {
 
   // ---------- helpers ----------
   function fmt(m) { return I18N.time(m, true); }
-  function fmtRange(p) {
-    var a = fmt(p.s), b = fmt(p.e);
-    // English: "4–5:15 PM" instead of "4 PM–5:15 PM" when both are AM or both PM
-    if (I18N.lang === 'en' && (p.s < 720) === (p.e < 720)) a = a.replace(/\s?(AM|PM)$/, '');
-    return a + '–' + b;
-  }
+  // English: "4–5:15 PM" instead of "4 PM–5:15 PM" when both are AM or both PM (see common.js)
+  function fmtRange(p) { return FIL.timeRange(p.s, p.e); }
   function when(q) { return I18N.weekdayShort(q.date) + ' ' + fmt(q.s) + ' · ' + stageById[q.stage].name; }
   function matches(p) {
     if (state.only && !picks.has(p.id)) return false;
@@ -346,6 +365,9 @@ FIL.ready(function () {
   }
 
   function commit() { save('fil-picks', Array.from(picks)); render(); }
+  // "About this artist" sheet (artist.js): its add/remove button goes through toggle(), so it asks
+  // "switch / keep both" like a tap on the grid does.
+  FIL.artist.setup({ perfs: perfs, isPicked: function (id) { return picks.has(id); }, toggle: toggle });
   function toggle(id) {
     if (picks.has(id)) { picks.delete(id); commit(); return; }
     var p = byId[id], twins = pickedTwins(p);
@@ -426,10 +448,11 @@ FIL.ready(function () {
               return (picks.has(q.id) ? '✓ ' : '') + I18N.weekdayShort(q.date) + ' ' + fmt(q.s);
             }).join(' · ') })) + '</span>'
           : '';
-        h += '<button type="button" class="' + cls + '" data-id="' + p.id + '" style="--stage:' + s.color + ';top:' + (top + 1) + 'px;height:' + ht + 'px"' +
-          ' aria-pressed="' + on + '" title="' + esc(tip) + '">' +
-          '<span class="act">' + esc(p.act) + '</span><span class="meta">' + esc(fmtRange(p)) + (p.origin ? ' · ' + esc(p.origin) : '') + '</span>' +
-          alsoLine + '</button>';
+        h += '<div class="' + cls + '" style="--stage:' + s.color + ';top:' + (top + 1) + 'px;height:' + ht + 'px">' +
+          '<button type="button" class="set-hit" data-id="' + p.id + '" aria-pressed="' + on + '" title="' + esc(tip) + '">' +
+          '<span class="act">' + (on ? '<span class="tk" aria-hidden="true">✓ </span>' : '') + esc(p.act) + '</span>' +
+          '<span class="meta">' + esc(fmtRange(p)) + (p.origin ? ' · ' + esc(p.origin) : '') + '</span>' +
+          alsoLine + '</button>' + FIL.artist.button(p) + '</div>';
       });
       h += '</div>';
     });
@@ -452,14 +475,15 @@ FIL.ready(function () {
         var s = stageById[p.stage], on = picks.has(p.id), c = conflictsOf(p);
         var twins = on ? [] : pickedTwins(p);
         var also = otherShows(p).filter(function (q) { return twins.indexOf(q) < 0; });
-        return '<button type="button" class="card' + (on ? ' picked' : '') + (twins.length ? ' twin' : '') + '" data-id="' + p.id + '" style="--stage:' + s.color + '" aria-pressed="' + on + '">' +
+        return '<div class="card' + (on ? ' picked' : '') + (twins.length ? ' twin' : '') + '" style="--stage:' + s.color + '">' +
+          '<button type="button" class="card-hit" data-id="' + p.id + '" aria-pressed="' + on + '">' +
           '<span class="tick">' + (on ? '✓' : '') + '</span><span>' +
           '<div class="act">' + esc(p.act) + '</div>' +
           '<div class="meta">' + esc(s.name) + ' · ' + esc(fmtRange(p)) + (p.origin ? ' · ' + esc(p.origin) : '') + '</div>' +
           (twins.length ? '<div class="twin-tag">✓ ' + esc(T('dup_badge', { when: twins.map(when).join('; ') })) + '</div>' : '') +
           (c.length ? '<div class="warn">' + esc(T('lu_overlaps', { acts: c.map(function (q) { return q.act; }).join(', ') })) + '</div>' : '') +
           (also.length ? '<div class="also">' + esc(T('lu_also', { list: also.map(when).join('; ') })) + '</div>' : '') +
-          '</span></button>';
+          '</span></button>' + FIL.artist.button(p) + '</div>';
       }).join('') + '</div></div>';
     }).join('');
   }
@@ -520,6 +544,7 @@ FIL.ready(function () {
       }
     }
     lastKey = key;
+    FIL.artist.refresh();
   }
 
   // ---------- events ----------

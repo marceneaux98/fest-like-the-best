@@ -59,6 +59,15 @@
     color: #fff; font-weight: 800; font-size: .8rem; display: grid; place-items: center; border: 3px solid var(--bg);
   }
   .stop .act { font-weight: 800; font-size: 1.05rem; margin-top: 2px; }
+  /* The act name opens the "About this artist" sheet (artist.js) */
+  .act-link {
+    display: inline; padding: 0; border: none; background: none; color: inherit; font: inherit; letter-spacing: inherit;
+    text-align: left; cursor: pointer; text-decoration: underline; text-decoration-style: dotted;
+    text-decoration-thickness: 2px; text-underline-offset: 4px; text-decoration-color: color-mix(in srgb, var(--stage) 55%, transparent);
+  }
+  .act-link:hover { color: var(--purple); text-decoration-style: solid; }
+  .act-link:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; border-radius: 4px; }
+  .act-link svg { width: 17px; height: 17px; margin-left: 5px; vertical-align: -2px; color: var(--purple); }
   .stop .where { font-size: .85rem; color: var(--muted); }
   .bar { position: relative; height: 8px; background: #eeecf3; border-radius: 4px; margin: 10px 0 6px; overflow: hidden; }
   .bar i { position: absolute; top: 0; bottom: 0; background: var(--stage); border-radius: 4px; }
@@ -198,6 +207,7 @@
 <script src="overlay.js"></script>
 <script src="site-overlay.js"></script>
 <script src="common.js"></script>
+<script src="artist.js"></script>
 <script>
 FIL.ready(function () {
   var S = window.SCHEDULE_DATA, R = window.ROUTE_DATA, T = I18N.t, TN = I18N.tn;
@@ -233,7 +243,8 @@ FIL.ready(function () {
   var showMerchOptions = false;
   var BAG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 8h13l-1 12.5h-11z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg>';
 
-  var daysWithPicks = S.days.filter(function (d) { return perfs.some(function (p) { return p.date === d.date && picks.has(p.id); }); });
+  function pickedDays() { return S.days.filter(function (d) { return perfs.some(function (p) { return p.date === d.date && picks.has(p.id); }); }); }
+  var daysWithPicks = pickedDays();
   var q = new URLSearchParams(location.search).get('day');
   var day = (daysWithPicks.some(function (d) { return d.date === q; }) && q) ||
             (daysWithPicks[0] && daysWithPicks[0].date) || null;
@@ -422,6 +433,13 @@ FIL.ready(function () {
     }).join('');
   }
 
+  // Act name: a button that opens the artist sheet (plain text for named events without an artist)
+  function actHTML(p) {
+    if (!FIL.artist.has(p)) return esc(p.act);
+    return '<button type="button" class="act-link" data-info="' + esc(p.id) + '" aria-haspopup="dialog" title="' +
+      esc(T('art_about', { act: p.act })) + '">' + esc(p.act) + FIL.artist.icon + '</button>';
+  }
+
   function stopHTML(st, i) {
     var p = st.p, c = stageColor(p.stage), name = stageName(p.stage);
     var pct = function (m) { return Math.max(0, Math.min(100, (m - p.s) / st.length * 100)); };
@@ -440,7 +458,7 @@ FIL.ready(function () {
       : '';
     return '<div class="stop" style="--stage:' + c + '"><span class="num">' + (i + 1) + '</span>' +
       '<div class="when"><span>' + esc(fmt(p.s)) + ' – ' + esc(fmt(p.e)) + '</span><span>' + esc(p.origin || '') + '</span></div>' +
-      '<div class="act">' + esc(p.act) + '</div><div class="where">' + esc(name) + '</div>' +
+      '<div class="act">' + actHTML(p) + '</div><div class="where">' + esc(name) + '</div>' +
       '<div class="bar"><i style="left:' + pct(st.watchFrom) + '%;width:' + Math.max(0, pct(st.watchTo) - pct(st.watchFrom)) + '%"></i></div>' +
       '<div class="catch ' + cls + '">' + esc(catchTxt) + '</div>' + arrive + '</div>';
   }
@@ -576,6 +594,25 @@ FIL.ready(function () {
     if (showMerchOptions) h += '<div class="mopts">' + opts.map(function (o) { return optHTML(o, choice); }).join('') + '</div>';
     return h + '</div>';
   }
+
+  // "About this artist" sheet (artist.js): its button adds or removes the show from the plan.
+  // Removing the last show of the day moves to another day with picks (or the empty state).
+  FIL.artist.setup({
+    perfs: perfs,
+    isPicked: function (id) { return picks.has(id); },
+    toggle: function (id) {
+      if (picks.has(id)) picks.delete(id); else picks.add(id);
+      saveJSON('fil-picks', Array.from(picks));
+      daysWithPicks = pickedDays();
+      var home = byId[id].date;
+      if (!daysWithPicks.some(function (d) { return d.date === day; })) {
+        day = daysWithPicks.some(function (d) { return d.date === home; }) ? home : (daysWithPicks[0] && daysWithPicks[0].date) || null;
+        if (day) history.replaceState(null, '', '?day=' + day);
+      }
+      render();
+      FIL.artist.refresh();
+    }
+  });
 
   // ---------- events ----------
   document.getElementById('days').addEventListener('click', function (e) {

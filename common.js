@@ -15,6 +15,7 @@
 //                                 window.SCHEDULE_DATA and, on map pages, the traced map routes into
 //                                 window.POSTER_ROUTES, then calls fn(). Pages wrap their code in this.
 //   FIL.stamp(iso)                "Nov 16, 7:37 PM" in the current language, for "schedule updated" lines
+//   FIL.timeRange(s, e)           "4–5:15 PM" from minutes since midnight (English drops the first AM/PM when both match)
 //
 // The brand bar (logo, product name, page links) is built here from a placeholder:
 //   <div class="brand-bar" data-page="lineup"></div>
@@ -99,6 +100,12 @@
     return stampFmt.format(new Date(iso));
   }
 
+  function timeRange(s, e) {
+    var a = I18N.time(s, true), b = I18N.time(e, true);
+    if (I18N.lang === 'en' && (s < 720) === (e < 720)) a = a.replace(/\s?(AM|PM)$/, '');
+    return a + '–' + b;
+  }
+
   window.FIL = { esc: esc, toMin: toMin, store: store, stages: stages, stageById: stageById, stageColor: stageColor,
-                 ready: ready, stamp: stamp };
+                 ready: ready, stamp: stamp, timeRange: timeRange };
 })();

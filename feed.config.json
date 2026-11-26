@@ -36,7 +36,17 @@
     "website": "link2",
     "facebook": "link0",
     "instagram": "link1",
-    "video": "link4"
+    "video": "link4",
+    "photo_preferred": "file",
+    "photo_resized": "files73",
+    "photo_band": "files4"
+  },
+
+  "photos": {
+    "columns": ["photo_preferred", "photo_resized", "photo_band"],
+    "max_side": 800,
+    "max_kb": 150,
+    "_note": "Artist photos: the first image found in these file columns, in this order (Preferred Photo, Re-sized Band Photo, Band Photo), is downloaded, resized to max_side pixels on its long side as a JPEG of at most max_kb, and saved as assets/artists/<artist id>.jpg (preview builds: data/preview/artists/, never committed). Unchanged photos are not downloaded again."
   },
 
   "stage_ids": {
