@@ -18,7 +18,7 @@ An internet connection is needed for the fonts and the Leaflet map library. The 
 
 | Page | What it is |
 |---|---|
-| `lineup.html` | Pick sets (grid or list), search, overlap warnings, "already in your schedule" prompt |
+| `lineup.html` | Pick sets (grid or list), search, overlap warnings, "already in your schedule" prompt; the round "i" on each set opens the artist's photo, bio and links |
 | `itinerary.html` | My day: walking plan, leave-by times, overlap choices, merch suggestion, map, **Share** (the whole plan in a link to email or text; opening one shows that plan and lets the patron use it, add it to their own picks, or go back) |
 | `planner.html` | Stage map: walk time between any two stages, all-pairs table |
 | `phones.html` | All three pages side by side in phone frames, for reviewing the mobile layout |
@@ -32,9 +32,19 @@ The schedule's source of truth is the **Programming Schedule** board in Monday.c
 - **Preview** (safe, stays on your machine): set `MONDAY_TOKEN` in your terminal, run `python build_feed.py --edition 2027`, open `http://localhost:8765/lineup.html?preview=1`. `data/preview/` is git-ignored.
 - **Publish**: on GitHub → Actions → "Sync schedule from Monday" → Run workflow, pick the edition, tick the confirmation. It is refused unless that edition's `public_from` date in `feed.config.json` is set and in the past, so an unannounced lineup cannot reach the public site by accident. Nothing runs on a timer.
 
+### Artist photos, bios and links
+
+Tapping the "i" on a set (Lineup) or an act's name (My day) opens the artist's photo, origin, genre, bio, links and other shows. All of it comes from the **Artist** board in Monday:
+
+1. **Choose the photo**: put it in the **Preferred Photo** column. If that is empty the app uses **Re-sized Band Photo**, then **Band Photo**. Bios come from *Bio (English)*, links from the website / Facebook / Instagram / video columns.
+2. **Publish**: run the "Sync schedule from Monday" workflow as above. It downloads each photo, makes it phone-sized (800 px, under ~150 KB) and saves it in `assets/artists/`; photos that haven't changed in Monday are not downloaded again, and photos removed in Monday are removed from the site.
+
+An artist without a photo or bio still looks fine (a coloured banner with their initials, "Bio coming soon"). The sync lists them as "No photo yet" / "No English bio yet" so you know what to fill in. Previews (`--edition 2027` without publishing) keep their photos in `data/preview/`, never in git.
+
 | To change… | Edit | Then run |
 |---|---|---|
 | The schedule | The Programming Schedule / Artist boards in Monday | the "Sync schedule" workflow (or `python build_feed.py --publish` locally) |
+| An artist's photo, bio or links | The Artist board in Monday (photo: *Preferred Photo* column) | the "Sync schedule" workflow (resizing photos locally needs `python -m pip install pillow`) |
 | Which boards/columns the feed reads, and when an edition may go public | `feed.config.json` | — |
 | The schedule, from a spreadsheet instead (fallback) | Replace `assets/schedule.xlsx` (same columns) | `python build_schedule.py` → writes `data/schedule.json` |
 | Stage pins, names, colours, display order, merch booths | `locations.json` (list order = stage order everywhere) | `python build_routes.py` → fetches walking routes, writes `routes.js` |
@@ -64,10 +74,11 @@ The test code lives in `tests/` (Playwright needs Node, but only on GitHub; the 
 - `tools/poster-routes.html`: traces stage-to-stage routes along the streets drawn on the poster and saves them
 - `build_sitemap.py`, `tools/pdf2svg.html`, `tools/svgview.html`: turn the designer's vector PDF into the layered SVG and check the result
 - `serve.py`: local server that always serves fresh files (no stale cache after a rebuild)
-- `build_feed.py` + `feed.config.json`: the Monday.com feed (allowlisted columns, validation, publish gate); `.github/workflows/sync-schedule.yml` runs it on demand
+- `build_feed.py` + `feed.config.json`: the Monday.com feed (allowlisted columns, validation, publish gate, artist photos); `.github/workflows/sync-schedule.yml` runs it on demand
+- `artist.js`: the "About this artist" sheet shared by Lineup and My day (its styles are at the end of `brand.css`)
 - `data/`: the published `schedule.json` and `artists.json`; `data/preview/` holds local previews and is never committed
 - `build_schedule.py`, `build_routes.py`: spreadsheet fallback and walking-route builder (standard library only, no installs)
-- `assets/`: logo (PDF + PNG), swirl icon, site map PDF, schedule spreadsheet
+- `assets/`: logo (PDF + PNG), swirl icon, site map PDF, schedule spreadsheet; `assets/artists/` holds the artist photos the sync writes (`sources.json` = which Monday file each came from)
 - `tools/pdfview.html`: helper for viewing a PDF page in the browser
 - `tools/check_static.py`, `tools/lighthouse_summary.py`, `tests/`: the automatic checks (see *Checks* above); `.github/workflows/checks.yml` runs them, `.github/dependabot.yml` keeps the Actions versions current
 
