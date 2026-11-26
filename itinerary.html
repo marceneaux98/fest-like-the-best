@@ -106,12 +106,12 @@
   .empty a { color: var(--purple); font-weight: 600; }
 
   #map { height: 100%; width: 100%; }
+  /* Stop numbers on the map. The poster already names every stage, so the badge carries only the number(s). */
   .pin {
-    color: #fff; border: 2px solid #fff; border-radius: 999px; padding: 3px 9px; font: 700 12px system-ui, sans-serif;
-    white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.3); transform: translate(-50%, -50%); display: inline-block;
+    color: #fff; border: 2px solid #fff; border-radius: 999px; min-width: 24px; height: 24px; box-sizing: border-box; padding: 0 6px;
+    font: 800 12px/20px system-ui, sans-serif; text-align: center; white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(0,0,0,.35); transform: translate(-50%, -50%); display: inline-block;
   }
-  .pin.idle { background: #8d88a0; font-weight: 600; opacity: .85; }
-  .pin b { background: rgba(255,255,255,.25); border-radius: 999px; padding: 0 5px; margin-right: 5px; }
   .leaflet-div-icon { background: none; border: none; }
 
   /* ---------- merch ---------- */
@@ -506,14 +506,13 @@ FIL.ready(function () {
     [plan.pre, plan.post].forEach(function (m) {
       if (m && m.path.length) sm.draw(m.shape, mapLayer, { color: LINE_HI, weight: 4, opacity: .9, dash: '6 6', casing: false });
     });
-    // Stage pins: numbered with the stop(s) at that stage; unused stages greyed.
+    // Stages in today's plan get a badge with their stop number(s); the poster's own labels name the stages.
     var nums = {};
     plan.stops.forEach(function (st, i) { (nums[st.p.stage] = nums[st.p.stage] || []).push(i + 1); });
     R.locations.forEach(function (l) {
-      var used = nums[l.id];
-      var html = '<span class="pin' + (used ? '' : ' idle') + '" style="' + (used ? 'background:' + stageColor(l.id) : '') + '">' +
-        (used ? '<b>' + used.join(', ') + '</b>' : '') + esc(l.name) + '</span>';
-      L.marker(sm.pt(l.id), { icon: L.divIcon({ className: '', html: html, iconSize: null }), zIndexOffset: used ? 1000 : 0, interactive: false }).addTo(mapLayer);
+      var used = nums[l.id]; if (!used) return;
+      var html = '<span class="pin" style="background:' + stageColor(l.id) + '" title="' + esc(l.name) + '">' + used.join(', ') + '</span>';
+      L.marker(sm.pt(l.id), { icon: L.divIcon({ className: '', html: html, iconSize: null }), zIndexOffset: 1000, interactive: false }).addTo(mapLayer);
     });
     var all = [];
     plan.legs.forEach(function (leg, i) {
