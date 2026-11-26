@@ -19,7 +19,7 @@ An internet connection is needed for the fonts and the Leaflet map library. The 
 | Page | What it is |
 |---|---|
 | `lineup.html` | Pick sets (grid or list), search, overlap warnings, "already in your schedule" prompt |
-| `itinerary.html` | My day: walking plan, leave-by times, overlap choices, merch suggestion, map |
+| `itinerary.html` | My day: walking plan, leave-by times, overlap choices, merch suggestion, map, **Share** (the whole plan in a link to email or text; opening one shows that plan and lets the patron use it, add it to their own picks, or go back) |
 | `planner.html` | Stage map: walk time between any two stages, all-pairs table |
 | `phones.html` | All three pages side by side in phone frames, for reviewing the mobile layout |
 
@@ -58,7 +58,7 @@ The test code lives in `tests/` (Playwright needs Node, but only on GitHub; the 
 ## Files
 
 - `i18n.js`: all interface text in four languages, plus date/time formatting and the language menu
-- `common.js`: shared helpers (`FIL.*`): HTML escaping, time parsing, saved-state access, the stage list with colours, and the brand bar that every page shows
+- `common.js`: shared helpers (`FIL.*`): HTML escaping, time parsing, saved-state access, the share-link format (`FIL.plan`, kept after the `#` so it never reaches a server), the stage list with colours, and the brand bar that every page shows
 - `brand.css`: brand colours (#1984C7 / #542E91 / #F26631), page colour tokens, fonts, base styles, logo bar, title band. Each page's own `<style>` holds only what is specific to that page.
 - `site-overlay.js` + `overlay.js`: the map, which is the festival poster (`assets/sitemap.svg`) shown upright with pan/zoom, stage pins, routes along its drawn streets (`assets/poster-routes.json`) and layer toggles (streets, areas, icons & vendors, labels, legend, logo)
 - `tools/poster-routes.html`: traces stage-to-stage routes along the streets drawn on the poster and saves them

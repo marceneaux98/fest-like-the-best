@@ -20,7 +20,10 @@
     '.site-map{background:#162061}' +
     '.map-layers{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px}' +
     '.map-layers label{display:inline-flex;align-items:center;gap:5px;font-size:.82rem;color:var(--ink,#1c1b22);cursor:pointer;text-transform:none;letter-spacing:0;margin:0}' +
-    '.map-layers input{accent-color:var(--fil-purple,#542e91);width:15px;height:15px;margin:0}';
+    '.map-layers input{accent-color:var(--fil-purple,#542e91);width:15px;height:15px;margin:0}' +
+    '.shop-pin{display:inline-block;transform:translate(-50%,-50%);background:#f26631;color:#fff;border:2px solid #fff;border-radius:6px;' +
+    'padding:1px 6px;font:700 10px system-ui,sans-serif;letter-spacing:.05em;box-shadow:0 2px 5px rgba(0,0,0,.3);white-space:nowrap}' +
+    '.shop-pin.arts{background:#c2187a}.shop-pin.monde{background:#11867a}.shop-pin.off{opacity:.55}';
   document.head.appendChild(style);
 
   var LAYERS = ['streets', 'zones', 'features', 'labels', 'legend', 'logo'];
@@ -122,7 +125,10 @@
       return solid;
     }
 
-    return { map: map, pt: pt, shape: shape, draw: draw, fitAll: fitAll, bounds: bounds };
+    // Shops (merch booths, Marché des Arts, Marché du Monde) placed in the route editor; null for older files.
+    function shops() { return PR.shops || null; }
+
+    return { map: map, pt: pt, shape: shape, draw: draw, fitAll: fitAll, bounds: bounds, shops: shops };
   }
 
   function join(s1, s2) {
