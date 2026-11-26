@@ -15,6 +15,7 @@
 //                                 window.SCHEDULE_DATA and, on map pages, the traced map routes into
 //                                 window.POSTER_ROUTES, then calls fn(). Pages wrap their code in this.
 //   FIL.stamp(iso)                "Nov 16, 7:37 PM" in the current language, for "schedule updated" lines
+//   FIL.timeRange(s, e)           "4–5:15 PM" from minutes since midnight (English drops the first AM/PM when both match)
 //   FIL.plan.encode(edition, { picks, modes, merch, by }) / FIL.plan.decode(location.hash)
 //                                 a whole plan in a share link (see "share links" below)
 //
@@ -101,6 +102,12 @@
     return stampFmt.format(new Date(iso));
   }
 
+  function timeRange(s, e) {
+    var a = I18N.time(s, true), b = I18N.time(e, true);
+    if (I18N.lang === 'en' && (s < 720) === (e < 720)) a = a.replace(/\s?(AM|PM)$/, '');
+    return a + '–' + b;
+  }
+
   // ---------- share links ----------
   // A patron's whole plan fits in the part of the link after '#', which browsers never send to a
   // server: nothing is stored online, and the link itself is the backup. Example:
@@ -175,5 +182,5 @@
   }
 
   window.FIL = { esc: esc, toMin: toMin, store: store, stages: stages, stageById: stageById, stageColor: stageColor,
-                 ready: ready, stamp: stamp, plan: { encode: encodePlan, decode: decodePlan } };
+                 ready: ready, stamp: stamp, timeRange: timeRange, plan: { encode: encodePlan, decode: decodePlan } };
 })();

@@ -7,7 +7,8 @@ What it checks (each line of output says OK or FAIL):
   1. Every *.py file compiles (catches syntax errors before the sync workflow trips on them).
   2. The data/config files parse as JSON, the schedule is internally consistent (every set has a
      known stage, a date from the days list, and ends after it starts), the 2027 edition stays
-     embargoed (public_from null) and nothing under data/preview/ is committed.
+     embargoed (public_from null) and nothing under data/preview/ is committed. Every artist photo
+     named in data/artists.json exists under assets/artists/, and every artist link is http(s).
   3. Every data-i18n* key used in the pages exists in the English dictionary in i18n.js
      (English is the fallback, so a key missing there shows up to patrons as the raw key).
      Keys that other languages have but English lacks are reported as warnings.
@@ -22,7 +23,8 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 JSON_FILES = ["data/schedule.json", "data/artists.json", "locations.json", "feed.config.json"]
-PAGES = ["lineup.html", "itinerary.html", "planner.html", "print.html", "common.js"]  # common.js injects the brand bar
+PAGES = ["lineup.html", "itinerary.html", "planner.html", "print.html", "common.js", "artist.js"]  # common.js injects the brand bar
+PHOTO_MAX_BYTES = 250 * 1024  # artist photos are resized to ~150 KB by build_feed.py; warn well above that
 EMBARGOED_EDITIONS = ["2027"]  # must keep public_from = null until the lineup is announced
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".lighthouseci"}
 
@@ -114,6 +116,30 @@ def check_json():
                 fail("schedule: ... and %d more" % (len(problems) - 20))
         else:
             ok("schedule: %d sets over %d days, all on known stages with sane times" % (len(perfs), len(days)))
+
+    arts = docs.get("data/artists.json")
+    if isinstance(arts, dict):
+        problems, photos, big = [], 0, []
+        for aid, a in (arts.get("artists") or {}).items():
+            for kind, url in (a.get("links") or {}).items():
+                if not str(url).lower().startswith(("http://", "https://")):
+                    problems.append("%s: %s link is not http(s): %r" % (a.get("name", aid), kind, url))
+            photo = a.get("photo") or ""
+            if not photo:
+                continue
+            photos += 1
+            if not re.match(r"^assets/artists/[A-Za-z0-9_.-]+$", photo):
+                problems.append("%s: photo %r is not in assets/artists/" % (a.get("name", aid), photo))
+            elif not os.path.isfile(os.path.join(ROOT, photo)):
+                problems.append("%s: photo %s is missing (re-run the sync)" % (a.get("name", aid), photo))
+            elif os.path.getsize(os.path.join(ROOT, photo)) > PHOTO_MAX_BYTES:
+                big.append("%s (%d KB)" % (photo, os.path.getsize(os.path.join(ROOT, photo)) // 1024))
+        for msg in problems:
+            fail("artists: " + msg)
+        for msg in big:
+            warn("artists: photo larger than %d KB, slow on phones: %s" % (PHOTO_MAX_BYTES // 1024, msg))
+        if not problems:
+            ok("artists: %d artists, %d photos present in assets/artists/, all links http(s)" % (len(arts.get("artists") or {}), photos))
 
     if isinstance(cfg, dict):
         for ed in EMBARGOED_EDITIONS:

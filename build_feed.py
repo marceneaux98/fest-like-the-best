@@ -4,7 +4,9 @@ Reads the Programming Schedule board and the Artist board (IDs and column allowl
 feed.config.json), validates the rows, and writes:
 
     data/schedule.json   performances by day (what the app loads)
-    data/artists.json    name, origin, genre, bio and links per artist
+    data/artists.json    name, origin, genre, bio, links and photo per artist
+    assets/artists/      one web-sized photo per artist (<artist id>.jpg) + sources.json, which records
+                         the Monday file each photo came from so unchanged photos are not downloaded again
 
 Usage:
     python build_feed.py                      preview build (writes to data/preview/, git-ignored)
@@ -13,14 +15,18 @@ Usage:
     python build_feed.py --edition 2027       pick an edition from feed.config.json (default: default_edition)
 
 Needs the environment variable MONDAY_TOKEN (a Monday.com personal API token). The token is never
-written anywhere. Standard library only, Python 3.8+.
+written anywhere. Standard library only, Python 3.8+. Resizing photos needs Pillow (the GitHub workflow
+installs it); without it a preview keeps the original photos and --publish keeps the photos it already has.
+Preview builds put their photos in data/preview/artists/, which is never committed.
 
 Exit codes: 0 ok, 1 validation errors (nothing written), 2 publish refused (preview written instead).
 """
 import argparse
 import datetime
+import io
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -28,6 +34,7 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 API = "https://api.monday.com/v2"
 API_VERSION = "2025-01"
+USER_AGENT = "fest-like-the-best-feed/1.0"
 
 
 # ---------------------------------------------------------------- Monday API
@@ -41,7 +48,7 @@ class Monday:
             "Authorization": self.token,
             "API-Version": API_VERSION,
             "Content-Type": "application/json",
-            "User-Agent": "fest-like-the-best-feed/1.0",
+            "User-Agent": USER_AGENT,
         })
         try:
             with urllib.request.urlopen(req, timeout=60) as resp:
@@ -86,13 +93,32 @@ class Monday:
             # items(ids:) silently returns only 25 unless limit is raised to match the chunk.
             data = self.query("""
               query($ids:[ID!], $cols:[String!]) { items(ids:$ids, limit: 100) { id name
-                column_values(ids:$cols) { id type text ... on LinkValue { url } ... on LongTextValue { text } } } }""",
+                column_values(ids:$cols) { id type text ... on LinkValue { url } ... on LongTextValue { text }
+                  ... on FileValue { files { ... on FileAssetValue { asset_id name is_image } } } } } }""",
                               {"ids": chunk, "cols": column_ids})
             out.extend(data["items"])
         missing = set(ids) - {it["id"] for it in out}
         if missing:
             print("  WARNING: %d linked artist(s) could not be read (not on the artist board, or no access): %s"
                   % (len(missing), ", ".join(sorted(missing)[:5]) + (" …" if len(missing) > 5 else "")))
+        return out
+
+    def board_columns(self, board_id, column_ids):
+        """Which of these column ids exist on the board (ids only: no item data is read)."""
+        data = self.query("query($b:[ID!], $c:[String!]) { boards(ids:$b) { columns(ids:$c) { id } } }",
+                          {"b": [str(board_id)], "c": column_ids})
+        boards = data.get("boards") or []
+        return {c["id"] for c in (boards[0].get("columns") or [])} if boards else set()
+
+    def asset_urls(self, asset_ids):
+        """Download links for files. Monday signs them and they expire after about an hour."""
+        out = {}
+        ids = [str(i) for i in asset_ids]
+        for i in range(0, len(ids), 50):
+            data = self.query("query($ids:[ID!]!) { assets(ids:$ids) { id public_url } }", {"ids": ids[i:i + 50]})
+            for a in data.get("assets") or []:
+                if a and a.get("public_url"):
+                    out[str(a["id"])] = a["public_url"]
         return out
 
 
@@ -104,6 +130,182 @@ def hhmm(col):
     if not col or col.get("hour") is None:
         return None
     return "%02d:%02d" % (col["hour"], col["minute"] or 0)
+
+
+# ---------------------------------------------------------------- artist photos
+PHOTO_EXTS = {"jpg", "jpeg", "png", "webp", "tif", "tiff"}
+MAX_DOWNLOAD = 150 * 1024 * 1024      # print-quality band photos can be huge; anything bigger is skipped
+MANIFEST = "sources.json"
+PHOTO_FILE = re.compile(r"^\d+\.(jpe?g|png|webp|tiff?)$")
+
+
+def photo_candidates(c, ac, photo_keys):
+    """Every image in the photo columns, best first: Preferred Photo, then Re-sized, then Band Photo."""
+    out = []
+    for key in photo_keys:
+        col = c.get(ac.get(key)) or {}
+        for f in col.get("files") or []:
+            name = f.get("name") or ""
+            ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+            if f.get("asset_id") and ext in PHOTO_EXTS:
+                out.append({"asset": str(f["asset_id"]), "column": key, "ext": ext})
+    return out
+
+
+def load_pillow():
+    try:
+        from PIL import Image, ImageOps  # noqa: F401  (only installed in the GitHub workflow)
+        return Image, ImageOps
+    except ImportError:
+        return None
+
+
+def web_photo(data, pil, max_side, max_bytes):
+    """Any image -> (JPEG bytes no larger than max_side on its long side, aiming under max_bytes)."""
+    Image, ImageOps = pil
+    Image.MAX_IMAGE_PIXELS = 250000000  # print-quality photos are big; this still stops absurd ones
+    im = Image.open(io.BytesIO(data))
+    icc = im.info.get("icc_profile") if im.mode == "RGB" else None   # keep colours right; drop CMYK profiles
+    try:
+        im.draft("RGB", (max_side, max_side))  # JPEG: decode at a smaller scale, much faster for big photos
+    except Exception:
+        pass
+    im = ImageOps.exif_transpose(im)  # phone photos store "rotate me" in EXIF; bake it in
+    if im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info):
+        im = im.convert("RGBA")
+        flat = Image.new("RGB", im.size, (255, 255, 255))
+        flat.paste(im, mask=im.getchannel("A"))
+        im = flat
+    elif im.mode != "RGB":
+        im = im.convert("RGB")
+    im.thumbnail((max_side, max_side), Image.LANCZOS)
+    out = b""
+    for quality in (82, 76, 70, 64, 58, 52):
+        buf = io.BytesIO()
+        # No exif= argument, so camera details and any GPS location are not copied into the public file.
+        im.save(buf, "JPEG", quality=quality, optimize=True, progressive=True, **({"icc_profile": icc} if icc else {}))
+        out = buf.getvalue()
+        if len(out) <= max_bytes:
+            break
+    return out
+
+
+def download(url):
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    with urllib.request.urlopen(req, timeout=120) as resp:
+        data = resp.read(MAX_DOWNLOAD + 1)
+    if len(data) > MAX_DOWNLOAD:
+        raise ValueError("file is larger than %d MB" % (MAX_DOWNLOAD // (1024 * 1024)))
+    return data
+
+
+def sync_photos(m, cfg, artists, photo_dir, web_prefix, publish, warnings):
+    """Make photo_dir hold one photo per artist that has one in Monday, and set artists[id]["photo"].
+
+    Photos whose Monday file is unchanged since the last run (sources.json) are not downloaded again.
+    If a download fails, the photo already on disk is kept. Photos of artists no longer in the feed,
+    or whose photo was removed in Monday, are deleted. Returns a one-line summary.
+    """
+    opts = cfg.get("photos", {})
+    max_side = int(opts.get("max_side", 800))
+    max_bytes = int(opts.get("max_kb", 150)) * 1024
+    pil = load_pillow()
+    os.makedirs(photo_dir, exist_ok=True)
+    man_path = os.path.join(photo_dir, MANIFEST)
+    try:
+        with open(man_path, encoding="utf-8") as f:
+            manifest = json.load(f)
+    except (OSError, ValueError):
+        manifest = {}
+
+    def on_disk(entry):
+        return bool(entry.get("file")) and os.path.isfile(os.path.join(photo_dir, entry["file"]))
+
+    def usable(aid, cands):
+        # Files that turned out not to be readable images are remembered, so they are not fetched every run.
+        bad = set((manifest.get(aid) or {}).get("unreadable", []))
+        return [c for c in cands if c["asset"] not in bad]
+
+    # Which artists need a download: no photo yet, or the best Monday file is not the one we have.
+    todo = {}
+    for aid, a in artists.items():
+        cands = usable(aid, a["_photos"])
+        old = manifest.get(aid) or {}
+        if cands and on_disk(old) and old.get("asset") == cands[0]["asset"]:
+            continue
+        if cands:
+            todo[aid] = cands
+    urls = {}
+    if todo and (pil or not publish):
+        try:
+            urls = m.asset_urls(sorted({c["asset"] for cands in todo.values() for c in cands}))
+        except SystemExit as e:  # never let a photo problem stop the schedule from publishing
+            warnings.append("Could not get photo download links from Monday (%s); kept the photos already saved." % e)
+    elif todo:
+        warnings.append("Pillow is not installed, so %d new or changed photo(s) were not resized and were skipped "
+                        "(the photos already saved are kept). Run the GitHub workflow, or: python -m pip install pillow"
+                        % len(todo))
+
+    new_manifest, fetched, failed = {}, 0, 0
+    new_manifest, fetched, failed = {}, 0, 0
+    for aid in sorted(artists):
+        a = artists[aid]
+        in_monday = {c["asset"] for c in a.pop("_photos")}
+        old = manifest.get(aid) or {}
+        bad = [x for x in old.get("unreadable", []) if x in in_monday]  # forget files deleted in Monday
+        entry = None
+        if aid not in todo:
+            if on_disk(old) and old.get("asset") in in_monday:
+                entry = {k: old[k] for k in ("asset", "column", "file")}
+        else:
+            for cand in todo[aid]:
+                url = urls.get(cand["asset"])
+                if not url:
+                    continue
+                try:
+                    data = download(url)
+                except Exception as e:
+                    warnings.append("Photo for %s (%s) could not be downloaded: %s" % (a["name"], cand["column"], e))
+                    continue
+                if pil:
+                    try:
+                        data, name = web_photo(data, pil, max_side, max_bytes), "%s.jpg" % aid
+                    except Exception as e:  # not an image after all, or a damaged file: try the next one
+                        warnings.append("Photo for %s (%s, %s file) is not a readable image (%s); using the next "
+                                        "photo column" % (a["name"], cand["column"], cand["ext"], type(e).__name__))
+                        bad.append(cand["asset"])
+                        continue
+                else:  # preview only: keep the original (stays on this machine)
+                    name = "%s.%s" % (aid, cand["ext"])
+                with open(os.path.join(photo_dir, name), "wb") as f:
+                    f.write(data)
+                entry = {"asset": cand["asset"], "column": cand["column"], "file": name}
+                fetched += 1
+                break
+            if entry is None and on_disk(old):
+                entry, failed = {k: old[k] for k in ("asset", "column", "file")}, failed + 1  # keep the last photo
+        record = dict(entry or {})
+        if bad:
+            record["unreadable"] = sorted(set(bad))
+        if record:
+            new_manifest[aid] = record
+        if entry:
+            a["photo"] = web_prefix + entry["file"]
+        else:
+            warnings.append("No photo yet: %s" % a["name"])
+
+    keep = {e["file"] for e in new_manifest.values() if e.get("file")}
+    removed = 0
+    for name in os.listdir(photo_dir):
+        if PHOTO_FILE.match(name) and name not in keep:
+            os.remove(os.path.join(photo_dir, name))
+            removed += 1
+    with open(man_path, "w", encoding="utf-8") as f:
+        json.dump(new_manifest, f, indent=1, sort_keys=True)
+        f.write("\n")
+    return "Photos: %d artists have one (%d downloaded, %d unchanged%s), %d removed." % (
+        len(keep), fetched, len(keep) - fetched - failed,
+        ", %d kept from last time after a failed download" % failed if failed else "", removed)
 
 
 # ---------------------------------------------------------------- build
@@ -164,6 +366,11 @@ def build(cfg, edition_key, token):
     # Artists (allowlisted columns only)
     artists = {}
     if artist_ids:
+        present = m.board_columns(ed["artist_board"], list(ac.values()))
+        for key, cid in ac.items():
+            if cid not in present:
+                warnings.append("The artist board has no column %r (%s): check artist_columns in feed.config.json" % (cid, key))
+        photo_keys = cfg.get("photos", {}).get("columns", [])
         for a in m.items_by_id(sorted(artist_ids), list(ac.values())):
             c = colmap(a)
             def txt(key):
@@ -181,6 +388,8 @@ def build(cfg, edition_key, token):
                 "bio": txt("bio_en"),
                 "links": {k: v for k, v in (("website", url("website")), ("facebook", url("facebook")),
                                             ("instagram", url("instagram")), ("video", url("video"))) if v},
+                "photo": "",
+                "_photos": photo_candidates(c, ac, photo_keys),
             }
             if not artists[a["id"]]["bio"]:
                 warnings.append("No English bio yet: %s" % artists[a["id"]]["name"])
@@ -261,6 +470,17 @@ def main():
 
     out_dir = os.path.join(HERE, "data") if publish else os.path.join(HERE, "data", "preview")
     os.makedirs(out_dir, exist_ok=True)
+
+    # Photos go next to the public site only when publishing; a preview keeps them in data/preview/
+    # (git-ignored), so photos of an unannounced lineup never reach the repository either.
+    photo_rel = "assets/artists" if publish else "data/preview/artists"
+    photo_warnings = []
+    summary = sync_photos(Monday(token), cfg, artists["artists"], os.path.join(HERE, *photo_rel.split("/")),
+                          photo_rel + "/", publish, photo_warnings)
+    for w in photo_warnings:
+        print("  WARNING:", w)
+    print(summary)
+
     for name, obj in (("schedule.json", schedule), ("artists.json", artists)):
         with open(os.path.join(out_dir, name), "w", encoding="utf-8") as f:
             json.dump(obj, f, indent=1, ensure_ascii=False)

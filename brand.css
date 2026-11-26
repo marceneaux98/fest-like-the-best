@@ -143,3 +143,110 @@ header h1 small {
   .lang-pick { padding-left: 6px; }
   .lang-pick select { font-size: .8rem; max-width: 82px; }
 }
+
+/* ---------- "About this artist" (artist.js): a bottom sheet on phones, a dialog on wider screens ---------- */
+/* The small round "i" button on grid blocks and list cards; each page places it */
+.info-btn {
+  display: inline-grid; place-items: center; width: 28px; height: 28px; padding: 0; border: none; border-radius: 50%;
+  background: rgba(255, 255, 255, .8); color: var(--fil-purple); cursor: pointer; line-height: 0;
+}
+.info-btn:hover { background: #fff; }
+.info-btn:focus-visible { outline: 3px solid var(--fil-orange); outline-offset: 1px; }
+
+.artist-sheet {
+  --stage: var(--fil-purple);
+  border: none; padding: 0; color: var(--ink); background: #fff; overflow: hidden;
+  width: min(560px, calc(100vw - 48px)); max-width: none; max-height: min(88vh, 900px);
+  border-radius: 18px; box-shadow: 0 24px 60px rgba(28, 27, 34, .35);
+}
+.artist-sheet[open] { display: flex; flex-direction: column; }
+.artist-sheet::backdrop { background: rgba(28, 27, 34, .5); }
+.as-scroll { position: relative; flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.as-close {
+  position: absolute; top: 10px; right: 10px; z-index: 2; width: 40px; height: 40px; padding: 0; border: none;
+  border-radius: 50%; background: rgba(28, 27, 34, .6); color: #fff; cursor: pointer; display: grid; place-items: center;
+}
+.as-close:hover { background: rgba(28, 27, 34, .8); }
+.artist-sheet :focus-visible { outline: 3px solid var(--fil-orange); outline-offset: 2px; }
+
+/* Photo (3:2, faces sit in the upper part of band photos); no photo = a short brand banner with initials */
+.as-photo {
+  position: relative; aspect-ratio: 3 / 2; overflow: hidden;
+  background: linear-gradient(120deg, var(--stage), var(--fil-purple));
+}
+.as-photo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; }
+.as-photo.as-ph { aspect-ratio: auto; height: 128px; display: grid; place-items: center; }
+.as-photo.as-ph::after {
+  content: ""; position: absolute; right: -30px; top: -40px; width: 190px; height: 190px;
+  background: url("assets/swirl.png") center / contain no-repeat; filter: brightness(0) invert(1); opacity: .16;
+}
+.as-photo.as-ph span {
+  font-family: var(--font-display); font-weight: 800; font-size: 3rem; line-height: 1; color: #fff; letter-spacing: .06em;
+}
+
+.as-body { padding: 16px 20px 22px; }
+.as-body h2 {
+  margin: 0; color: var(--fil-purple); font-family: var(--font-headline); font-style: italic; font-weight: 700;
+  text-transform: uppercase; font-size: 1.45rem; line-height: 1.1; overflow-wrap: anywhere;
+}
+.as-meta { margin: 6px 0 0; color: var(--muted); font-size: .92rem; }
+.as-when {
+  margin: 12px 0 0; padding-left: 10px; border-left: 4px solid var(--stage);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: .9rem; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.as-chip {
+  display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: .75rem; font-weight: 700; white-space: nowrap;
+  background: color-mix(in srgb, var(--stage) 14%, #fff); color: color-mix(in srgb, var(--stage) 60%, #000);
+}
+.as-bio-note { margin: 16px 0 -6px; font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.as-bio { margin-top: 14px; font-size: .95rem; line-height: 1.55; }
+.as-bio p { margin: 0 0 .75em; }
+.as-nobio { margin: 14px 0 0; color: var(--muted); font-style: italic; }
+.as-links { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.as-links a {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 7px 14px 7px 11px;
+  border: 1px solid var(--line); border-radius: 999px; color: var(--fil-purple); text-decoration: none;
+  font-weight: 600; font-size: .9rem; background: #fff;
+}
+.as-links a:hover { background: #f0eef8; border-color: #d6d0e6; }
+.as-part { margin-top: 18px; }
+.as-part h3 { margin: 0; font-size: 1.05rem; }
+.as-also { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
+.as-also h3 { margin: 0 0 8px; font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.as-also ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.as-also li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: .9rem; font-variant-numeric: tabular-nums; }
+
+.as-foot {
+  flex: 0 0 auto; display: flex; justify-content: flex-end; background: #fff; border-top: 1px solid var(--line);
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+}
+.as-toggle {
+  border: 1px solid var(--fil-orange); border-radius: 10px; padding: 11px 20px; min-height: 46px; cursor: pointer;
+  background: var(--fil-orange); color: #fff; font-weight: 700; font-size: .95rem;
+}
+.as-toggle:hover { filter: brightness(.95); }
+.as-toggle.on { background: #fff; color: var(--ink); border-color: var(--line); }
+.as-toggle.on:hover { background: var(--bg); filter: none; }
+.as-vh {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; border: 0;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .artist-sheet {
+    width: 100%; max-width: 100%; margin: auto 0 0; max-height: 92vh; max-height: 92dvh; border-radius: 18px 18px 0 0;
+  }
+  .as-body { padding: 14px 16px 20px; }
+  .as-foot { padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
+  .as-toggle { flex: 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .artist-sheet[open] { animation: as-pop .18s ease-out; }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 600px) {
+  .artist-sheet[open] { animation: as-up .22s ease-out; }
+}
+@keyframes as-pop { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+@keyframes as-up { from { transform: translateY(100%); } }
+.as-bio a { color: var(--fil-purple); overflow-wrap: anywhere; }
