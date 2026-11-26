@@ -1,6 +1,6 @@
 {
  "edition": "2026",
- "updated": "2026-11-22T15:50:16+00:00",
+ "updated": "2026-11-26T15:54:51+00:00",
  "artists": {
   "12164518810": {
    "name": "Amis du Teche",
@@ -11,21 +11,24 @@
     "website": "https://linktr.ee/amisduteche",
     "facebook": "https://www.facebook.com/amis.du.teche",
     "instagram": "https://tr.ee/qMyr5yMf6p"
-   }
+   },
+   "photo": "assets/artists/12164518810.jpg"
   },
   "12164564042": {
    "name": "Mike Dopsie & Zydeco Entourage",
    "origin": "Louisiana",
    "genre": "Zydeco",
    "bio": "Mike Dopsie was born into dynamic royal family of Zydeco music. Born and raised in Lafayette,LA. He’s a third generation Zydeco Artist and fourth generation accordionist. He’s the Grandson of the late great Prince of Zydeco “Rockin’ Dopsie Sr.” The son of Grammy nominated, Louisiana Music Hall of Famer “Anthony Dopsie” and the nephew of grammy award winning Dwayne Dopsie, Rockin’ Dopsie Jr, and Tiger Dopsie.\n\n\nMike Dopsie’s style of zydeco consist of blues, r&b, and dabbles of jazz music.\nRaised into the genre of zydeco music, but officially branched off and created into \nMike Dopsie & Zydeco Entourage",
-   "links": {}
+   "links": {},
+   "photo": "assets/artists/12164564042.jpg"
   },
   "12164503073": {
    "name": "Dance to Festival Playlist",
    "origin": "",
    "genre": "",
    "bio": "",
-   "links": {}
+   "links": {},
+   "photo": ""
   },
   "12164581376": {
    "name": "Karma and the Killjoys",
@@ -37,14 +40,16 @@
     "facebook": "https://www.facebook.com/karmaandthekilljoys",
     "instagram": "https://www.instagram.com/karmaandthekilljoys/",
     "video": "https://youtu.be/fzFn62RsSEg?si=0LgdyidaFYs-xF12&t=239"
-   }
+   },
+   "photo": "assets/artists/12164581376.jpg"
   },
   "12164518539": {
    "name": "Dance to Festival Playlist",
    "origin": "",
    "genre": "",
    "bio": "",
-   "links": {}
+   "links": {},
+   "photo": ""
   },
   "12164553264": {
    "name": "Brewmasters' Talk: Urban South Brewery",
@@ -53,7 +58,8 @@
    "bio": "The seed for Urban South was planted during the year I spent in Europe. Tasting Belgian and English ales and German lagers right from the source, I understood for the first time how big the chasm was between the beer my ancestors drank and the mass-market stuff I grew up with at home in South Louisiana. Naturally, as a good Cajun and Southerner, I knew I had to share the gospel of good beer.\n\nAt Urban South, we’re combining the heritage of European beer-making with the brashness of new American styles. With deep roots in Louisiana, our award-winning brewery inspires community with excellent craft beers that are easy to drink and perfect for the Southern climate. We operate with fearlessness and integrity in an effort to brew the South’s most respected beer.\n\nOur vision is to build an enduring company that embodies the values and traditions of the Urban South. We seek to be strong community partners and produce world-class beer.",
    "links": {
     "website": "https://urbansouth.com/"
-   }
+   },
+   "photo": "assets/artists/12164553264.jpg"
   },
   "12164564073": {
    "name": "Sonny Landreth",
@@ -63,7 +69,8 @@
    "links": {
     "website": "https://sonnylandreth.com/index.php",
     "facebook": "https://www.facebook.com/SonnyLandreth/"
-   }
+   },
+   "photo": "assets/artists/12164564073.jpg"
   },
   "12164503074": {
    "name": "Rhiannon Giddens",
@@ -75,7 +82,8 @@
     "facebook": "https://www.outermostagency.com/rhiannon-giddens",
     "instagram": "https://www.outermostagency.com/rhiannon-giddens",
     "video": "https://youtu.be/Z629s26Y0Dc?si=tAptx-2nV5o7njiY&t=1707"
-   }
+   },
+   "photo": "assets/artists/12164503074.jpg"
   },
   "12164581122": {
    "name": "Country Gongbang",
@@ -87,7 +95,8 @@
     "facebook": "https://www.facebook.com/countrygb",
     "instagram": "https://www.instagram.com/countrygb",
     "video": "https://youtu.be/bJhzHgBtBqg?si=uEUXhxiPT9OnFTip&t=9"
-   }
+   },
+   "photo": "assets/artists/12164581122.jpg"
   },
   "12164581313": {
    "name": "Cimafunk",
@@ -99,7 +108,8 @@
     "facebook": "https://facebook.com/CimafunkOficial",
     "instagram": "https://instagram.com/cimafunk",
     "video": "https://youtu.be/cOr0WZsEOv4?si=cBD6KXx_0ACJlqyR&t=287"
-   }
+   },
+   "photo": "assets/artists/12164581313.jpg"
   },
   "12164560859": {
    "name": "Nomfusi",
@@ -110,7 +120,8 @@
     "website": "https://nomfusi.com",
     "facebook": "https://www.facebook.com/NomfusiSA",
     "video": "https://www.youtube.com/live/DfcNg_TlHts?si=nfCSHzxZuK6LglFr&t=1867"
-   }
+   },
+   "photo": "assets/artists/12164560859.jpg"
   },
   "12164527057": {
    "name": "Brewmasters' Talk: Parish Brewing Co.",
@@ -119,7 +130,8 @@
    "bio": "Located in the heart of Cajun Country in Broussard, Louisiana, our simple goal is to make awesome craft brewed beer. Our story begins around 2003 when our founder Andrew moved from Louisiana to Pittsburgh and discovered a thriving craft beer scene. Returning home a few years later, he recognized a lack of breweries in Louisiana and set out to create part of what is now a thriving craft brewing industry.\n\nOur first beer ever sold was Canebrake, named for the abounding sugarcane fields in the area, and it was a huge hit from the start. It didn’t help that Andrew was brewing in the \"nano brewery,\" a tiny 50 gallon brewery, making just 20 kegs a week. Nevertheless, Parish was being distributed all over the Lafayette, La. region, and Canebrake was becoming more and more popular with a full range of beer drinkers—from light beer drinkers to 10th level beer nerds.We remain known in Louisiana for Canebrake, but the rest of the world knows us for Ghost in the Machine and our juice bomb IPAs and other innovations. In 2012, we completed construction on our new brewery on Jared Dr. and have been growing ever since. Today, we are one of the largest breweries in the region and distribute our beer throughout the south.",
    "links": {
     "website": "https://parishbeer.com/"
-   }
+   },
+   "photo": "assets/artists/12164527057.jpg"
   },
   "12164539221": {
    "name": "Dustin Dale Gaspard",
@@ -130,7 +142,8 @@
     "website": "https://www.dusitngaspardmusic.com",
     "facebook": "https://www.facebook.com/dustindalegaspard",
     "instagram": "https://www.instagram.com/dusitndalegaspard"
-   }
+   },
+   "photo": "assets/artists/12164539221.jpg"
   },
   "12164556757": {
    "name": "Natu Camara",
@@ -142,7 +155,8 @@
     "facebook": "https://www.facebook.com/NatuCamaraOfficiel",
     "instagram": "https://www.instagram.com/natucamaramusic/",
     "video": "https://youtu.be/NRXdheXeZrY?si=wkrGYlM32wBEB1LE&t=169"
-   }
+   },
+   "photo": "assets/artists/12164556757.jpg"
   },
   "12164539255": {
    "name": "NOVALIMA",
@@ -154,7 +168,8 @@
     "facebook": "https://www.facebook.com/novalima.official/",
     "instagram": "https://www.instagram.com/novalima_official/?hl=en",
     "video": "https://youtu.be/taV8xgO3Kpk?si=pF88nzIh16VXFNy4&t=95"
-   }
+   },
+   "photo": "assets/artists/12164539255.jpg"
   },
   "12164581350": {
    "name": "Brewmasters' Talk: Gnarly Barley Brewing Co.",
@@ -163,7 +178,8 @@
    "bio": "Gnarly Barley Brewing Co. originated from the home of Zac and Cari Caramonta. What started in a cramped garage, surrounded by two fat cats and a halfpipe, quickly grew into a passion for crafting exceptional beers. Zac began homebrewing as an exploration into the brewing process after experiencing exceptional craft beers. His mission was to create beers just as excellent as those that inspired him. The Korova Milk Porter and the Hoppopotamus IPA debuted at the 2011 New Orleans on Tap Beer Festival. Encouraged by positive feedback and connections made at local festivals, Zac and Cari opened a 14,000 square foot brewery in Hammond, Louisiana in 2014.",
    "links": {
     "website": "https://gnarlybeer.com/"
-   }
+   },
+   "photo": "assets/artists/12164581350.jpg"
   },
   "12164581408": {
    "name": "Boma Bango",
@@ -174,7 +190,8 @@
     "website": "https://www.instagram.com/bomabangoband/",
     "facebook": "https://www.facebook.com/bomabangoband/",
     "instagram": "https://www.facebook.com/bomabangoband/"
-   }
+   },
+   "photo": ""
   },
   "12164556830": {
    "name": "GIVERS: \"In Light\" Live!",
@@ -186,7 +203,8 @@
     "facebook": "https://www.facebook.com/giversmusic/",
     "instagram": "https://www.instagram.com/givers",
     "video": "https://youtu.be/Mx1H5IP8_g8?si=Hv1qkeKlaiudCj1N&t=118"
-   }
+   },
+   "photo": "assets/artists/12164556830.jpg"
   },
   "12164539222": {
    "name": "Doctor Nativo",
@@ -198,7 +216,8 @@
     "facebook": "https://www.facebook.com/DoctorNativo",
     "instagram": "https://www.instagram.com/doctornativo/",
     "video": "https://youtu.be/JTIt6ZW2qVc?si=z_Ry_t0bN8zOpN05&t=538"
-   }
+   },
+   "photo": "assets/artists/12164539222.jpg"
   },
   "12164553301": {
    "name": "Brewmasters' Talk: Rally Cap",
@@ -207,14 +226,16 @@
    "bio": "Just when things might be looking down for the home team, it’s time to throw on the Rally Cap! A superstition? Well maybe…but more than that, it’s a sign of unity and teamwork, a symbol that everyone is working together towards the same goal. Whether you’re playing or you’re just a fan, there is always a strong desire to be part of something bigger. Rally Cap Brewing Company was born out of this desire to create its own “something bigger” – a community of local craft beer drinkers and fans…\n\nEstablished in 2017, Rally Cap opened its doors to the public on December 14, 2019.",
    "links": {
     "website": "https://rallycapbrewing.com/"
-   }
+   },
+   "photo": "assets/artists/12164553301.jpg"
   },
   "12164539524": {
    "name": "French Immersion Children's Performance",
    "origin": "Louisiana",
    "genre": "",
    "bio": "",
-   "links": {}
+   "links": {},
+   "photo": ""
   },
   "12164533656": {
    "name": "Yvette Landry Trio",
@@ -225,7 +246,8 @@
     "website": "https://www.YvetteLandry.com",
     "facebook": "https://yvette.landry.33",
     "instagram": "https://yvette_landry_"
-   }
+   },
+   "photo": "assets/artists/12164533656.jpg"
   },
   "12164564013": {
    "name": "Thomé Young",
@@ -236,7 +258,8 @@
     "website": "https://www.thomeyoung.com/",
     "facebook": "https://www.facebook.com/ThomeYoungMusic",
     "instagram": "https://www.instagram.com/thomeyoung/?hl=fr"
-   }
+   },
+   "photo": "assets/artists/12164564013.jpg"
   },
   "12164519927": {
    "name": "Sinkane",
@@ -248,14 +271,16 @@
     "facebook": "https://www.facebook.com/SinkaneRa/",
     "instagram": "https://www.instagram.com/sinkane/",
     "video": "https://youtu.be/sN4pl36WqAY?si=Cf6yTcSOczeqRtW_&t=56"
-   }
+   },
+   "photo": "assets/artists/12164519927.jpg"
   },
   "12164519854": {
    "name": "Dance to Festival Playlist",
    "origin": "",
    "genre": "",
    "bio": "",
-   "links": {}
+   "links": {},
+   "photo": ""
   },
   "12164533657": {
    "name": "The Babineaux Sisters",
@@ -266,7 +291,8 @@
     "website": "https://babineauxsisters.com",
     "facebook": "https://www.facebook.com/people/Babineaux-Sisters-Band/100063022639264/",
     "instagram": "https://@lessoeursbabineaux"
-   }
+   },
+   "photo": "assets/artists/12164533657.jpg"
   },
   "12164560996": {
    "name": "Corey Ledet Zydeco & Black Magic",
@@ -276,7 +302,8 @@
    "links": {
     "website": "https://coreyledet.com/",
     "facebook": "https://www.facebook.com/corey.ledet.39/"
-   }
+   },
+   "photo": "assets/artists/12164560996.jpg"
   },
   "12164581208": {
    "name": "School of Rock Lafayette",
@@ -287,7 +314,8 @@
     "website": "https://lafayette.schoolofrock.com",
     "facebook": "https://www.facebook.com/SchoolofRockLafayette/",
     "instagram": "https://www.instagram.com/sor_lafayette/"
-   }
+   },
+   "photo": "assets/artists/12164581208.jpg"
   },
   "12164539396": {
    "name": "Slap Dragon",
@@ -297,7 +325,8 @@
    "links": {
     "website": "https://www.youtube.com/@slapdragonband",
     "instagram": "https://www.youtube.com/@slapdragonband"
-   }
+   },
+   "photo": "assets/artists/12164539396.jpg"
   },
   "12164556758": {
    "name": "The Amazing Nuns",
@@ -308,7 +337,8 @@
     "website": "https://theamazingnuns.com/",
     "facebook": "https://www.facebook.com/TheAmazingNuns",
     "instagram": "https://www.instagram.com/theamazingnuns/?hl=en"
-   }
+   },
+   "photo": "assets/artists/12164556758.jpg"
   },
   "12164533548": {
    "name": "KC Jones",
@@ -319,7 +349,8 @@
     "website": "https://kcjonesmusic.com",
     "facebook": "https://www.facebook.com/kcjonesmusic/",
     "instagram": "https://www.instagram.com/k.c.jones__/"
-   }
+   },
+   "photo": "assets/artists/12164533548.jpg"
   },
   "12164564078": {
    "name": "Cashier",
@@ -328,7 +359,8 @@
    "bio": "On their debut EP ‘The Weight,’ the Lafayette, Louisiana, four-piece reaches full definition, distilling themes of desire, insecurity, and disconnection into five tightly wound, melody-driven songs released by Julia’s War Recordings, the legendary Philly label founded by Doug Dulgarian of TAGABOW. Across the EP, bandleader Kylie Gaspard’s deeply direct vocal delivery cuts through dense riffs, grounding their songs with her gritty, emotional lyrics. Having recently shared stages with genre titans like Dinosaur Jr., Whirr, Nothing, and Narrow Head, Cashier are building a reputation for a massive sound that resonates far beyond their bayou home.",
    "links": {
     "instagram": "https://www.instagram.com/cashier.band/"
-   }
+   },
+   "photo": ""
   },
   "12164539211": {
    "name": "Mathieu Lippé",
@@ -339,7 +371,8 @@
     "website": "https://mathieulippe.com/",
     "facebook": "https://www.facebook.com/mathieulippeofficiel",
     "instagram": "https://www.instagram.com/mathieu.lippe"
-   }
+   },
+   "photo": "assets/artists/12164539211.jpg"
   },
   "12164533550": {
    "name": "F.I.R.E. Expressions Performing Arts Conservatory",
@@ -350,7 +383,8 @@
     "website": "https://www.fedance.com",
     "facebook": "https://www.facebook.com/fedanceco/",
     "instagram": "https://@fedanceco"
-   }
+   },
+   "photo": "assets/artists/12164533550.jpg"
   },
   "12164564130": {
    "name": "Primera Linea",
@@ -359,7 +393,8 @@
    "bio": "Primera Linea is a youth band from Havana, Cuba that fuses AfroCuban rhythms and New Orleans funk. Mentored by AfroCuban funk sensation Cimafunk and New Orleans superstar Trombone Shorty, Primera Linea has developed a dynamic live show and performed at many of Havana’s top venues, including the Fabrica de Arte Cubano (FAC), Tribe Caribe’s Black Box, La Guarida Rooftop, Guampara Music, Bar H and La Carpinteria. The name Primera Linea means “First Line,” as they were the “first” group of youth from their neighborhood to travel to New Orleans to experience and learn Second “Line” music and traditions, which is now a pillar of their music and identity. Antuan (bass), Camila (lead vocals), Daniela (trombone), Fabio (trumpet), Kevin (percussion) and Marlon (keys) are students at the Guillermo Tomas School of Music in Guanabacoa and range in ages from 12 to 18 years old. Primera Linea’s debut album will be released later this year.",
    "links": {
     "instagram": "https://www.instagram.com/primera.linea.banda/"
-   }
+   },
+   "photo": "assets/artists/12164564130.jpg"
   },
   "12164581238": {
    "name": "Mike Dean Band",
@@ -370,7 +405,8 @@
     "website": "https://mikedeanmusic.com",
     "facebook": "https://@mikemcleoddean",
     "instagram": "https://@mikemcleoddean"
-   }
+   },
+   "photo": "assets/artists/12164581238.jpg"
   },
   "12164519929": {
    "name": "Acadiana Symphony Youth Orchestra",
@@ -381,7 +417,8 @@
     "website": "https://acadianasymphony.org/youth-orchestra/",
     "facebook": "https://www.facebook.com/AcadianaYouthOrchestra",
     "instagram": "https://www.instagram.com/acadianasymphonyorchestra"
-   }
+   },
+   "photo": "assets/artists/12164519929.jpg"
   },
   "12164533715": {
    "name": "The Revelers",
@@ -392,7 +429,8 @@
     "website": "http://revelersband.com",
     "facebook": "https://www.facebook.com/RevelersBand/",
     "instagram": "https://www.instagram.com/revelersband/?hl=en"
-   }
+   },
+   "photo": "assets/artists/12164533715.jpg"
   },
   "12164518541": {
    "name": "Subatomic Sound System + Screechy Dan + Norwood Fisher",
@@ -403,7 +441,8 @@
     "website": "http://www.subatomicsound.com",
     "facebook": "http://www.facebook.com/SubatomicSoundSystem",
     "instagram": "http://www.instagram.com/Subatomic"
-   }
+   },
+   "photo": "assets/artists/12164518541.jpg"
   },
   "12164533663": {
    "name": "Lafayette Lion Dance",
@@ -412,7 +451,8 @@
    "bio": "We are a local traditional Vietnamese Lion Dance troupe! Lion dance is a form of performance art that is found all over Asia that involves the manipulation of a life-sized lion puppet to the beat of a traditional drum and cymbals. It is normally performed to bring about good luck to events such as during Lunar New Year, a marriage ceremony, or the opening of a new business. Come and see us perform!",
    "links": {
     "facebook": "https://www.facebook.com/share/1ACip38Cqj/?mibextid=wwXIfr"
-   }
+   },
+   "photo": "assets/artists/12164533663.jpg"
   },
   "12164560864": {
    "name": "Sola Violins Int'l Fiddle Summit",
@@ -423,7 +463,8 @@
     "website": "https://www.solaviolins.com/",
     "facebook": "https://www.facebook.com/southlouisianaviolins/?fref=ts",
     "instagram": "https://www.instagram.com/sola.violins/"
-   }
+   },
+   "photo": "assets/artists/12164560864.jpg"
   },
   "12164560865": {
    "name": "Steve Riley & the Mamou Playboys",
@@ -434,7 +475,8 @@
     "website": "https://www.mamouplayboys.com",
     "facebook": "https://www.facebook.com/share/16riHEthBN/?mibextid=wwXIfr",
     "instagram": "https://www.instagram.com/steveriley_?igsh=MWJocmJ0ZDk5bzhzcw%3D%3D&utm_source=qr"
-   }
+   },
+   "photo": "assets/artists/12164560865.jpg"
   },
   "12164553342": {
    "name": "Dwight James & the Royals",
@@ -445,7 +487,8 @@
     "website": "https://www.dwightjamesandtheroyals.com/",
     "facebook": "https://www.facebook.com/DwightJamesandTheRoyals",
     "instagram": "https://www.instagram.com/dwightjamesandtheroyals/"
-   }
+   },
+   "photo": "assets/artists/12164553342.jpg"
   },
   "12164518563": {
    "name": "Beauséjour",
@@ -456,7 +499,8 @@
     "website": "https://www.beausejourband.com/",
     "facebook": "https://www.facebook.com/beausejourband",
     "instagram": "https://www.instagram.com/beausejourband/"
-   }
+   },
+   "photo": "assets/artists/12164518563.jpg"
   },
   "12164556832": {
    "name": "Blue Monday Allstars Celebrate Lee Allen Zeno",
@@ -466,7 +510,8 @@
    "links": {
     "website": "https://www.loveofpeople.org/blue-monday-mission",
     "facebook": "https://www.facebook.com/BlueMondayMission"
-   }
+   },
+   "photo": "assets/artists/12164556832.jpg"
   },
   "12164581358": {
    "name": "Sally Baby's Silver Dollars",
@@ -477,7 +522,8 @@
     "website": "https://www.sallybabyssilverdollars.com/",
     "instagram": "https://www.instagram.com/sallybabys.silverdollars/?hl=en",
     "video": "https://youtu.be/VE0841UyPSo?si=tvQdOjznagaO8ACI&t=35"
-   }
+   },
+   "photo": "assets/artists/12164581358.jpg"
   },
   "12164533790": {
    "name": "Bas Clas",
@@ -488,7 +534,8 @@
     "website": "https://basclas.com/",
     "facebook": "https://www.facebook.com/BasClas/",
     "video": "https://youtu.be/eYgyTLn5oxU?si=pa2UFADY8cOb9EhJ&t=243"
-   }
+   },
+   "photo": "assets/artists/12164533790.jpg"
   },
   "12164539378": {
    "name": "Zachary Richard",
@@ -499,7 +546,8 @@
     "website": "https://www.zacharyrichard.com",
     "facebook": "https://www.facebook.com/ZacharyRichardOfficial/",
     "instagram": "https://www.instagram.com/ralphzachary/"
-   }
+   },
+   "photo": "assets/artists/12164539378.jpg"
   },
   "12164556847": {
    "name": "Vieux Farka Touré",
@@ -511,7 +559,8 @@
     "facebook": "https://www.facebook.com/vieuxfarkatoure",
     "instagram": "https://www.instagram.com/vieuxfarkatoure",
     "video": "https://youtu.be/18YKj7oF76g?si=Of3xZRJg3wJGr-XF"
-   }
+   },
+   "photo": "assets/artists/12164556847.jpg"
   },
   "12164533746": {
    "name": "Delgres",
@@ -521,7 +570,8 @@
    "links": {
     "website": "https://www.delgresmusic.com/",
     "video": "https://www.youtube.com/watch?v=cqJJKp_PjEk&list=RDcqJJKp_PjEk&start_radio=1"
-   }
+   },
+   "photo": "assets/artists/12164533746.jpg"
   },
   "12164553331": {
    "name": "Geno Delafose & French Rockin' Boogie",
@@ -531,14 +581,16 @@
    "links": {
     "website": "https://www.genodelafosemusic.com/",
     "facebook": "https://www.facebook.com/geno.delafose/"
-   }
+   },
+   "photo": "assets/artists/12164553331.jpg"
   },
   "12164518543": {
    "name": "Burke Riley Trio",
    "origin": "Louisiana",
    "genre": "Cajun",
    "bio": "Burke Riley, 16 year old son of legendary Cajun musician Steve Riley, began his musical journey at a very early age. By age 3, Burke was already onstage sitting in with the band Courtbouillon and the Mamou Playboys playing drums, his groove solid and natural talent undeniable even at such an early age. By age 5 he transferred his rhythm skills to acoustic guitar, a natural progression that lead to his deepening knowledge of the importance of Cajun music’s groove. \n\nHe picked up accordion at age 6,  excelling quickly, tackling some of Cajun music’s most complex melodies. This kind hearted, talented young man, will wow you with is incredible musical ability and command of whatever instrument he plays! He’s one of the new generation, quickly taking his place among the greats with whom he was raised playing!",
-   "links": {}
+   "links": {},
+   "photo": "assets/artists/12164518543.jpg"
   },
   "12164560877": {
    "name": "Las Cafeteras",
@@ -550,7 +602,8 @@
     "facebook": "https://https://www.facebook.com/LasCafeteras/",
     "instagram": "https://www.instagram.com/lascafeteras/?hl=en",
     "video": "https://youtu.be/1-UojvxllV4?si=AoTZIqNVC-85rn3B&t=62"
-   }
+   },
+   "photo": "assets/artists/12164560877.jpg"
   },
   "12164581330": {
    "name": "Voices of Progressive Gospel Choir",
@@ -561,7 +614,8 @@
     "website": "https://pbclafayette.com/",
     "facebook": "https://www.facebook.com/people/Progressive-Baptist-Church/100066896696204/",
     "instagram": "https://www.instagram.com/pbclafayette?igsh=MTMzdW80aXkxOGF6dQ%3D%3D"
-   }
+   },
+   "photo": "assets/artists/12164581330.jpg"
   },
   "12164519996": {
    "name": "Michael Juan Nunez",
@@ -572,7 +626,8 @@
     "website": "https://www.michaeljuannunez.com/news",
     "facebook": "http://www.facebook.com/michaeljuannunezandTAE",
     "instagram": "http://instagram.com/mjn7"
-   }
+   },
+   "photo": "assets/artists/12164519996.jpg"
   },
   "12164564098": {
    "name": "Stephen Marley",
@@ -584,7 +639,8 @@
     "facebook": "https://www.facebook.com/stephenraggamarley",
     "instagram": "https://www.instagram.com/stephenmarley",
     "video": "https://youtu.be/UOdnIeCAXvw?si=gFdQ_9ORvLNQ_sEV&t=1725"
-   }
+   },
+   "photo": "assets/artists/12164564098.jpg"
   },
   "12164581335": {
    "name": "Prends Courage",
@@ -595,7 +651,8 @@
     "website": "https://www.prendscourage.live/",
     "facebook": "https://www.facebook.com/share/1BSsNRbw1q/?mibextid=wwXIfr",
     "instagram": "https://www.instagram.com/prends.courage/"
-   }
+   },
+   "photo": "assets/artists/12164581335.jpg"
   },
   "12164539402": {
    "name": "$ideQue$t ft. Gino V. and Zach Edwards",
@@ -606,7 +663,8 @@
     "website": "https://N/A",
     "facebook": "https://N/A",
     "instagram": "https://www.instagram.com/sidequest_la"
-   }
+   },
+   "photo": "assets/artists/12164539402.jpg"
   },
   "12164520006": {
    "name": "Bonsoir, Catin",
@@ -616,7 +674,8 @@
    "links": {
     "facebook": "https://www.facebook.com/BonsoirCatin",
     "instagram": "https://www.instagram.com/bonsoir_catin/"
-   }
+   },
+   "photo": "assets/artists/12164520006.jpg"
   },
   "12164563940": {
    "name": "Vishten",
@@ -627,7 +686,8 @@
     "website": "https://www.vishten.net",
     "facebook": "https://www.facebook.com/VishtenMusique",
     "instagram": "https://www.instagram.com/vishtenmusique/?hl=en"
-   }
+   },
+   "photo": "assets/artists/12164563940.jpg"
   },
   "12164527131": {
    "name": "Nathan & the Zydeco Cha Chas",
@@ -638,7 +698,8 @@
     "website": "https://www.zydecochachas.com",
     "facebook": "https://www.facebook.com/profile.php?id=100035373292347",
     "instagram": "https://www.instagram.com/zydecochacha/?hl=en"
-   }
+   },
+   "photo": "assets/artists/12164527131.jpg"
   },
   "12164581279": {
    "name": "Beau Cheval",
@@ -649,7 +710,8 @@
     "website": "https://NA",
     "facebook": "https://NA",
     "instagram": "https://www.instagram.com/beau.cheval?igsh=MWNpd3J6ZjB3dXU3cw=="
-   }
+   },
+   "photo": "assets/artists/12164581279.jpg"
   },
   "12164561040": {
    "name": "Jacques Surette",
@@ -660,7 +722,8 @@
     "website": "https://legreniermusique.com/artistes/item/182-jacques-surette",
     "facebook": "https://www.facebook.com/jacquessurette/",
     "instagram": "https://www.instagram.com/jacquesuretteman/"
-   }
+   },
+   "photo": "assets/artists/12164561040.jpg"
   },
   "12164518626": {
    "name": "Breabach",
@@ -672,7 +735,8 @@
     "facebook": "https://www.facebook.com/Breabach",
     "instagram": "https://www.instagram.com/breabach/",
     "video": "https://youtu.be/Xkvvg3IbdOg?si=D7yMj750Fg1TRFte&t=197"
-   }
+   },
+   "photo": "assets/artists/12164518626.jpg"
   },
   "12164556851": {
    "name": "Chris Ardoin & Zydeco Nu-Step",
@@ -683,7 +747,8 @@
     "website": "https://chrisardoinmusic.com",
     "facebook": "https://Facebook.com/chrisardoinmusic",
     "instagram": "https://Instagram.com/@officialchrisardoin"
-   }
+   },
+   "photo": "assets/artists/12164556851.jpg"
   },
   "12164518843": {
    "name": "Jourdan Thibodeaux et les Rôdailleurs",
@@ -693,7 +758,8 @@
    "links": {
     "facebook": "https://www.facebook.com/share/r/1ZJHB5Fu9g/?mibextid=wwXIfr",
     "instagram": "https://www.instagram.com/jourdanthibodeaux?igsh=NTJxOTlvM2ZrdGsz&utm_source=qr"
-   }
+   },
+   "photo": "assets/artists/12164518843.jpg"
   },
   "12164519844": {
    "name": "Silver Birds Steel Orchestra",
@@ -704,7 +770,8 @@
     "facebook": "https://www.facebook.com/silverbirdssteel/",
     "instagram": "https://@silverbirdssteelorchestra",
     "video": "https://youtu.be/1mKB9f5dwmA?si=bveNtSoNEzetqsEc&t=472"
-   }
+   },
+   "photo": "assets/artists/12164519844.jpg"
   },
   "12164518545": {
    "name": "Battle of the Bands:  2nd place (DINGER) & 1st place (5AM)",
@@ -714,7 +781,8 @@
    "links": {
     "website": "https://acadianatalent.com",
     "instagram": "https://www.instagram.com/grandslamdinger?igsh=MWJrOThpOGg3am9jbA%3D%3D&utm_source=qr"
-   }
+   },
+   "photo": ""
   },
   "12164539528": {
    "name": "Rusty Metoyer & the Zydeco Krush",
@@ -726,7 +794,8 @@
     "facebook": "https://www.facebook.com/share/16kqDRsSYy/?mibextid=wwXIfr",
     "instagram": "https://www.instagram.com/rustymetoyer_zydeco?igsh=aGRoOGxsazd5YmRk&utm_source=qr",
     "video": "https://youtu.be/ID3j7vwre3c?si=KHPThdkJEhIutFLQ&t=76"
-   }
+   },
+   "photo": "assets/artists/12164539528.jpg"
   }
  }
 }
