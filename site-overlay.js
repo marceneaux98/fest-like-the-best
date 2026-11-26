@@ -93,17 +93,16 @@
       var f = OC.stages[id] || [0.5, 0.5]; return [f[0] * W, f[1] * H];
     }
     function pt(id) { return ll(pinPoint(id)); }
-    function entrance(id) { return (PR.entrances && PR.entrances[id]) || pinPoint(id); }
-
+    // A route runs between the two stages' entrances (a stage can have several; the route file already
+    // picked the pair with the shortest walk). The dotted hops join each pin to the route's ends.
     function shape(a, b) {
       if (a === b) return { lines: [], hops: [], all: [] };
-      var pts = PR.routes[a + '|' + b], rev = false;
-      if (!pts) { pts = PR.routes[b + '|' + a]; rev = !!pts; }
-      var ea = entrance(a), eb = entrance(b);
+      var pts = PR.routes && PR.routes[a + '|' + b], rev = false;
+      if (!pts) { pts = PR.routes && PR.routes[b + '|' + a]; rev = !!pts; }
       if (pts) pts = rev ? pts.slice().reverse() : pts;
-      else pts = [ea, eb];                                    // no traced route yet: straight line
+      else pts = [pinPoint(a), pinPoint(b)];                  // no traced route yet: straight line
       var line = pts.map(ll);
-      var hops = [[pt(a), ll(ea)], [ll(eb), pt(b)]].filter(function (h) { return h[0].distanceTo(h[1]) > 1; });
+      var hops = [[pt(a), line[0]], [line[line.length - 1], pt(b)]].filter(function (h) { return h[0].distanceTo(h[1]) > 1; });
       return { lines: [line], hops: hops, all: [pt(a)].concat(line, [pt(b)]) };
     }
 
