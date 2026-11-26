@@ -15,6 +15,8 @@
 //                                 window.SCHEDULE_DATA and, on map pages, the traced map routes into
 //                                 window.POSTER_ROUTES, then calls fn(). Pages wrap their code in this.
 //   FIL.stamp(iso)                "Nov 16, 7:37 PM" in the current language, for "schedule updated" lines
+//   FIL.plan.encode(edition, { picks, modes, merch, by }) / FIL.plan.decode(location.hash)
+//                                 a whole plan in a share link (see "share links" below)
 //
 // The brand bar (logo, product name, page links) is built here from a placeholder:
 //   <div class="brand-bar" data-page="lineup"></div>
@@ -99,6 +101,79 @@
     return stampFmt.format(new Date(iso));
   }
 
+  // ---------- share links ----------
+  // A patron's whole plan fits in the part of the link after '#', which browsers never send to a
+  // server: nothing is stored online, and the link itself is the backup. Example:
+  //   itinerary.html#e=2026&p=0423faisdodo1830.0423lafayette2000&o=0~1~h&m=0423~b~merch-pavillon&by=Sam
+  //   e  edition (year); set ids are '<year>-<MM>-<DD>-<stage>-<HHMM>', so only MMDD+stage+HHMM is kept
+  //   p  picks, '.'-separated
+  //   o  overlap choices: pick index ~ pick index ~ e (leave early) | h (split) | s (stay to the end)
+  //   m  shopping stop per day: MMDD~n (no thanks) | MMDD~b|a~shop (before first / after last set)
+  //      | MMDD~i_j~shop (between picks i and j)
+  //   by optional first name, shown to whoever opens the link
+  // Only unreserved URL characters are used, so mail and chat apps keep the link in one piece.
+  var MODE_CODE = { early: 'e', split: 'h', end: 's' }, CODE_MODE = { e: 'early', h: 'split', s: 'end' };
+  var SLOT_CODE = { before: 'b', after: 'a' }, CODE_SLOT = { b: 'before', a: 'after' };
+  function mmdd(date) { return date.slice(5, 7) + date.slice(8, 10); }
+  function encodePlan(edition, plan) {
+    var ids = plan.picks.slice().sort(), idx = {};
+    ids.forEach(function (id, i) { idx[id] = i; });
+    var p = ids.map(function (id) { var m = /^\d{4}-(\d\d)-(\d\d)-(.+)-(\d{4})$/.exec(id); return m[1] + m[2] + m[3] + m[4]; });
+    var o = [];
+    Object.keys(plan.modes || {}).forEach(function (k) {
+      var ab = k.split('>');
+      if (idx[ab[0]] != null && idx[ab[1]] != null && MODE_CODE[plan.modes[k]]) o.push(idx[ab[0]] + '~' + idx[ab[1]] + '~' + MODE_CODE[plan.modes[k]]);
+    });
+    var days = {}; ids.forEach(function (id) { days[id.slice(0, 10)] = 1; });
+    var m = [];
+    Object.keys(plan.merch || {}).forEach(function (date) {
+      var c = plan.merch[date];
+      if (!days[date] || !c) return;
+      if (c === 'none') { m.push(mmdd(date) + '~n'); return; }
+      var slot = SLOT_CODE[c.slot];
+      if (!slot) { var ab = c.slot.split('>'); if (idx[ab[0]] == null || idx[ab[1]] == null) return; slot = idx[ab[0]] + '_' + idx[ab[1]]; }
+      m.push(mmdd(date) + '~' + slot + '~' + c.booth);
+    });
+    var h = 'e=' + edition + '&p=' + p.join('.');
+    if (o.length) h += '&o=' + o.join('.');
+    if (m.length) h += '&m=' + m.join('.');
+    var by = (plan.by || '').trim().slice(0, 30);
+    if (by) h += '&by=' + encodeURIComponent(by);
+    return h;
+  }
+  // -> null if the text isn't a plan link, else { edition, picks, modes, merch, by }
+  function decodePlan(hash) {
+    var q = {};
+    String(hash || '').replace(/^#/, '').split('&').forEach(function (kv) {
+      var i = kv.indexOf('='); if (i > 0) q[kv.slice(0, i)] = kv.slice(i + 1);
+    });
+    if (!/^\d{4}$/.test(q.e || '') || q.p == null) return null;
+    var e = q.e, picks = [];
+    q.p.split('.').forEach(function (t) {
+      var m = /^(\d\d)(\d\d)([a-z0-9-]+?)(\d{4})$/.exec(t);
+      if (m) picks.push(e + '-' + m[1] + '-' + m[2] + '-' + m[3] + '-' + m[4]);
+    });
+    var modes = {};
+    (q.o || '').split('.').forEach(function (t) {
+      var a = t.split('~');
+      if (a.length === 3 && picks[a[0]] && picks[a[1]] && CODE_MODE[a[2]]) modes[picks[a[0]] + '>' + picks[a[1]]] = CODE_MODE[a[2]];
+    });
+    var merch = {};
+    (q.m || '').split('.').forEach(function (t) {
+      var a = t.split('~');
+      if (!/^\d{4}$/.test(a[0] || '')) return;
+      var date = e + '-' + a[0].slice(0, 2) + '-' + a[0].slice(2);
+      if (a[1] === 'n') { merch[date] = 'none'; return; }
+      if (a.length !== 3 || !a[2]) return;
+      var slot = CODE_SLOT[a[1]];
+      if (!slot) { var ij = a[1].split('_'); if (!picks[ij[0]] || !picks[ij[1]]) return; slot = picks[ij[0]] + '>' + picks[ij[1]]; }
+      merch[date] = { slot: slot, booth: a[2] };
+    });
+    var by = '';
+    try { by = decodeURIComponent(q.by || '').trim().slice(0, 30); } catch (err) {}
+    return { edition: e, picks: picks, modes: modes, merch: merch, by: by };
+  }
+
   window.FIL = { esc: esc, toMin: toMin, store: store, stages: stages, stageById: stageById, stageColor: stageColor,
-                 ready: ready, stamp: stamp };
+                 ready: ready, stamp: stamp, plan: { encode: encodePlan, decode: decodePlan } };
 })();
