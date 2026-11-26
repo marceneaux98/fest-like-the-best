@@ -17,10 +17,12 @@
   .title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   h1 { margin: 0; font-size: 1.4rem; letter-spacing: .01em; }
   h1 small { font-weight: 500; opacity: .85; font-size: .9rem; margin-left: 6px; }
-  .total { font-size: .9rem; opacity: .95; text-align: right; }
+  .total { font-size: .9rem; opacity: .95; text-align: right; line-height: 1.45; }  /* = Jost's own, so no jump when the font loads */
   .total b { font-variant-numeric: tabular-nums; }
   .total .stamp { display: block; font-size: .72rem; opacity: .8; margin-top: 2px; }
   .days { display: flex; gap: 4px; margin-top: 14px; overflow-x: auto; scrollbar-width: none; }
+  /* Same height before and after the schedule loads, so nothing below jumps (layout shift) */
+  .days { min-height: calc(22px + 2.2rem); }
   .days::-webkit-scrollbar { display: none; }
   .day {
     border: none; background: rgba(255,255,255,.14); color: #fff; padding: 10px 16px 12px;
@@ -211,6 +213,9 @@
     main { grid-template-columns: 1fr; }
     .board { padding: 12px 16px 24px; }
     .panel { position: static; margin: 0 16px 24px; max-height: none; }
+    /* The picks panel sits under the schedule here: show it only once the schedule is drawn,
+       so it appears in place instead of jumping (layout shift) when the sets load */
+    main:has(#view:empty) .panel { display: none; }
   }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -225,7 +230,7 @@
 <header>
   <div class="title-row">
     <h1><span data-i18n="lu_title">Lineup 2026</span> <small data-i18n="lu_sub">Pick the sets you want to see</small></h1>
-    <div class="total" id="total"></div>
+    <div class="total" id="total"><span data-i18n="lu_total_none">Tap any set to add it to your plan</span><small class="stamp">&nbsp;</small></div>
   </div>
   <nav class="days" id="days" role="tablist" data-i18n-aria="lu_days_aria" aria-label="Festival days"></nav>
 </header>
@@ -245,19 +250,19 @@
     <div id="view"></div>
   </section>
   <aside class="panel" aria-live="polite">
-    <h2 id="panelTitle"></h2>
-    <p class="sub" id="panelSub"></p>
-    <div id="picks"></div>
+    <h2 id="panelTitle">&nbsp;</h2>
+    <p class="sub" id="panelSub" data-i18n="lu_nothing_day">Nothing picked for this day yet.</p>
+    <div id="picks"><div class="none" data-i18n="lu_tap_build">Tap sets to build your day.</div></div>
     <div class="panel-actions">
       <button class="btn primary" id="planBtn" type="button" disabled data-i18n="lu_plan_btn">Plan my route →</button>
-      <div class="soon" id="planHint"></div>
-      <button class="btn ghost" id="clearDay" type="button" data-i18n="lu_clear_day">Clear this day</button>
+      <div class="soon" id="planHint" data-i18n="lu_hint_need">Pick at least two sets to plan a route.</div>
+      <button class="btn ghost" id="clearDay" type="button" style="display:none" data-i18n="lu_clear_day">Clear this day</button>
     </div>
   </aside>
 </main>
 <div class="dock" id="dock">
   <button class="dock-info" id="dockInfo" type="button" data-i18n-aria="lu_dock_aria" aria-label="Review my picks for this day">
-    <b id="dockCount"></b><span id="dockSub"></span>
+    <b id="dockCount">&nbsp;</b><span id="dockSub" data-i18n="lu_dock_add">Tap a set to add it</span>
   </button>
   <button class="btn primary" id="dockPlan" type="button" data-i18n="lu_plan_btn">Plan my route →</button>
 </div>
@@ -378,7 +383,7 @@ FIL.ready(function () {
     }).join('');
     var all = picks.size;
     document.getElementById('total').innerHTML = (all ? TN('lu_total', all) : esc(T('lu_total_none'))) +
-      (S.updated ? '<small class="stamp">' + esc(T('lu_updated', { when: FIL.stamp(S.updated) })) + '</small>' : '');
+      '<small class="stamp">' + (S.updated ? esc(T('lu_updated', { when: FIL.stamp(S.updated) })) : '&nbsp;') + '</small>';
   }
 
   function renderLegend(dayPerfs) {

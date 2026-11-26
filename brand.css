@@ -45,12 +45,20 @@ button, select { font: inherit; color: inherit; }
   display: flex; align-items: center; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap;
   background: #fff; padding: 12px 24px; border-bottom: 1px solid #e4e2ea;
 }
+/* Reserve the bar's height (one row; two on phones) so the page doesn't jump while common.js fills it in,
+   the language menu is added and the web fonts arrive. The filled bar is never shorter than this. */
+.brand-bar { min-height: 65px; }
 .brand-logo { display: block; line-height: 0; flex: 0 1 auto; min-width: 0; }
-.brand-logo img { height: 40px; width: auto; max-width: 100%; }
+/* aspect-ratio = assets/logo.png (1497×200): the logo takes its full width before the image arrives,
+   so the bar doesn't fit on one row first and then wrap (layout shift) */
+.brand-logo img { height: 40px; width: auto; max-width: 100%; aspect-ratio: 1497 / 200; }
 /* Product name, set in the brand script next to the logo */
 .brand-tag {
   font-family: var(--font-script); font-size: 1.7rem; line-height: 1; color: var(--fil-purple);
   margin-right: auto; white-space: nowrap; padding-top: 4px;
+  /* Fixed width (= the tagline in Yellowtail) so the bar wraps the same before and after the web
+     font loads; the wider fallback font would otherwise push it onto an extra row on phones */
+  width: 5.8em;
 }
 .brand-nav { display: flex; gap: 4px; }
 
@@ -121,6 +129,7 @@ header h1 small {
 @media (max-width: 560px) {
   header h1 small { display: block; margin: 6px 0 0; font-size: 1.15rem; }
   .brand-bar { padding: 10px 16px; gap: 10px 12px; }
+  .brand-bar { min-height: 92px; }   /* two rows on phones */
   .brand-logo img { height: 26px; }
   .brand-tag { font-size: 1.15rem; padding-top: 2px; }
   /* row 1: logo + tagline · row 2: page links + language menu */
