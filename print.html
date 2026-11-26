@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Printable schedule · Fest like the Best</title>
+<style>
+  /* Colours, fonts and base styles come from brand.css. This page prints black-and-white sheets on Letter
+     paper, one day per sheet, modelled on the festival's own daily B&W schedule. Every sheet has a fixed
+     size in inches, so what the screen preview shows (and measures, see fit()) is exactly what prints. */
+  @page { size: letter portrait; margin: 0; }
+  :root { --sheet-w: 8.5in; --sheet-h: 10.98in; --hdr: .36in; }   /* a hair under 11in: no blank page after each sheet */
+  body { background: #dddce3; }
+
+  /* ---------- screen controls (never printed) ---------- */
+  .pr-bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px;
+    background: #fff; border-bottom: 1px solid var(--line); padding: 16px 24px;
+  }
+  .pr-bar h1 {
+    flex: 1 0 100%; margin: 0; color: var(--purple); font-size: 1.35rem; line-height: 1.1;
+    font-family: var(--font-headline); font-style: italic; font-weight: 700; text-transform: uppercase;
+  }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; }
+  .seg button { border: none; background: none; padding: 8px 14px; cursor: pointer; font-size: .9rem; color: var(--muted); }
+  .seg button[aria-pressed="true"] { background: var(--purple); color: #fff; }
+  .pr-days { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pr-days button {
+    border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 12px; cursor: pointer;
+    font-size: .88rem; white-space: nowrap; font-variant-numeric: tabular-nums;
+  }
+  .pr-days button[aria-pressed="true"] { background: var(--purple); border-color: var(--purple); color: #fff; }
+  .pr-days button:disabled { opacity: .45; cursor: not-allowed; }
+  .pr-days .n {
+    display: inline-block; min-width: 18px; margin-left: 5px; padding: 0 5px; border-radius: 999px;
+    background: var(--orange); color: #fff; font-size: .72rem; font-weight: 700; text-align: center;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; border: none; border-radius: 8px; padding: 10px 16px;
+    cursor: pointer; background: var(--orange); color: #fff; margin-left: auto;
+  }
+  .btn:disabled { background: #e9e6ef; color: var(--muted); cursor: not-allowed; }
+  .btn:focus-visible, .seg button:focus-visible, .pr-days button:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+  .pr-tip { flex: 1 0 100%; margin: 0; font-size: .82rem; color: var(--muted); }
+  .pr-msg {
+    max-width: 520px; margin: 40px auto; padding: 28px 20px; text-align: center; background: #fff;
+    border-radius: 12px; color: var(--muted);
+  }
+  .pr-msg a { color: var(--purple); font-weight: 600; }
+
+  /* ---------- the paper ---------- */
+  .sheets { display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 24px 16px 48px; }
+  /* The preview is scaled down to fit narrow screens (--k, set by the script); the wrapper takes the scaled size. */
+  .page-wrap { width: calc(var(--sheet-w) * var(--k, 1)); height: calc(var(--sheet-h) * var(--k, 1)); flex: none; }
+  .page {
+    width: var(--sheet-w); height: var(--sheet-h); padding: .4in .42in .32in; overflow: hidden;
+    display: flex; flex-direction: column; background: #fff; color: #000;
+    transform: scale(var(--k, 1)); transform-origin: 0 0; box-shadow: 0 3px 14px rgba(28, 27, 34, .22);
+    font-family: var(--font-body); font-weight: 500;
+  }
+
+  /* sheet header: festival, day and date, product name */
+  .sh-head { display: flex; align-items: flex-end; justify-content: space-between; gap: .25in; padding-bottom: 5pt; border-bottom: 2.25pt solid #000; flex: none; }
+  .sh-fest { font: 700 8.5pt/1.1 var(--font-display); letter-spacing: .14em; text-transform: uppercase; }
+  .sh-date { margin: 3pt 0 0; font: italic 700 19pt/1 var(--font-headline); text-transform: uppercase; letter-spacing: .01em; }
+  .sh-sub { margin-top: 3pt; font: 500 9.5pt/1.1 var(--font-body); }
+  .sh-right { display: flex; align-items: center; gap: 7pt; text-align: right; flex: none; }
+  .sh-brand { font: 17pt/1 var(--font-script); }
+  .sh-kind { margin-top: 3pt; font: 700 8pt/1 var(--font-display); letter-spacing: .12em; text-transform: uppercase; }
+  .sh-swirl { width: .36in; height: .36in; filter: brightness(0); }
+  .sh-extra { margin: 5pt 0 0; font-size: 8pt; line-height: 1.25; flex: none; }
+
+  /* full schedule: stages across, time down the side, every 15 minutes a row */
+  .sh-grid {
+    display: grid; margin-top: 7pt; min-height: 0; flex: 0 1 calc(var(--hdr) + var(--n15) * .42in);
+    border-bottom: .75pt solid #000;
+  }
+  .sh-th {
+    grid-row: 1; align-self: stretch; display: flex; align-items: flex-end; justify-content: center; text-align: center;
+    padding: 0 2pt 3.5pt; border-bottom: 1.5pt solid #000;
+    font: 700 8.5pt/1.02 var(--font-display); letter-spacing: .04em; text-transform: uppercase;
+  }
+  .sh-th.corner { grid-column: 1; justify-content: flex-end; padding-right: 4pt; font-weight: 500; letter-spacing: .08em; }
+  .sh-band { grid-column: 1 / -1; border-top: .5pt dotted #000; }
+  .sh-band.hour { border-top: .75pt solid #000; }
+  .sh-band.first { border-top: none; }
+  .sh-col { grid-row: 2 / -1; border-left: .5pt solid #000; }
+  .sh-col.last { border-right: .5pt solid #000; }
+  .sh-tl {
+    grid-column: 1; padding: 2pt 4pt 0 0; text-align: right; white-space: nowrap; overflow: hidden;
+    font: 500 7pt/1 var(--font-body); font-variant-numeric: tabular-nums;
+  }
+  .sh-tl.hour { font-weight: 700; font-size: 7.5pt; }
+  .sh-set {
+    position: relative; z-index: 1; min-width: 0; min-height: 0; margin: 1.3pt 1.6pt; padding: 2pt 3pt 1.5pt;
+    display: flex; flex-direction: column; overflow: hidden; overflow-wrap: anywhere;
+    background: #fff; border: 1pt solid #000; font-size: calc(8.25pt * var(--fit, 1)); line-height: 1.1;
+  }
+  .sh-set .t { font-weight: 700; font-size: .9em; font-variant-numeric: tabular-nums; margin-bottom: 1pt; white-space: nowrap; }
+  .sh-set .a { font-weight: 700; }
+  .sh-set .o { font-weight: 500; font-size: .86em; margin-top: .5pt; }
+  .sh-set .bx { display: inline-block; width: .82em; height: .82em; margin-right: .3em; vertical-align: -.08em; border: .75pt solid #000; }   /* tick box */
+  /* very short slots: time and name on one line, no origin */
+  .sh-set.one { display: block; }
+  .sh-set.one .t { display: inline; }
+  .sh-set.one .a { display: inline; }
+  .sh-set.one .o, .sh-set.no-o .o { display: none; }
+  .sh-empty { margin: .5in 0; text-align: center; font-size: 11pt; }
+
+  /* space to write on light days (only shown when there's at least ~0.7in left) */
+  .sh-notes { flex: 1 1 0; min-height: 0; margin-top: 10pt; overflow: hidden; }
+  .sh-notes h3 { margin: 0; font: 700 8.5pt/1 var(--font-display); letter-spacing: .12em; text-transform: uppercase; }
+  .sh-notes i { display: block; height: .3in; border-bottom: .5pt dotted #000; }
+
+  .sh-foot {
+    display: flex; justify-content: space-between; gap: .2in; margin-top: 6pt; flex: none;
+    font-size: 7pt; line-height: 1.3;
+  }
+  .sh-foot span:last-child { text-align: right; white-space: nowrap; }
+
+  /* my agenda: one patron's picks for a day, with the My Day leave-by times */
+  .ag-list { margin-top: 10pt; flex: none; }
+  .ag-item { break-inside: avoid; }
+  .ag-stop {
+    display: grid; grid-template-columns: .25in 1.3in minmax(0, 1fr); column-gap: 9pt; align-items: start;
+    border: 1pt solid #000; padding: 5pt 9pt 5pt 6pt;
+  }
+  .ag-num {
+    grid-column: 1; grid-row: 1 / span 2; width: .25in; height: .25in; border: 1pt solid #000; border-radius: 50%;
+    display: grid; place-items: center; font: 700 9.5pt/1 var(--font-display);
+  }
+  .ag-num svg { width: 11pt; height: 11pt; }
+  .ag-time { grid-column: 2; grid-row: 1; padding-top: 1pt; font: 700 12pt/1.15 var(--font-display); letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+  .ag-stage { grid-column: 2; grid-row: 2; margin-top: 1pt; font: 700 8.5pt/1.2 var(--font-display); letter-spacing: .06em; text-transform: uppercase; }
+  .ag-main { grid-column: 3; grid-row: 1 / span 2; }
+  .ag-act { font: 700 12pt/1.2 var(--font-body); }
+  .ag-origin { margin-left: 5pt; font-size: 9pt; font-weight: 500; }
+  .ag-catch { margin-top: 1.5pt; font-size: 8.5pt; line-height: 1.3; }
+  .ag-leg {
+    margin-left: calc(7pt + .125in - .75pt); padding: 3pt 0 4pt calc(.125in + 8.25pt); border-left: 1.5pt solid #000;
+    font-size: 9.5pt; line-height: 1.35;
+  }
+  .ag-leg b { font: 700 11pt/1 var(--font-display); letter-spacing: .02em; margin-right: 4pt; }
+  .ag-leg .sub { display: block; font-size: 8.5pt; font-style: italic; }
+  .ag-list .ag-item:first-child > .ag-leg:first-child { border-left-style: dotted; }   /* continued from the sheet before */
+  .page.mine .sh-notes { min-height: .9in; }
+
+  @media print {
+    body { background: #fff; }
+    .brand-bar, .pr-bar, .pr-msg { display: none !important; }
+    .sheets { display: block; padding: 0; }
+    .page-wrap { width: auto; height: auto; }
+    .page { transform: none; box-shadow: none; break-after: page; }
+    .page-wrap:last-child .page { break-after: auto; }
+  }
+  @media (max-width: 560px) {
+    .pr-bar { padding: 14px 16px; }
+    .btn { margin-left: 0; }
+    .sheets { padding: 16px 12px 40px; gap: 14px; }
+  }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,400;0,500;0,600;0,700;1,700&family=Saira+Condensed:wght@500;700;800&family=Yellowtail&display=swap">
+<link rel="stylesheet" href="brand.css">
+<link rel="icon" href="assets/swirl.png">
+<meta name="i18n-title" content="pr_title">
+</head>
+<body>
+<div class="brand-bar" data-page="print"></div>
+<div class="pr-bar">
+  <h1 data-i18n="pr_title">Printable schedule</h1>
+  <div class="seg" role="group" data-i18n-aria="pr_view_aria" aria-label="What to print">
+    <button type="button" id="viewFull" aria-pressed="true" data-i18n="pr_full">Full schedule</button>
+    <button type="button" id="viewMine" aria-pressed="false" data-i18n="pr_mine">My picks</button>
+  </div>
+  <div class="pr-days" id="days" role="group" data-i18n-aria="pr_days_aria" aria-label="Days to print"></div>
+  <button class="btn primary" id="printBtn" type="button" disabled>
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>
+    <span data-i18n="pr_btn">Print / Save as PDF</span>
+  </button>
+  <p class="pr-tip" data-i18n="pr_tip">Prints in black and white on Letter paper, one day per page. To keep a PDF, choose “Save as PDF” as the printer.</p>
+</div>
+<main class="sheets" id="sheets" aria-live="polite"></main>
+
+<script src="i18n.js"></script>
+<script src="routes.js"></script>
+<script src="overlay.js"></script>   <!-- only so FIL.ready also loads the shops (assets/poster-routes.json) -->
+<script src="common.js"></script>
+<script>
+FIL.ready(function () {
+  var S = window.SCHEDULE_DATA, R = window.ROUTE_DATA || {}, T = I18N.t, TN = I18N.tn;
+  var esc = FIL.esc, toMin = FIL.toMin, store = FIL.store;
+  var sheets = document.getElementById('sheets'), printBtn = document.getElementById('printBtn');
+  if (!S) { sheets.innerHTML = '<div class="pr-msg">Could not load the schedule (' + esc(window.SCHEDULE_ERROR || '') + '). Run python build_feed.py, and open the site through python serve.py.</div>'; return; }
+
+  // Stages (names and column order) come from locations.json via routes.js; all of them print every day,
+  // so each stage keeps the same column on every sheet.
+  var STAGES = FIL.stages, stageById = FIL.stageById;
+  var perfs = S.performances.map(function (p) { return Object.assign({}, p, { s: toMin(p.start), e: toMin(p.end) }); });
+  var byId = {}; perfs.forEach(function (p) { byId[p.id] = p; });
+  var picks = new Set(store.get('fil-picks', []).filter(function (id) { return byId[id]; }));
+  var isDay = function (d) { return S.days.some(function (x) { return x.date === d; }); };
+
+  // ---------- what to print: ?view=full|mine & ?day=YYYY-MM-DD|all ----------
+  var params = new URLSearchParams(location.search);
+  var state = { view: params.get('view') === 'mine' ? 'mine' : 'full', day: params.get('day') };
+  function defaultDay(view) {
+    if (view === 'mine') { var withPicks = S.days.filter(function (d) { return dayPicks(d.date).length; })[0]; return withPicks ? withPicks.date : 'all'; }
+    var last = store.get('fil-day', null);        // the day last open on the Lineup page
+    return isDay(last) ? last : S.days[0].date;
+  }
+  if (state.day !== 'all' && !isDay(state.day)) state.day = defaultDay(state.view);
+
+  // ---------- helpers ----------
+  function byTime(a, b) { return a.s - b.s || a.e - b.e; }
+  function dayPerfs(date) { return perfs.filter(function (p) { return p.date === date; }).sort(byTime); }
+  function dayPicks(date) { return perfs.filter(function (p) { return p.date === date && picks.has(p.id); }).sort(byTime); }
+  function fmt(m) { return I18N.time(m, true); }
+  function fmtRange(p) {   // same style as the Lineup grid: "4–5:15 PM"
+    var a = fmt(p.s), b = fmt(p.e);
+    if (I18N.lang === 'en' && (p.s < 720) === (p.e < 720)) a = a.replace(/\s?(AM|PM)$/, '');
+    return a + '–' + b;
+  }
+  // Inside the grid boxes: "6:30–7:45" without AM/PM (the time column has it), as on the festival's own sheet
+  var hmFmt = new Intl.DateTimeFormat(I18N.locale, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' });
+  function clock(m) {
+    var d = new Date(Date.UTC(2026, 0, 1, Math.floor(m / 60) % 24, m % 60));
+    return hmFmt.formatToParts(d).filter(function (x) { return x.type !== 'dayPeriod'; })
+      .map(function (x) { return x.value; }).join('').trim();
+  }
+  function boxRange(p) { return clock(p.s) + '–' + clock(p.e); }
+  function wrapSlash(text) { return esc(text).replace(/\//g, '/<wbr>'); }   // "DR Congo/Columbia/Louisiana" may wrap after a slash
+  function longDate(date) {
+    var s = new Intl.DateTimeFormat(I18N.locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })
+      .format(new Date(date + 'T12:00:00Z'));
+    return s.charAt(0).toLocaleUpperCase(I18N.locale) + s.slice(1);
+  }
+  var siteUrl = location.host + location.pathname.replace(/[^\/]*$/, '');
+  function num(n, digits) { return new Intl.NumberFormat(I18N.locale, { minimumFractionDigits: digits || 0, maximumFractionDigits: digits || 0 }).format(n); }
+  // Feet for English (US festival), metres otherwise, as on My Day
+  function feet(meters) { return num(Math.round(meters * 3.28084 / 10) * 10); }
+
+  function head(date, title, sub, kind) {
+    return '<div class="sh-head"><div>' +
+      '<div class="sh-fest">' + esc(T('pr_festival', { year: S.edition || date.slice(0, 4) })) + '</div>' +
+      '<h2 class="sh-date">' + esc(title) + '</h2>' + (sub ? '<div class="sh-sub">' + esc(sub) + '</div>' : '') + '</div>' +
+      '<div class="sh-right"><div><div class="sh-brand">' + esc(I18N.product) + '</div><div class="sh-kind">' + esc(kind) + '</div></div>' +
+      '<img class="sh-swirl" src="assets/swirl.png" alt=""></div></div>';
+  }
+  function notes() {
+    return '<div class="sh-notes"><h3>' + esc(T('pr_notes')) + '</h3>' + new Array(31).join('<i></i>') + '</div>';
+  }
+  function foot(left) {
+    return '<div class="sh-foot"><span>' + left + '</span><span class="pg">' +
+      (S.updated ? esc(T('lu_updated', { when: FIL.stamp(S.updated) })) : '') + '</span></div>';
+  }
+  function sheet(cls, inner) {
+    var wrap = document.createElement('div');
+    wrap.className = 'page-wrap';
+    wrap.innerHTML = '<section class="page ' + cls + '">' + inner + '</section>';
+    sheets.appendChild(wrap);
+    return wrap.firstChild;
+  }
+
+  // ---------- full schedule: one sheet per day ----------
+  // A set two hours or more away from the rest of the day (Saturday's early-morning 5K performance) would stretch
+  // the grid over empty hours, so it is listed under the header instead, as the festival's own sheet does.
+  function splitOutliers(list) {
+    var main = list.slice(), extra = [];
+    while (main.length > 2 && main[1].s - main[0].e >= 120) extra.push(main.shift());
+    while (main.length > 2) {
+      var last = main[main.length - 1], before = Math.max.apply(null, main.slice(0, -1).map(function (p) { return p.e; }));
+      if (last.s - before < 120) break;
+      extra.push(main.pop());
+    }
+    return { main: main, extra: extra };
+  }
+  function fullSheet(date) {
+    var list = dayPerfs(date), parts = splitOutliers(list), main = parts.main;
+    var kind = T('pr_full'), h = head(date, longDate(date), '', kind);
+    if (parts.extra.length) {
+      h += '<p class="sh-extra">* ' + esc(T('pr_extra', { list: parts.extra.map(function (p) {
+        return fmtRange(p) + ' · ' + p.act + (p.origin ? ' (' + p.origin + ')' : '') + ' · ' + stageById[p.stage].name;
+      }).join('; ') })) + '</p>';
+    }
+    if (!main.length) {
+      h += '<p class="sh-empty">' + esc(T('lu_empty_day')) + '</p>';
+    } else {
+      var t0 = Math.floor(Math.min.apply(null, main.map(function (p) { return p.s; })) / 15) * 15;
+      var t1 = Math.ceil(Math.max.apply(null, main.map(function (p) { return p.e; })) / 15) * 15;
+      var n15 = (t1 - t0) / 15, n5 = n15 * 3;   // 5-minute grid rows, so any start time lands in place
+      h += '<div class="sh-grid" style="--n15:' + n15 + ';grid-template-columns:.62in repeat(' + STAGES.length + ', minmax(0, 1fr));' +
+        'grid-template-rows:var(--hdr) repeat(' + n5 + ', minmax(0, 1fr))">';
+      h += '<div class="sh-th corner">' + esc(T('pr_time')) + '</div>';
+      STAGES.forEach(function (s, i) { h += '<div class="sh-th" style="grid-column:' + (i + 2) + '">' + esc(s.name) + '</div>'; });
+      for (var k = 0; k < n15; k++) {
+        var t = t0 + k * 15, rows = 'grid-row:' + (2 + k * 3) + ' / span 3', hour = t % 60 ? '' : ' hour';
+        h += '<div class="sh-band' + hour + (k ? '' : ' first') + '" style="' + rows + '"></div>';
+        h += '<div class="sh-tl' + hour + '" style="' + rows + '">' + esc(I18N.time(t)) + '</div>';
+      }
+      STAGES.forEach(function (s, i) { h += '<div class="sh-col' + (i === STAGES.length - 1 ? ' last' : '') + '" style="grid-column:' + (i + 2) + '"></div>'; });
+      main.forEach(function (p) {
+        var col = STAGES.indexOf(stageById[p.stage]) + 2;
+        if (col < 2) return;
+        var r0 = 2 + Math.round((p.s - t0) / 5), r1 = Math.max(r0 + 1, 2 + Math.round((p.e - t0) / 5));
+        h += '<div class="sh-set" style="grid-column:' + col + ';grid-row:' + r0 + ' / ' + r1 + '">' +
+          '<span class="t"><span class="bx"></span>' + esc(boxRange(p)) + '</span> <span class="a">' + wrapSlash(p.act) + '</span> ' +
+          (p.origin ? '<span class="o">(' + wrapSlash(p.origin) + ')</span>' : '') + '</div>';
+      });
+      h += '</div>';
+    }
+    h += notes() + foot(esc(T('pr_foot_full')) + ' ' + esc(T('pr_foot_change', { url: siteUrl })));
+    return sheet('full', h);
+  }
+
+  // ---------- my picks: the My Day plan for a day ----------
+  // Same rules and saved settings as itinerary.html (buildPlan there): walk times from routes.js × the crowd
+  // factor, "arrive early by", the leave-early / split / stay-to-the-end choice per overlap, and the merch
+  // stop if the patron added one (merch booth, Marché des Arts or Marché du Monde). Keep the two in step when the
+  // plan rules change.
+  var cf = parseFloat(store.raw('crowdFactor')) || R.crowd_factor_default || 1.3;
+  var buf = +(store.raw('fil-buffer') || 5), shop = +(store.raw('fil-shop') || 15);
+  var legModes = store.get('fil-legmodes', {}), merchChoices = store.get('fil-merch', {});
+  // Shops come from the festival map's route file; older route files only know the three merch booths at their stages.
+  var PRS = window.POSTER_ROUTES || {};
+  var booths = PRS.shops
+    ? PRS.shops.map(function (s) { return { id: s.id, kind: s.kind, at: s.id, near: s.near }; })
+    : (R.merch_booths || []).filter(function (b) { return stageById[b.at]; }).map(function (b) { return { id: b.id, kind: 'merch', at: b.at, near: b.at }; });
+  var boothById = {}; booths.forEach(function (b) { boothById[b.id] = b; });
+  var hasRoutes = !!R.routes;
+  // Walking pace from the real street routes, for shops (whose distances are estimated from the map)
+  var PACE = (function () { var m = 0, s = 0; Object.keys(R.routes || {}).forEach(function (k) { m += R.routes[k].meters; s += R.routes[k].seconds; }); return s ? m / s : 1.3; })();
+  function route(a, b) {
+    if (a === b || !hasRoutes) return { meters: 0, seconds: 0 };
+    var r = R.routes[a + '|' + b] || R.routes[b + '|' + a];
+    if (r) return r;
+    var est = PRS.metres && (PRS.metres[a + '|' + b] || PRS.metres[b + '|' + a]);
+    return est == null ? { meters: 0, seconds: 0 } : { meters: est, seconds: est / PACE };
+  }
+  function stageName(id) { return stageById[id] ? stageById[id].name : id; }
+  function buildPlan(date, merch) {
+    var stops = dayPicks(date).map(function (p) { return { p: p }; }), legs = [];
+    var plan = { stops: stops, legs: legs, pre: null, post: null };
+    if (!stops.length) return plan;
+    stops[0].arrive = stops[0].p.s - buf;
+    for (var i = 0; i < stops.length; i++) {
+      var cur = stops[i], next = stops[i + 1];
+      var watchFrom = Math.max(cur.arrive, cur.p.s);
+      if (!next) { cur.leave = cur.p.e; break; }
+      var key = cur.p.id + '>' + next.p.id;
+      var r = route(cur.p.stage, next.p.stage), walk = r.seconds * cf / 60, merchInfo = null;
+      var mb = merch && merch.slot === key ? boothById[merch.booth] : null;
+      if (mb) {
+        var r1 = route(cur.p.stage, mb.at), r2 = route(mb.at, next.p.stage);
+        var w1 = r1.seconds * cf / 60, w2 = r2.seconds * cf / 60;
+        walk = w1 + shop + w2;
+        r = { meters: r1.meters + r2.meters, seconds: r1.seconds + r2.seconds };
+        merchInfo = { booth: mb, w1: w1, w2: w2, m1: r1.meters, m2: r2.meters };
+      }
+      var needArrive = next.p.s - buf, leaveEarly = needArrive - walk, stayEnd = cur.p.e;
+      var tight = stayEnd > leaveEarly + 0.5, overlap = next.p.s < cur.p.e;
+      var mode = tight ? (legModes[key] || (overlap ? 'split' : 'early')) : 'free';
+      var leave = mode === 'early' ? leaveEarly : mode === 'split' ? (leaveEarly + stayEnd) / 2 : stayEnd;
+      leave = Math.floor(Math.min(leave, stayEnd));
+      if (leave < watchFrom) leave = Math.max(watchFrom, Math.floor(leaveEarly));
+      leave = Math.max(leave, Math.floor(cur.arrive));
+      cur.leave = leave;
+      var arrive = leave + walk;
+      next.arrive = arrive;
+      legs.push({ from: cur, to: next, route: r, same: cur.p.stage === next.p.stage, walk: walk, merch: merchInfo,
+        leave: leave, arrive: arrive, free: Math.max(0, needArrive - arrive), late: Math.max(0, arrive - next.p.s) });
+    }
+    stops.forEach(function (st) {
+      st.watchFrom = Math.max(st.arrive, st.p.s); st.watchTo = Math.min(st.leave, st.p.e);
+      st.watched = Math.max(0, st.watchTo - st.watchFrom); st.length = st.p.e - st.p.s;
+    });
+    var b = merch && boothById[merch.booth];
+    if (b && merch.slot === 'before') {
+      var first = stops[0].p, rb = route(b.at, first.stage), wb = rb.seconds * cf / 60, shopEnd = first.s - buf - wb;
+      plan.pre = { booth: b, start: shopEnd - shop, end: shopEnd, walk: wb, meters: rb.meters, to: first };
+    }
+    if (b && merch.slot === 'after') {
+      var last = stops[stops.length - 1], ra = route(last.p.stage, b.at), wa = ra.seconds * cf / 60, startShop = last.leave + wa;
+      plan.post = { booth: b, start: startShop, end: startShop + shop, walk: wa, meters: ra.meters };
+    }
+    return plan;
+  }
+  function planFor(date) {
+    var base = buildPlan(date, null), choice = merchChoices[date];
+    if (choice && choice !== 'none' && !(choice.slot === 'before' || choice.slot === 'after' ||
+        base.legs.some(function (l) { return l.from.p.id + '>' + l.to.p.id === choice.slot; })) || (choice && choice.booth && !boothById[choice.booth])) {
+      choice = undefined;   // picks changed since this was chosen (My Day does the same)
+    }
+    return (choice && choice !== 'none' && booths.length) ? buildPlan(date, choice) : base;
+  }
+
+  var BAG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 8h13l-1 12.5h-11z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg>';
+  // "Pavillon merch booth", "Marché des Arts" or, when there are several, "Marché des Arts near Pavillon" (as on My Day)
+  function boothName(b) {
+    var stage = stageName(b.near || b.at);
+    if (b.kind === 'merch') return T('it_booth_name', { stage: stage });
+    var many = booths.filter(function (x) { return x.kind === b.kind; }).length > 1;
+    return many ? T('shop_near', { kind: T('shop_kind_' + b.kind), stage: stage }) : T('shop_kind_' + b.kind);
+  }
+  function toShop(n, meters, b) { return meters ? T('it_to_shop', { n: Math.round(n), name: boothName(b) }) : T('it_shop_here', { name: boothName(b) }); }
+  function walkArrive(n, meters, time) {
+    return T('it_walk_arrive', { n: Math.round(n), m: num(Math.round(meters / 10) * 10), ft: feet(meters), time: fmt(time) });
+  }
+  function stopHTML(st, i) {
+    var p = st.p, catchTxt;
+    if (!hasRoutes) catchTxt = '';
+    else if (st.watched <= 0) catchTxt = T('it_miss_all');
+    else if (st.watched >= st.length - 0.5) catchTxt = T('it_full', { dur: I18N.dur(st.length) });
+    else {
+      var bits = [];
+      if (st.watchFrom > p.s + 0.5) bits.push(T('it_miss_first', { dur: I18N.dur(st.watchFrom - p.s) }));
+      if (st.watchTo < p.e - 0.5) bits.push(T('it_miss_last', { dur: I18N.dur(p.e - st.watchTo) }));
+      catchTxt = T('it_catch', { a: I18N.dur(st.watched), b: I18N.dur(st.length), bits: bits.join(', ') });
+    }
+    var be = i === 0 && hasRoutes ? T('it_be_at', { stage: esc(stageById[p.stage].name), time: '<b>' + esc(fmt(st.arrive)) + '</b>' }) : '';
+    return '<div class="ag-stop"><span class="ag-num">' + (i + 1) + '</span><div class="ag-time">' + esc(fmtRange(p)) + '</div>' +
+      '<div class="ag-stage">' + esc(stageById[p.stage].name) + '</div>' +
+      '<div class="ag-main"><div class="ag-act">' + esc(p.act) + (p.origin ? '<span class="ag-origin">' + esc(p.origin) + '</span>' : '') + '</div>' +
+      (catchTxt || be ? '<div class="ag-catch">' + (catchTxt ? '<i>' + esc(catchTxt) + '</i>' : '') + (catchTxt && be ? ' · ' : '') + be + '</div>' : '') +
+      '</div></div>';
+  }
+  function merchStopHTML(m) {
+    return '<div class="ag-stop"><span class="ag-num">' + BAG + '</span><div class="ag-time">' + esc(fmt(m.start) + '–' + fmt(m.end)) + '</div>' +
+      '<div class="ag-main"><div class="ag-act">' + esc(T('shop_kind_' + m.booth.kind)) + '</div><div class="ag-catch">' +
+      esc(T('it_merch_about', { booth: boothName(m.booth), n: shop })) + '</div></div></div>';
+  }
+  function legHTML(leg) {
+    if (!hasRoutes) return '';
+    var toName = stageById[leg.to.p.stage].name, h;
+    if (leg.merch) {
+      var m = leg.merch, shopStart = leg.leave + m.w1;
+      h = '<b>' + esc(T('it_leave', { time: fmt(leg.leave) })) + '</b>' + esc(toShop(m.w1, m.m1, m.booth)) +
+        '<br>' + esc(T('it_shop_line', { a: fmt(shopStart), b: fmt(shopStart + shop), booth: boothName(m.booth) })) +
+        '<br>' + esc((m.m2 ? T('it_walk_to', { n: Math.round(m.w2), stage: toName }) : T('it_stay_to', { stage: toName })) + T('it_arrive', { time: fmt(leg.arrive) }));
+    } else if (leg.same) {
+      h = '<b>' + esc(T('it_stay_at', { stage: toName })) + '</b>';
+    } else {
+      h = '<b>' + esc(T('it_leave', { time: fmt(leg.leave) })) + '</b>' + esc(walkArrive(leg.walk, leg.route.meters, leg.arrive));
+    }
+    if (leg.late > 0.5) h += '<span class="sub">' + esc(T('it_late', { dur: I18N.dur(leg.late), act: leg.to.p.act })) + '</span>';
+    else if (leg.free >= 5) h += '<span class="sub">' + esc(T(leg.same ? 'it_free_break' : 'it_free_go', { dur: I18N.dur(leg.free) }) +
+      (leg.free >= 20 ? T('it_free_food') : '')) + '</span>';
+    return '<div class="ag-leg">' + h + '</div>';
+  }
+  // Each item is kept whole on a sheet: the walk to a set travels with that set.
+  function agendaItems(plan) {
+    var items = [], pre = '';
+    if (plan.pre) {
+      pre = merchStopHTML(plan.pre) + '<div class="ag-leg"><b>' + esc(T('it_leave', { time: fmt(plan.pre.end) })) + '</b>' +
+        esc(plan.pre.meters ? T('it_walk_to', { n: Math.round(plan.pre.walk), stage: stageById[plan.pre.to.stage].name }) : T('it_stage_here')) + '</div>';
+    }
+    plan.stops.forEach(function (st, i) {
+      items.push((i === 0 ? pre : legHTML(plan.legs[i - 1])) + stopHTML(st, i));
+    });
+    if (plan.post) {
+      items.push('<div class="ag-leg"><b>' + esc(T('it_then')) + '</b>' +
+        esc(toShop(plan.post.walk, plan.post.meters, plan.post.booth)) + '</div>' + merchStopHTML(plan.post));
+    }
+    return items;
+  }
+  function mineSheets(date) {
+    var plan = planFor(date), items = agendaItems(plan);
+    var footLeft = (hasRoutes ? esc(T('pr_foot_walk', { cf: num(cf, 2) + '×', buf: T('min', { n: buf }) })) + ' ' : '') +
+      esc(T('pr_foot_change', { url: siteUrl }));
+    function newSheet() {
+      return sheet('mine', head(date, T('lu_my_day', { weekday: I18N.weekday(date) }), longDate(date), TN('sets', plan.stops.length)) +
+        '<div class="ag-list"></div>' + notes() + foot(footLeft));
+    }
+    var pages = [newSheet()], list = pages[0].querySelector('.ag-list');
+    items.forEach(function (html) {
+      var item = document.createElement('div');
+      item.className = 'ag-item';
+      item.innerHTML = html;
+      list.appendChild(item);
+      var page = pages[pages.length - 1];
+      if (page.scrollHeight > page.clientHeight + 1 && list.children.length > 1) {   // full: start the next sheet
+        pages.push(newSheet());
+        list = pages[pages.length - 1].querySelector('.ag-list');
+        list.appendChild(item);
+      }
+    });
+    pages.forEach(function (pg, i) {
+      if (i < pages.length - 1) pg.querySelector('.sh-notes').remove();   // space to write on the last sheet only
+      if (pages.length > 1) {
+        var span = pg.querySelector('.sh-foot .pg');
+        span.textContent = T('pr_page', { n: i + 1, total: pages.length }) + (span.textContent ? ' · ' + span.textContent : '');
+      }
+    });
+  }
+
+  // ---------- fitting text into the boxes ----------
+  // Shrink a set's text until it fits its box; then drop the origin; very short slots go on one line.
+  function fitBox(el, min) {
+    var f = 1;
+    el.style.setProperty('--fit', f);
+    while ((el.scrollHeight > el.clientHeight + 0.5 || el.scrollWidth > el.clientWidth + 0.5) && f > min) {
+      f = Math.round((f - 0.04) * 100) / 100;
+      el.style.setProperty('--fit', f);
+    }
+    return el.scrollHeight <= el.clientHeight + 0.5;
+  }
+  function fit() {
+    sheets.querySelectorAll('.sh-set').forEach(function (el) {
+      if (fitBox(el, 0.8)) return;
+      el.classList.add('no-o');
+      if (fitBox(el, 0.8)) return;
+      el.classList.add('one');
+      fitBox(el, 0.62);
+    });
+    sheets.querySelectorAll('.page.full .sh-notes').forEach(function (n) {
+      if (n.clientHeight < 0.7 * 96) n.remove();       // under ~0.7in left: no room to write, leave it white
+    });
+  }
+
+  // ---------- screen preview ----------
+  function scale() {
+    var k = Math.min(1, (sheets.clientWidth - 24) / (8.5 * 96));
+    sheets.style.setProperty('--k', Math.max(0.2, k));
+  }
+  window.addEventListener('resize', scale);
+
+  function renderControls() {
+    document.getElementById('viewFull').setAttribute('aria-pressed', state.view === 'full');
+    document.getElementById('viewMine').setAttribute('aria-pressed', state.view === 'mine');
+    var mine = state.view === 'mine';
+    var chip = function (value, label, n, disabled) {
+      return '<button type="button" data-day="' + value + '" aria-pressed="' + (state.day === value) + '"' + (disabled ? ' disabled' : '') + '>' +
+        esc(label) + (n ? '<span class="n">' + n + '</span>' : '') + '</button>';
+    };
+    document.getElementById('days').innerHTML = chip('all', T('pr_all_days'), mine ? picks.size : 0, mine && !picks.size) +
+      S.days.map(function (d) {
+        var n = mine ? dayPicks(d.date).length : 0;
+        return chip(d.date, I18N.weekdayShort(d.date) + ' ' + I18N.monthDay(d.date), n, mine && !n);
+      }).join('');
+  }
+
+  var fonts = Promise.race([document.fonts ? document.fonts.ready : Promise.resolve(), new Promise(function (r) { setTimeout(r, 4000); })]);
+  function render() {
+    renderControls();
+    var u = new URL(location.href);
+    u.searchParams.set('day', state.day);
+    if (state.view === 'mine') u.searchParams.set('view', 'mine'); else u.searchParams.delete('view');
+    history.replaceState(null, '', u.pathname + u.search);
+    // The title is also the file name the browser suggests for "Save as PDF"
+    var all = state.day === 'all';
+    document.title = (state.view === 'mine'
+      ? (all ? T('pr_mine') : T('lu_my_day', { weekday: I18N.weekday(state.day) }))
+      : T('pr_full') + (all ? '' : ' · ' + longDate(state.day))) + ' · ' + I18N.product;
+    printBtn.disabled = true;
+    fonts.then(function () {
+      sheets.innerHTML = '';
+      scale();
+      var days = state.day === 'all' ? S.days.map(function (d) { return d.date; }) : [state.day];
+      if (state.view === 'mine') {
+        days = days.filter(function (d) { return dayPicks(d).length; });
+        if (!days.length) {
+          sheets.innerHTML = '<div class="pr-msg">' + esc(T(picks.size ? 'lu_empty_picks' : 'it_empty')) +
+            '<br><a href="lineup.html">' + esc(T('it_empty_link')) + '</a></div>';
+          return;
+        }
+        days.forEach(mineSheets);
+      } else {
+        days.forEach(fullSheet);
+      }
+      fit();
+      printBtn.disabled = false;
+      sheets.dataset.ready = '1';
+    });
+  }
+
+  // ---------- events ----------
+  document.getElementById('viewFull').addEventListener('click', function () {
+    if (state.view === 'full') return;
+    state.view = 'full'; if (state.day !== 'all' && !isDay(state.day)) state.day = defaultDay('full'); render();
+  });
+  document.getElementById('viewMine').addEventListener('click', function () {
+    if (state.view === 'mine') return;
+    state.view = 'mine';
+    if (state.day !== 'all' && !dayPicks(state.day).length) state.day = defaultDay('mine');
+    render();
+  });
+  document.getElementById('days').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-day]'); if (!b || b.disabled) return;
+    state.day = b.dataset.day; render();
+  });
+  printBtn.addEventListener('click', function () { window.print(); });
+
+  render();
+});
+</script>
+</body>
+</html>
