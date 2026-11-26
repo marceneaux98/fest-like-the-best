@@ -62,9 +62,6 @@
   td.active { background: var(--orange); color: #fff; font-weight: 700; }
   label.toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--ink); text-transform: none; letter-spacing: 0; font-size: .9rem; margin-bottom: 8px; }
   label.toggle input { accent-color: var(--purple); width: 16px; height: 16px; }
-  #overlayOpacityRow input { accent-color: var(--purple); }
-  #overlayOpacityRow.off { opacity: .4; pointer-events: none; }
-  #overlayOpacityVal { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 3.2em; text-align: right; }
   .foot { margin-top: auto; font-size: .72rem; color: var(--muted); line-height: 1.5; }
   #map { height: 100%; width: 100%; }
   .pin {
@@ -123,16 +120,7 @@
   </div>
 
   <div id="overlayBox">
-    <label for="mapStyle" data-i18n="map_style">Map style</label>
-    <select id="mapStyle">
-      <option value="festival" data-i18n="map_style_festival">Festival map</option>
-      <option value="streets" data-i18n="map_style_streets">Street map</option>
-      <option value="both" data-i18n="map_style_both">Street map + festival map</option>
-    </select>
-    <div class="slider-row" id="overlayOpacityRow" style="margin-top:8px">
-      <input id="overlayOpacity" type="range" min="0.1" max="1" step="0.05" data-i18n-aria="it_opacity" aria-label="Overlay opacity">
-      <span id="overlayOpacityVal"></span>
-    </div>
+    <label data-i18n="map_layers">Show on the festival map</label>
     <div id="mapLayers" role="group" data-i18n-aria="map_layers" aria-label="Show on the festival map"></div>
     <div class="hint" id="overlayStatus" data-i18n="overlay_note">The illustrated map is approximate and not to scale.</div>
   </div>
@@ -153,7 +141,7 @@
 <script src="site-overlay.js"></script>
 <script src="common.js"></script>
 <script>
-(function () {
+FIL.ready(function () {
   var D = window.ROUTE_DATA;
   if (!D) { document.getElementById('result').textContent = 'routes.js not found — run: python build_routes.py'; return; }
 
@@ -167,7 +155,7 @@
     var r = D.routes[a + '|' + b];
     if (r) return r;
     r = D.routes[b + '|' + a];
-    if (r) return { meters: r.meters, seconds: r.seconds, path: r.path.slice().reverse() };
+    if (r) return { meters: r.meters, seconds: r.seconds };
     return null;
   }
   var T = I18N.t;
@@ -187,18 +175,13 @@
   try { saved = localStorage.getItem('crowdFactor'); } catch (e) {}
   crowd.value = saved || D.crowd_factor_default || 1;
 
-  // Map
-  var map = L.map('map', { zoomControl: true });
-  var tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(map);
-  var bounds = L.latLngBounds(locs.map(function (l) { return [l.lat, l.lng]; }));
-  map.fitBounds(bounds, { padding: [60, 60] });
+  // Map: the festival's own illustrated map, upright (see site-overlay.js)
+  var sm = SiteMap.create('map', { layersBox: document.getElementById('mapLayers'), status: document.getElementById('overlayStatus') });
+  var map = sm.map;
 
   var markers = {};
   locs.forEach(function (l) {
-    var m = L.marker([l.lat, l.lng], { icon: L.divIcon({ className: '', html: '<span class="pin" data-id="' + l.id + '">' + l.name + '</span>', iconSize: null }) }).addTo(map);
+    var m = L.marker(sm.pt(l.id), { icon: L.divIcon({ className: '', html: '<span class="pin" data-id="' + l.id + '">' + l.name + '</span>', iconSize: null }) }).addTo(map);
     m.on('click', function () { pick(l.id); });
     markers[l.id] = m;
   });
@@ -206,11 +189,11 @@
   // Merch booth tags under their stage pins
   (D.merch_booths || []).forEach(function (b) {
     var l = byId[b.at]; if (!l) return;
-    L.marker([l.lat, l.lng], { icon: L.divIcon({ className: '', html: '<span class="merch-pin" title="' + b.name + '">MERCH</span>', iconSize: null }),
+    L.marker(sm.pt(l.id), { icon: L.divIcon({ className: '', html: '<span class="merch-pin" title="' + esc(b.name) + '">MERCH</span>', iconSize: null }),
       interactive: false, zIndexOffset: 1500 }).addTo(map);
   });
 
-  var routeLayer = null, routeCasing = null;
+  var routeGroup = L.layerGroup().addTo(map);
 
   // Tapping pins: first sets From, second sets To, third starts over.
   function pick(id) {
@@ -230,7 +213,7 @@
       markers[id].setZIndexOffset(id === a || id === b ? 1000 : 0);
     });
 
-    if (routeLayer) { map.removeLayer(routeLayer); map.removeLayer(routeCasing); routeLayer = routeCasing = null; }
+    routeGroup.clearLayers();
 
     var r = (a && b && a !== b) ? getRoute(a, b) : null;
     if (!r) {
@@ -241,10 +224,10 @@
       resultEl.className = 'result';
       resultEl.innerHTML = '<div class="time">' + fmtMin(m) + ' <small>' + esc(T('pl_min_walk')) + '</small></div>' +
         '<div class="meta">' + esc(byId[a].name) + ' → ' + esc(byId[b].name) + '<br>' +
-        esc(T('pl_meta', { m: r.meters, mi: nf2.format(r.meters * 0.000621371), n: fmtMin(base) })) + '</div>';
-      routeCasing = L.polyline(r.path, { color: '#fff', weight: 9, opacity: 0.9 }).addTo(map);
-      routeLayer = L.polyline(r.path, { color: '#542e91', weight: 5, opacity: 0.95 }).addTo(map);
-      map.fitBounds(routeLayer.getBounds(), { padding: [80, 80], maxZoom: 18 });
+        esc(T('pl_meta', { m: r.meters, ft: new Intl.NumberFormat(I18N.locale, { maximumFractionDigits: 0 }).format(Math.round(r.meters * 3.28084 / 10) * 10), mi: nf2.format(r.meters * 0.000621371), n: fmtMin(base) })) + '</div>';
+      var shape = sm.shape(a, b);
+      sm.draw(shape, routeGroup, { color: '#542e91', weight: 5 });
+      map.fitBounds(L.latLngBounds(shape.all), { padding: [60, 60], maxZoom: 1 });
     }
     drawMatrix(a, b);
   }
@@ -280,22 +263,11 @@
     update();
   });
 
-  // Festival site map (shared with itinerary.html; see site-overlay.js)
-  SiteMapOverlay.attach(map, {
-    styleSelect: document.getElementById('mapStyle'),
-    opacity: document.getElementById('overlayOpacity'),
-    opacityVal: document.getElementById('overlayOpacityVal'),
-    opacityRow: document.getElementById('overlayOpacityRow'),
-    layersBox: document.getElementById('mapLayers'),
-    status: document.getElementById('overlayStatus'),
-    tiles: tiles
-  });
-
   document.getElementById('foot').innerHTML = esc(T('pl_foot', { date: D.built })) + '<br>' +
     'To change locations: edit <code>locations.json</code>, then run <code>python build_routes.py</code>.';
 
   update();
-})();
+});
 </script>
 </body>
 </html>

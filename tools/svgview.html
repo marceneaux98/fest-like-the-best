@@ -44,6 +44,21 @@ fetch('../assets/sitemap.svg', { cache: 'no-cache' }).then(function (r) { return
     l.appendChild(cb); l.appendChild(document.createTextNode(id + ' (' + n + ')'));
     box.appendChild(l);
   });
+  // Icon kinds (data-kind on g.icon): a checkbox per kind; ?only=food shows just that kind's icons.
+  var kinds = {};
+  svg.querySelectorAll('g.icon').forEach(function (g) { var k = g.getAttribute('data-kind'); kinds[k] = (kinds[k] || 0) + 1; });
+  var only = q.get('only');
+  if (Object.keys(kinds).length) {
+    var kb = document.createElement('div'); kb.style.cssText = 'flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px';
+    Object.keys(kinds).sort().forEach(function (k) {
+      var l = document.createElement('label'), cb = document.createElement('input'); cb.type = 'checkbox';
+      cb.checked = !only || only === k;
+      function applyKind() { svg.querySelectorAll('g.icon[data-kind="' + k + '"]').forEach(function (g) { g.style.display = cb.checked ? '' : 'none'; }); }
+      cb.addEventListener('change', applyKind); applyKind();
+      l.appendChild(cb); l.appendChild(document.createTextNode(k + ' (' + kinds[k] + ')')); kb.appendChild(l);
+    });
+    document.querySelector('header').appendChild(kb);
+  }
   var tint = document.getElementById('tint');
   tint.checked = q.get('tint') === '1';
   document.body.classList.toggle('tint', tint.checked);

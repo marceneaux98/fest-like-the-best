@@ -11,9 +11,9 @@
 //   FIL.stages                    stages in display order: { id, name, color, lat, lng } from locations.json (via routes.js)
 //   FIL.stageById[id]
 //   FIL.stageColor(id)            colour for a stage id (falls back to brand purple)
-//   FIL.ready(fn)                 loads data/schedule.json (data/preview/… with ?preview=1), sets
-//                                 window.SCHEDULE_DATA, then calls fn(). Pages that need the schedule
-//                                 wrap their code in this instead of a plain IIFE.
+//   FIL.ready(fn)                 loads data/schedule.json (data/preview/… with ?preview=1) into
+//                                 window.SCHEDULE_DATA and, on map pages, the traced map routes into
+//                                 window.POSTER_ROUTES, then calls fn(). Pages wrap their code in this.
 //   FIL.stamp(iso)                "Nov 16, 7:37 PM" in the current language, for "schedule updated" lines
 //
 // The brand bar (logo, product name, page links) is built here from a placeholder:
@@ -74,15 +74,20 @@
   var DATA_URL = (preview ? 'data/preview/' : 'data/') + 'schedule.json';
   var loading = null;
   function ready(fn) {
-    if (window.SCHEDULE_DATA) { fn(); return; }
     if (!loading) {
-      loading = fetch(DATA_URL, { cache: 'no-cache' }).then(function (r) {
+      var schedule = fetch(DATA_URL, { cache: 'no-cache' }).then(function (r) {
         if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
         return r.json();
       }).then(function (d) { window.SCHEDULE_DATA = d; }, function (err) {
         window.SCHEDULE_DATA = null;
         window.SCHEDULE_ERROR = DATA_URL + ' — ' + (err && err.message || err);
       });
+      // Pages with the festival map (overlay.js loaded) also need the routes traced on it.
+      var routes = window.OVERLAY_CONFIG && window.OVERLAY_CONFIG.routes
+        ? fetch(window.OVERLAY_CONFIG.routes, { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (d) { window.POSTER_ROUTES = d; }, function () { window.POSTER_ROUTES = null; })
+        : Promise.resolve();
+      loading = Promise.all([schedule, routes]);
     }
     loading.then(fn);
   }

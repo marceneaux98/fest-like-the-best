@@ -183,19 +183,7 @@
         <label for="shop" data-i18n="it_shop">Merch shopping time</label>
         <select id="shop" data-minutes="10,15,20,30"></select>
       </div>
-      <div class="set-row">
-        <label for="mapStyle" data-i18n="map_style">Map style</label>
-        <select id="mapStyle">
-          <option value="festival" data-i18n="map_style_festival">Festival map</option>
-          <option value="streets" data-i18n="map_style_streets">Street map</option>
-          <option value="both" data-i18n="map_style_both">Street map + festival map</option>
-        </select>
-      </div>
-      <div class="set-row" id="overlayOpacityRow">
-        <label for="overlayOpacity" data-i18n="it_opacity">Overlay opacity</label>
-        <input id="overlayOpacity" type="range" min="0.1" max="1" step="0.05">
-        <span class="val" id="overlayOpacityVal"></span>
-      </div>
+      <div class="set-row"><label data-i18n="map_layers">Show on the festival map</label></div>
       <div id="mapLayers" role="group" data-i18n-aria="map_layers" aria-label="Show on the festival map"></div>
       <div class="tiny" id="overlayStatus" data-i18n="it_settings_note">Walk times assume ~5 km/h × the crowd factor. Barriers and closures aren’t included.</div>
     </details>
@@ -254,16 +242,19 @@ FIL.ready(function () {
   var fmt = function (m) { return I18N.time(m); };
   var dur = I18N.dur;
   function stageName(id) { return locs[id] ? locs[id].name : id; }
+  // Feet for English (US festival); metres for the other languages.
+  function feet(meters) { return new Intl.NumberFormat(I18N.locale, { maximumFractionDigits: 0 }).format(Math.round(meters * 3.28084 / 10) * 10); }
   function distance(meters) {
-    // miles for English (US festival), kilometres for the other languages
-    var nf = new Intl.NumberFormat(I18N.locale, { maximumFractionDigits: 2, minimumFractionDigits: 2 });
-    return I18N.lang === 'en' ? nf.format(meters * 0.000621371) + ' mi' : nf.format(meters / 1000) + ' km';
+    if (I18N.lang === 'en') return feet(meters) + ' ft';
+    return new Intl.NumberFormat(I18N.locale, { maximumFractionDigits: 0 }).format(Math.round(meters / 10) * 10) + ' m';
   }
+  // Distance and time come from real street distances (routes.js); the line drawn on the map comes
+  // from the route traced on the festival map (sm.shape, see site-overlay.js). path = all its points.
   function route(a, b) {
-    if (a === b) return { meters: 0, seconds: 0, path: [] };
-    var r = R.routes[a + '|' + b]; if (r) return r;
-    r = R.routes[b + '|' + a];
-    return r ? { meters: r.meters, seconds: r.seconds, path: r.path.slice().reverse() } : null;
+    var shape = sm.shape(a, b);
+    if (a === b) return { meters: 0, seconds: 0, path: [], shape: shape };
+    var r = R.routes[a + '|' + b] || R.routes[b + '|' + a];
+    return r ? { meters: r.meters, seconds: r.seconds, path: shape.all, shape: shape } : null;
   }
 
   // ---------- the plan ----------
@@ -294,7 +285,7 @@ FIL.ready(function () {
         var r1 = route(cur.p.stage, mb.at), r2 = route(mb.at, next.p.stage);
         var w1 = r1.seconds * cf / 60, w2 = r2.seconds * cf / 60;
         walk = w1 + shop + w2; walkOnly = w1 + w2;
-        r = { meters: r1.meters + r2.meters, seconds: r1.seconds + r2.seconds, path: r1.path.concat(r2.path) };
+        r = { meters: r1.meters + r2.meters, seconds: r1.seconds + r2.seconds, path: r1.path.concat(r2.path), shape: SiteMap.join(r1.shape, r2.shape) };
         merchInfo = { booth: mb, w1: w1, w2: w2, shop: shop, m1: r1.meters, m2: r2.meters };
       }
       var needArrive = next.p.s - buf;
@@ -331,12 +322,12 @@ FIL.ready(function () {
     if (b && merch.slot === 'before') {
       var first = stops[0].p, rb = route(b.at, first.stage), wb = rb.seconds * cf / 60;
       var shopEnd = first.s - buf - wb;
-      plan.pre = { booth: b, start: shopEnd - shop, end: shopEnd, walk: wb, meters: rb.meters, path: rb.path, to: first };
+      plan.pre = { booth: b, start: shopEnd - shop, end: shopEnd, walk: wb, meters: rb.meters, path: rb.path, shape: rb.shape, to: first };
     }
     if (b && merch.slot === 'after') {
       var last = stops[stops.length - 1], ra = route(last.p.stage, b.at), wa = ra.seconds * cf / 60;
       var startShop = last.leave + wa;
-      plan.post = { booth: b, start: startShop, end: startShop + shop, walk: wa, meters: ra.meters, path: ra.path, from: last.p };
+      plan.post = { booth: b, start: startShop, end: startShop + shop, walk: wa, meters: ra.meters, path: ra.path, shape: ra.shape, from: last.p };
     }
     return plan;
   }
@@ -377,20 +368,9 @@ FIL.ready(function () {
   }
 
   // ---------- map ----------
-  var map = L.map('map');
-  var tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(map);
-  map.fitBounds(L.latLngBounds(R.locations.map(function (l) { return [l.lat, l.lng]; })), { padding: [50, 50] });
-  SiteMapOverlay.attach(map, {
-    styleSelect: document.getElementById('mapStyle'),
-    opacity: document.getElementById('overlayOpacity'),
-    opacityVal: document.getElementById('overlayOpacityVal'),
-    opacityRow: document.getElementById('overlayOpacityRow'),
-    layersBox: document.getElementById('mapLayers'),
-    status: document.getElementById('overlayStatus'),
-    tiles: tiles
-  });
+  // The festival's own illustrated map, upright (see site-overlay.js)
+  var sm = SiteMap.create('map', { layersBox: document.getElementById('mapLayers') });
+  var map = sm.map;
   var mapLayer = L.layerGroup().addTo(map), legLines = [];
   var LINE = '#542e91', LINE_HI = '#f26631';
 
@@ -398,12 +378,11 @@ FIL.ready(function () {
     mapLayer.clearLayers(); legLines = [];
     // Merch booths: small orange tags under their stage pins; the chosen one stays bright.
     booths.forEach(function (b) {
-      var l = locs[b.at];
-      L.marker([l.lat, l.lng], { icon: L.divIcon({ className: '', html: '<span class="merch-pin' + (chosenBooth && chosenBooth !== b.id ? ' off' : '') + '">MERCH</span>', iconSize: null }),
+      L.marker(sm.pt(b.at), { icon: L.divIcon({ className: '', html: '<span class="merch-pin' + (chosenBooth && chosenBooth !== b.id ? ' off' : '') + '">MERCH</span>', iconSize: null }),
         zIndexOffset: 1500, interactive: false }).addTo(mapLayer);
     });
     [plan.pre, plan.post].forEach(function (m) {
-      if (m && m.path.length) L.polyline(m.path, { color: LINE_HI, weight: 4, opacity: .9, dashArray: '6 6' }).addTo(mapLayer);
+      if (m && m.path.length) sm.draw(m.shape, mapLayer, { color: LINE_HI, weight: 4, opacity: .9, dash: '6 6', casing: false });
     });
     // Stage pins: numbered with the stop(s) at that stage; unused stages greyed.
     var nums = {};
@@ -412,26 +391,25 @@ FIL.ready(function () {
       var used = nums[l.id];
       var html = '<span class="pin' + (used ? '' : ' idle') + '" style="' + (used ? 'background:' + stageColor(l.id) : '') + '">' +
         (used ? '<b>' + used.join(', ') + '</b>' : '') + esc(l.name) + '</span>';
-      L.marker([l.lat, l.lng], { icon: L.divIcon({ className: '', html: html, iconSize: null }), zIndexOffset: used ? 1000 : 0, interactive: false }).addTo(mapLayer);
+      L.marker(sm.pt(l.id), { icon: L.divIcon({ className: '', html: html, iconSize: null }), zIndexOffset: used ? 1000 : 0, interactive: false }).addTo(mapLayer);
     });
     var all = [];
     plan.legs.forEach(function (leg, i) {
       if (!leg.route.path.length) { legLines.push(null); return; }
-      L.polyline(leg.route.path, { color: '#fff', weight: 9, opacity: .9 }).addTo(mapLayer);
-      var line = L.polyline(leg.route.path, { color: LINE, weight: 5, opacity: .85 }).addTo(mapLayer);
+      var line = sm.draw(leg.route.shape, mapLayer, { color: LINE, weight: 5, opacity: .85 });
       line.on('click', function () { highlight(i); });
       legLines.push(line);
       all = all.concat(leg.route.path);
     });
-    plan.stops.forEach(function (st) { all.push([locs[st.p.stage].lat, locs[st.p.stage].lng]); });
-    if (all.length && !keepView) map.fitBounds(L.latLngBounds(all), { padding: [60, 60], maxZoom: 18 });
+    plan.stops.forEach(function (st) { all.push(sm.pt(st.p.stage)); });
+    if (all.length && !keepView) map.fitBounds(L.latLngBounds(all), { padding: [50, 50], maxZoom: 1 });
   }
 
   function highlight(i) {
     legLines.forEach(function (l, j) {
       if (!l) return;
       l.setStyle(j === i ? { color: LINE_HI, weight: 7, opacity: 1 } : { color: LINE, weight: 5, opacity: i == null ? .85 : .35 });
-      if (j === i) { l.bringToFront(); map.fitBounds(l.getBounds(), { padding: [80, 80], maxZoom: 18 }); }
+      if (j === i) { l.bringToFront(); map.fitBounds(l.getBounds(), { padding: [70, 70], maxZoom: 1.5 }); }
     });
     document.querySelectorAll('.leg').forEach(function (el) { el.classList.toggle('active', +el.dataset.leg === i); });
   }
@@ -480,7 +458,7 @@ FIL.ready(function () {
       h = '<div class="leg-main"><span class="same">' + esc(T('it_stay_at', { stage: toName })) + '</span></div>';
     } else {
       h = '<div class="leg-main"><span class="leave">' + esc(T('it_leave', { time: fmt(leg.leave) })) + '</span>' +
-        '<span class="walk">' + esc(T('it_walk_arrive', { n: Math.round(leg.walk), m: leg.route.meters, time: fmt(leg.arrive) })) + '</span></div>';
+        '<span class="walk">' + esc(T('it_walk_arrive', { n: Math.round(leg.walk), m: leg.route.meters, ft: feet(leg.route.meters), time: fmt(leg.arrive) })) + '</span></div>';
     }
     if (leg.late > 0.5) h += '<div class="late">' + esc(T('it_late', { dur: dur(leg.late), act: leg.to.p.act })) + '</div>';
     else if (leg.free >= 5) h += '<div class="free">' + esc(T(leg.route.path.length ? 'it_free_go' : 'it_free_break', { dur: dur(leg.free) }) +

@@ -32,8 +32,25 @@ EPS = 0.15                    # curves that deviate less than this from a straig
 
 # ----------------------------------------------------------------- layer rules (2026 map)
 # Boxes are fractions of the page: (x0, y0, x1, y1).
-LEGEND_BOX = (0.68, 0.00, 1.00, 0.39)
+LEGEND_BOX = (0.575, 0.00, 1.00, 0.395)
+LEGEND_COL1_MAX_Y = 0.235      # the first legend column has five rows; below that, shapes are map icons
 LOGO_BOX = (0.03, 0.30, 0.19, 0.58)
+# Legend entries, by column (x centre) and row (y centre), as fractions of the page. Each map icon is
+# matched to one of these by comparing its glyph shapes, and tagged data-kind="…".
+LEGEND_COLS = [0.588, 0.704, 0.843]
+LEGEND_ROWS = [0.060, 0.099, 0.138, 0.177, 0.215, 0.254, 0.292, 0.330, 0.369]
+LEGEND_KINDS = [
+    ["food", "cocktails", "beer", "nonalcoholic", "thc"],
+    ["medical", "restrooms", "accessible", "nursing", "lostfound", "boutique", "pinbooth", "wifi", "cash"],
+    ["special", "selfie", "volunteers", "raintent", "shuttle", "frenchhelp", "media", "bikes", "opportunity"],
+]
+BADGE_SIZE = (13.0, 32.0)      # width/height range (pt) of an icon's disc or oval
+# Map icons whose drawing differs from the legend's sample (a different number of shapes), decided by
+# badge fill + glyph fills instead: (badge fill, glyph fill, min glyphs, max glyphs, wide oval?) -> kind
+ICON_OVERRIDES = [
+    ("#ffffff", "#162061", 3, 3, False, "pinbooth"),     # "PIN": three letters; the legend sample has two shapes
+    ("#ffffff", "#162061", 2, 6, True, "restrooms"),     # wide white oval with the two figures
+]
 BACKGROUND_FILLS = {"#162061", "#1b2863", "#1a2262", "#1a2563", "#1b2463", "#142c6e", "#133280", "#1c2764"}
 STREET_FILLS = {"#4fcfe6", "#4ecfe6", "#46c3ec", "#50d0e7",      # main streets: one compound path
                 "#1c68b8", "#1c67b7", "#1d69b9"}                  # thinner side streets
@@ -247,35 +264,142 @@ def main():
 
     layers = {k: [] for k in ("background", "zones", "streets", "features", "labels", "logo", "legend")}
     for kind, data, bb, fill in items:
+        rec = (kind, data, bb, fill)
         if bb is None:
-            layers["features"].append((kind, data)); continue
+            layers["features"].append(rec); continue
         af = area_frac(bb)
         w, h = bb[2] - bb[0], bb[3] - bb[1]
+        cx, cy = (bb[0] + bb[2]) / 2 / PAGE_W, (bb[1] + bb[3]) / 2 / PAGE_H
+        in_legend = inside(bb, LEGEND_BOX) and af < 0.2 and not (cx < 0.70 and cy > LEGEND_COL1_MAX_Y)
         if fill in STREET_FILLS and af > 0.0015:
-            layers["streets"].append((kind, data))
-        elif inside(bb, LEGEND_BOX) and af < 0.2:
-            layers["legend"].append((kind, data))
+            layers["streets"].append(rec)
+        elif in_legend:
+            layers["legend"].append(rec)
         elif inside(bb, LOGO_BOX) and af < 0.05:
-            layers["logo"].append((kind, data))
+            layers["logo"].append(rec)
         elif kind == "shaded":
-            layers["background" if af > BACKGROUND_MIN_AREA else "zones" if af > 0.004 else "features"].append((kind, data))
+            layers["background" if af > BACKGROUND_MIN_AREA else "zones" if af > 0.004 else "features"].append(rec)
         elif fill in ZONE_FILLS or (fill not in LABEL_FILLS and af > ZONE_MIN_AREA):
-            layers["zones"].append((kind, data))
+            layers["zones"].append(rec)
         elif fill in BACKGROUND_FILLS and af > 0.02:
-            layers["background"].append((kind, data))
+            layers["background"].append(rec)
         elif fill in LABEL_FILLS:
             is_badge = (w >= BADGE_MIN and h >= BADGE_MIN) or in_badge(bb)
-            layers["features" if is_badge else "labels"].append((kind, data))
+            layers["features" if is_badge else "labels"].append(rec)
         else:
-            layers["features"].append((kind, data))
+            layers["features"].append(rec)
+
+    # ------------------------------------------------------------- icons -> kinds
+    # An icon is a disc/oval ("badge") plus the glyph shapes drawn inside it. The legend shows one icon
+    # per entry, so each map icon is matched to the legend icon whose glyphs look the same.
+    def is_badge_shape(rec):
+        kind, data, bb, fill = rec
+        if kind != "path" or bb is None:
+            return False
+        w, h = bb[2] - bb[0], bb[3] - bb[1]
+        return BADGE_SIZE[0] <= w <= BADGE_SIZE[1] and BADGE_SIZE[0] <= h <= BADGE_SIZE[1] and 0.65 <= w / h <= 1.55
+
+    def find_icons(recs):
+        """Group a layer's shapes into icons: list of (badge index, [member indexes]) in draw order."""
+        badges = [i for i, r in enumerate(recs) if is_badge_shape(r)]
+        taken, icons = set(), []
+        for bi in badges:
+            if bi in taken:
+                continue
+            bb = recs[bi][2]
+            members = [bi]
+            for j, r in enumerate(recs):
+                if j == bi or j in taken or r[2] is None or r[0] != "path":
+                    continue
+                b = r[2]
+                cx, cy = (b[0] + b[2]) / 2, (b[1] + b[3]) / 2
+                if bb[0] - 0.5 <= cx <= bb[2] + 0.5 and bb[1] - 0.5 <= cy <= bb[3] + 0.5 and (b[2] - b[0]) <= (bb[2] - bb[0]) * 1.05:
+                    members.append(j)
+            taken.update(members)
+            icons.append((bi, members))
+        return icons
+
+    def signature(recs, badge_i, members):
+        """Shape-only description of an icon: badge fill plus each glyph's fill, relative size and point count."""
+        bb = recs[badge_i][2]
+        bw = max(bb[2] - bb[0], 0.1)
+        glyphs = []
+        for j in members:
+            if j == badge_i:
+                continue
+            kind, data, b, fill = recs[j]
+            d = data[0]
+            glyphs.append((fill, round((b[2] - b[0]) / bw, 1), round((b[3] - b[1]) / bw, 1), min(len(re.findall(r"[MLC]", d)) // 3, 40)))
+        return (recs[badge_i][3], tuple(sorted(glyphs)))
+
+    def sig_distance(a, b):
+        if a[0] != b[0]:
+            return 99
+        ga, gb = list(a[1]), list(b[1])
+        if len(ga) != len(gb):
+            return 10 + abs(len(ga) - len(gb))
+        score = 0
+        for x, y in zip(ga, gb):
+            if x[0] != y[0]:
+                score += 5
+            score += abs(x[1] - y[1]) * 4 + abs(x[2] - y[2]) * 4 + abs(x[3] - y[3]) * 0.3
+        return score
+
+    legend_recs = layers["legend"]
+    legend_sigs = []
+    for bi, members in find_icons(legend_recs):
+        bb = legend_recs[bi][2]
+        cx, cy = (bb[0] + bb[2]) / 2 / PAGE_W, (bb[1] + bb[3]) / 2 / PAGE_H
+        col = min(range(3), key=lambda c: abs(LEGEND_COLS[c] - cx))
+        row = min(range(len(LEGEND_ROWS)), key=lambda r: abs(LEGEND_ROWS[r] - cy))
+        if abs(LEGEND_COLS[col] - cx) > 0.02 or abs(LEGEND_ROWS[row] - cy) > 0.015 or row >= len(LEGEND_KINDS[col]):
+            continue
+        legend_sigs.append((LEGEND_KINDS[col][row], signature(legend_recs, bi, members)))
+        if os.environ.get("SITEMAP_DEBUG"):
+            print("    legend %-12s badge %s %.0fx%.0f glyphs=%s" % (LEGEND_KINDS[col][row], legend_sigs[-1][1][0],
+                  bb[2] - bb[0], bb[3] - bb[1], legend_sigs[-1][1][1]))
+
+    feature_recs = layers["features"]
+    icon_of = {}            # member index -> (icon id, kind)
+    icon_counts = {}
+    unmatched = 0
+    for n, (bi, members) in enumerate(find_icons(feature_recs)):
+        sig = signature(feature_recs, bi, members)
+        best = min(legend_sigs, key=lambda ls: sig_distance(sig, ls[1])) if legend_sigs else None
+        kind = best[0] if best and sig_distance(sig, best[1]) < 3 else "other"
+        if kind == "other":
+            bb = feature_recs[bi][2]
+            wide = (bb[2] - bb[0]) / max(bb[3] - bb[1], 0.1) > 1.15
+            glyph_fills = [g[0] for g in sig[1]]
+            for badge_fill, glyph_fill, lo, hi, needs_wide, okind in ICON_OVERRIDES:
+                if sig[0] == badge_fill and lo <= len(glyph_fills) <= hi and all(f == glyph_fill for f in glyph_fills) and (wide or not needs_wide):
+                    kind = okind
+                    break
+        if kind != "other" and os.environ.get("SITEMAP_DEBUG") == "2":
+            bb = feature_recs[bi][2]
+            print("    icon (%.3f, %.3f) -> %-12s d=%.1f badge %s %.0fx%.0f" % ((bb[0] + bb[2]) / 2 / PAGE_W, (bb[1] + bb[3]) / 2 / PAGE_H,
+                  kind, sig_distance(sig, best[1]), sig[0], bb[2] - bb[0], bb[3] - bb[1]))
+        if kind == "other":
+            unmatched += 1
+            if os.environ.get("SITEMAP_DEBUG"):
+                bb = feature_recs[bi][2]
+                print("    unmatched icon at (%.3f, %.3f) badge %s %.0fx%.0f glyphs=%s nearest=%s d=%.1f" % (
+                    (bb[0] + bb[2]) / 2 / PAGE_W, (bb[1] + bb[3]) / 2 / PAGE_H, sig[0], bb[2] - bb[0], bb[3] - bb[1],
+                    sig[1], best[0] if best else None, sig_distance(sig, best[1]) if best else -1))
+        icon_counts[kind] = icon_counts.get(kind, 0) + 1
+        for j in members:
+            icon_of[j] = (n, kind)
+    print("  legend icons recognised: %d of %d; map icons by kind: %s; unmatched: %d" % (
+        len(legend_sigs), sum(len(c) for c in LEGEND_KINDS),
+        ", ".join("%s %d" % kv for kv in sorted(icon_counts.items())), unmatched))
 
     # ------------------------------------------------------------- write
     svg = ET.Element("{%s}svg" % NS, {"viewBox": "0 0 %d %d" % (PAGE_W, PAGE_H), "width": "%d" % PAGE_W, "height": "%d" % PAGE_H})
     odefs = ET.SubElement(svg, "{%s}defs" % NS)
     used_clips = set()
     for name, lst in layers.items():
-        for kind, data in lst:
-            c = data[2] if kind == "path" else data[2]
+        for kind, data, _bb, _fill in lst:
+            c = data[2]
             if c:
                 used_clips.add(c)
     for g in gradients:
@@ -290,27 +414,38 @@ def main():
                 ET.SubElement(nc, "{%s}path" % NS, {"d": d})
 
     fmt = "%%.%df" % PREC
+
+    def emit(parent, kind, data):
+        if kind == "path":
+            d, attrs, clip = data
+            a = {"d": d, "fill": attrs.get("fill", "#000")}
+            for k in ("fill-opacity", "fill-rule", "stroke", "stroke-width", "stroke-opacity", "opacity"):
+                if attrs.get(k) and not (k == "fill-opacity" and attrs[k] == "1"):
+                    a[k] = attrs[k]
+            if clip:
+                a["clip-path"] = "url(#%s)" % clip
+            ET.SubElement(parent, "{%s}path" % NS, a)
+        else:
+            el, m, clip = data
+            a = {"transform": "matrix(%s)" % " ".join(fmt % v for v in m)}
+            if clip:
+                a["clip-path"] = "url(#%s)" % clip
+            wrap = ET.SubElement(parent, "{%s}g" % NS, a)
+            for x in el.iter():
+                if tag(x) == "rect":
+                    wrap.append(x)
+
     for name, lst in layers.items():
         g = ET.SubElement(svg, "{%s}g" % NS, {"id": "layer-" + name, "class": "layer"})
-        for kind, data in lst:
-            if kind == "path":
-                d, attrs, clip = data
-                a = {"d": d, "fill": attrs.get("fill", "#000")}
-                for k in ("fill-opacity", "fill-rule", "stroke", "stroke-width", "stroke-opacity", "opacity"):
-                    if attrs.get(k) and not (k == "fill-opacity" and attrs[k] == "1"):
-                        a[k] = attrs[k]
-                if clip:
-                    a["clip-path"] = "url(#%s)" % clip
-                ET.SubElement(g, "{%s}path" % NS, a)
+        groups = {}
+        for i, (kind, data, _bb, _fill) in enumerate(lst):
+            if name == "features" and i in icon_of:
+                icon_id, icon_kind = icon_of[i]
+                if icon_id not in groups:
+                    groups[icon_id] = ET.SubElement(g, "{%s}g" % NS, {"class": "icon", "data-kind": icon_kind})
+                emit(groups[icon_id], kind, data)
             else:
-                el, m, clip = data
-                a = {"transform": "matrix(%s)" % " ".join(fmt % v for v in m)}
-                if clip:
-                    a["clip-path"] = "url(#%s)" % clip
-                wrap = ET.SubElement(g, "{%s}g" % NS, a)
-                for x in el.iter():
-                    if tag(x) == "rect":
-                        wrap.append(x)
+                emit(g, kind, data)
 
     data = ET.tostring(svg, encoding="unicode")
     data = re.sub(r'\s(clip-rule|version)="[^"]*"', "", data)
