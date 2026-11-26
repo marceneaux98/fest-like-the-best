@@ -17,6 +17,11 @@
   .top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
   h1 { margin: 0; font-size: 1.25rem; }
   .back { color: #fff; opacity: .9; font-size: .85rem; text-decoration: none; white-space: nowrap; }
+  /* print.html?view=mine: this day's plan in black and white. Icon only on phones (the text stays for screen readers). */
+  .back.print { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; align-self: center; }
+  @media (max-width: 560px) {
+    .back.print span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  }
   .back:hover { opacity: 1; text-decoration: underline; }
   .days { display: flex; gap: 4px; margin-top: 12px; overflow-x: auto; scrollbar-width: none; }
   .days::-webkit-scrollbar { display: none; }
@@ -162,6 +167,7 @@
   <header>
     <div class="top">
       <h1 id="title" data-i18n="it_title">My day plan</h1>
+      <a class="back print" href="print.html?view=mine" onclick="var d = new URLSearchParams(location.search).get('day'); if (d) this.href = 'print.html?view=mine&amp;day=' + encodeURIComponent(d);"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg><span data-i18n="pr_myday_btn">Print my day</span></a>
       <a class="back" href="lineup.html" data-i18n="it_edit">← Edit picks</a>
     </div>
     <nav class="days" id="days" role="tablist" data-i18n-aria="it_days_aria" aria-label="Days with picks"></nav>

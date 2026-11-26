@@ -62,3 +62,55 @@ test('pick two Thursday sets and get a walking plan', async ({ page, request, ba
 
   expect(errors, 'no JavaScript errors on lineup.html or itinerary.html').toEqual([]);
 });
+
+// Printable schedules (print.html): every festival day prints as one Letter page with every set on it and no text
+// cut off, and "My picks" (opened from My day) lists the picked sets with their leave-by times.
+test('printable schedules: one page per day, and my picks with leave-by times', async ({ page, request, baseURL }) => {
+  const schedule = await (await request.get(baseURL + '/data/schedule.json')).json();
+  const errors = [];
+  page.on('pageerror', (err) => errors.push('pageerror: ' + err.message));
+  page.on('console', (msg) => {
+    if (msg.type() !== 'error') return;
+    const url = msg.location().url || '';
+    if (/Failed to load resource/.test(msg.text()) && url && !url.startsWith(baseURL)) return;
+    errors.push('console: ' + msg.text() + (url ? ' (' + url + ')' : ''));
+  });
+
+  // --- full schedule, all days ---
+  await page.goto('/print.html?day=all');
+  await expect(page.locator('#sheets')).toHaveAttribute('data-ready', '1');
+  await expect(page.locator('.page.full')).toHaveCount(schedule.days.length);
+  // every set is a box on its day's grid, or listed under the header ("Also this day: …") when far from the rest
+  const boxes = await page.locator('.sh-set').count();
+  const extras = (await page.locator('.sh-extra').allTextContents()).reduce((n, t) => n + t.split('; ').length, 0);
+  expect(boxes + extras, 'every set in schedule.json is on the printout').toBe(schedule.performances.length);
+  const clipped = await page.$$eval('.sh-set, .page', (els) =>
+    els.filter((el) => el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1).map((el) => el.textContent.slice(0, 60)));
+  expect(clipped, 'no text cut off in the boxes').toEqual([]);
+
+  // print preview: controls hidden, one Letter page per day
+  await page.emulateMedia({ media: 'print' });
+  await expect(page.locator('.pr-bar')).toBeHidden();
+  const pdf = await page.pdf({ preferCSSPageSize: true });
+  const pages = (pdf.toString('latin1').match(/\/Type\s*\/Page(?!s)/g) || []).length;
+  expect(pages, 'one printed page per festival day').toBe(schedule.days.length);
+  await page.emulateMedia({ media: 'screen' });
+
+  // --- my picks: two Thursday sets, opened from My day ---
+  const thursday = schedule.days.find((d) => d.weekday === 'Thursday');
+  const dayPerfs = schedule.performances.filter((p) => p.date === thursday.date).sort((a, b) => toMin(a.start) - toMin(b.start));
+  const first = dayPerfs[0];
+  const second = dayPerfs.find((p) => p.stage !== first.stage && toMin(p.start) >= toMin(first.end));
+  await page.evaluate((ids) => localStorage.setItem('fil-picks', JSON.stringify(ids)), [first.id, second.id]);
+  await page.goto('/itinerary.html?day=' + thursday.date);
+  await page.locator('a.back.print').click();
+  await expect(page).toHaveURL(/\/print\.html\?view=mine&day=\d{4}-\d{2}-\d{2}$/);
+  expect(page.url()).toContain('day=' + thursday.date);
+  await expect(page.locator('#sheets')).toHaveAttribute('data-ready', '1');
+  await expect(page.locator('.ag-stop')).toHaveCount(2);
+  await expect(page.locator('.ag-list')).toContainText(first.act);
+  await expect(page.locator('.ag-list')).toContainText(second.act);
+  await expect(page.locator('.ag-leg b').first()).toHaveText(/\d{1,2}[:h]\d{2}/); // "Leave 6:03 PM"
+
+  expect(errors, 'no JavaScript errors on print.html').toEqual([]);
+});

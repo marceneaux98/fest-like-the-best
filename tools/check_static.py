@@ -22,7 +22,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 JSON_FILES = ["data/schedule.json", "data/artists.json", "locations.json", "feed.config.json"]
-PAGES = ["lineup.html", "itinerary.html", "planner.html", "common.js"]  # common.js injects the brand bar
+PAGES = ["lineup.html", "itinerary.html", "planner.html", "print.html", "common.js"]  # common.js injects the brand bar
 EMBARGOED_EDITIONS = ["2027"]  # must keep public_from = null until the lineup is announced
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".lighthouseci"}
 
