@@ -138,6 +138,9 @@
     box-shadow: 0 2px 5px rgba(0,0,0,.25); white-space: nowrap;
   }
   .merch-pin.off { opacity: .55; }
+  .kinds { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0 2px; font-size: .82rem; color: var(--muted); }
+  .kind { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 4px 11px; cursor: pointer; font-size: .82rem; font-weight: 600; color: var(--ink); }
+  .kind[aria-pressed="true"] { background: var(--orange); border-color: var(--orange); color: #fff; }
 
   @media (max-width: 860px) {
     /* Phone: logo bar, day title + tabs, map, then the plan */
@@ -224,9 +227,20 @@ FIL.ready(function () {
   buffer.value = loadRaw('fil-buffer') || '5';
   shopSel.value = loadRaw('fil-shop') || '15';
 
-  // Merch booths (from locations.json via routes.js). Each sits at a stage ("at").
-  var booths = (R.merch_booths || []).filter(function (b) { return locs[b.at]; });
+  // Shops: merch booths, Marché des Arts and Marché du Monde, placed on the festival map in the route
+  // editor (assets/poster-routes.json). "at" is the place routes are measured to; "near" the closest stage.
+  // Older route files only know the three merch booths, which sit at their stages.
+  var PRS = window.POSTER_ROUTES || {};
+  var booths = PRS.shops
+    ? PRS.shops.map(function (s) { return { id: s.id, kind: s.kind, at: s.id, near: s.near }; })
+    : (R.merch_booths || []).filter(function (b) { return locs[b.at]; }).map(function (b) { return { id: b.id, kind: 'merch', at: b.at, near: b.at }; });
   var boothById = {}; booths.forEach(function (b) { boothById[b.id] = b; });
+  var KINDS = ['merch', 'arts', 'monde'].filter(function (k) { return booths.some(function (b) { return b.kind === k; }); });
+  var shopKind = loadRaw('fil-shopkind');
+  if (KINDS.indexOf(shopKind) < 0) shopKind = KINDS[0];
+  function kindBooths() { return booths.filter(function (b) { return b.kind === shopKind; }); }
+  // Walking pace from the real street routes, for shops (whose distances are estimated from the map).
+  var PACE = (function () { var m = 0, s = 0; Object.keys(R.routes).forEach(function (k) { m += R.routes[k].meters; s += R.routes[k].seconds; }); return s ? m / s : 1.3; })();
   // Per day: undefined = show a suggestion, 'none' = patron said no thanks, {slot, booth} = chosen.
   // slot is 'before', 'after', or the key of the walk between two picks.
   var merchChoices = loadJSON('fil-merch', {});
@@ -254,7 +268,12 @@ FIL.ready(function () {
     var shape = sm.shape(a, b);
     if (a === b) return { meters: 0, seconds: 0, path: [], shape: shape };
     var r = R.routes[a + '|' + b] || R.routes[b + '|' + a];
-    return r ? { meters: r.meters, seconds: r.seconds, path: shape.all, shape: shape } : null;
+    if (!r) {                                      // a shop: distance estimated from the map
+      var est = PRS.metres && (PRS.metres[a + '|' + b] || PRS.metres[b + '|' + a]);
+      if (est == null) return null;
+      r = { meters: est, seconds: est / PACE };
+    }
+    return { meters: r.meters, seconds: r.seconds, path: shape.all, shape: shape };
   }
 
   // ---------- the plan ----------
@@ -336,7 +355,7 @@ FIL.ready(function () {
   // In-between options only count if the detour + shopping fits in the free time without cutting a set.
   var MIN_SPARE = 3; // minutes of slack a break must leave after the merch detour
   function merchOptions(base) {
-    var shop = +shopSel.value, out = [];
+    var shop = +shopSel.value, out = [], booths = kindBooths();
     if (!booths.length || !base.stops.length) return out;
     function nearest(fn) { return booths.map(fn).sort(function (a, b) { return a.walk - b.walk; })[0]; }
     var first = base.stops[0].p, last = base.stops[base.stops.length - 1];
@@ -376,9 +395,11 @@ FIL.ready(function () {
 
   function drawMap(plan, chosenBooth, keepView) {
     mapLayer.clearLayers(); legLines = [];
-    // Merch booths: small orange tags under their stage pins; the chosen one stays bright.
+    // Shops of the kind the patron is shopping for (plus the chosen one); the chosen one stays bright.
     booths.forEach(function (b) {
-      L.marker(sm.pt(b.at), { icon: L.divIcon({ className: '', html: '<span class="merch-pin' + (chosenBooth && chosenBooth !== b.id ? ' off' : '') + '">MERCH</span>', iconSize: null }),
+      if (b.kind !== shopKind && b.id !== chosenBooth) return;
+      var cls = (PRS.shops ? 'shop-pin ' + b.kind : 'merch-pin') + (chosenBooth && chosenBooth !== b.id ? ' off' : '');
+      L.marker(sm.pt(b.at), { icon: L.divIcon({ className: '', html: '<span class="' + cls + '">' + esc(T('shop_tag_' + b.kind)) + '</span>', iconSize: null }),
         zIndexOffset: 1500, interactive: false }).addTo(mapLayer);
     });
     [plan.pre, plan.post].forEach(function (m) {
@@ -450,8 +471,8 @@ FIL.ready(function () {
     if (leg.merch) {
       var m = leg.merch, shopStart = leg.leave + m.w1;
       h = '<div class="leg-main"><span class="leave">' + esc(T('it_leave', { time: fmt(leg.leave) })) + '</span><span class="walk">' +
-          esc(m.m1 ? T('it_to_booth', { n: Math.round(m.w1) }) : T('it_booth_here')) + '</span></div>' +
-        '<div class="merch-line">' + BAG + esc(T('it_shop_line', { a: fmt(shopStart), b: fmt(shopStart + m.shop), booth: T('it_booth_name', { stage: stageName(m.booth.at) }) })) + '</div>' +
+          esc(m.m1 ? T('it_to_shop', { n: Math.round(m.w1), name: boothName(m.booth) }) : T('it_shop_here', { name: boothName(m.booth) })) + '</span></div>' +
+        '<div class="merch-line">' + BAG + esc(T('it_shop_line', { a: fmt(shopStart), b: fmt(shopStart + m.shop), booth: boothName(m.booth) })) + '</div>' +
         '<div class="merch-sub">' + esc((m.m2 ? T('it_walk_to', { n: Math.round(m.w2), stage: toName }) : T('it_stay_to', { stage: toName })) +
           T('it_arrive', { time: fmt(leg.arrive) })) + '</div>';
     } else if (!leg.route.path.length) {
@@ -531,7 +552,7 @@ FIL.ready(function () {
     });
     if (plan.post) {
       out += '<div class="leg static"><div class="leg-card"><div class="leg-main"><span class="leave">' + esc(T('it_then')) + '</span>' +
-        '<span class="walk">' + esc(plan.post.meters ? T('it_to_booth', { n: Math.round(plan.post.walk) }) : T('it_booth_here')) + '</span></div></div></div>' +
+        '<span class="walk">' + esc(plan.post.meters ? T('it_to_shop', { n: Math.round(plan.post.walk), name: boothName(plan.post.booth) }) : T('it_shop_here', { name: boothName(plan.post.booth) })) + '</span></div></div></div>' +
         merchStopHTML(plan.post);
     }
     tl.innerHTML = out;
@@ -542,27 +563,40 @@ FIL.ready(function () {
   function merchStopHTML(m) {
     return '<div class="stop merchstop"><span class="num">' + BAG + '</span>' +
       '<div class="when"><span>' + esc(fmt(m.start)) + ' – ' + esc(fmt(m.end)) + '</span></div>' +
-      '<div class="act">' + esc(T('it_merch_stop')) + '</div><div class="where">' +
-      esc(T('it_merch_about', { booth: T('it_booth_name', { stage: stageName(m.booth.at) }), n: shopSel.value })) + '</div></div>';
+      '<div class="act">' + esc(T('shop_kind_' + m.booth.kind)) + '</div><div class="where">' +
+      esc(T('it_merch_about', { booth: boothName(m.booth), n: shopSel.value })) + '</div></div>';
   }
 
-  function boothText(id) { return T('it_booth', { stage: stageName(boothById[id].at) }); }
+  // "Pavillon merch booth", "Marché des Arts" or, when there are several, "Marché des Arts near Pavillon"
+  function boothName(b) {
+    var stage = stageName(b.near || b.at);
+    if (b.kind === 'merch') return T('it_booth_name', { stage: stage });
+    var many = booths.filter(function (x) { return x.kind === b.kind; }).length > 1;
+    return many ? T('shop_near', { kind: T('shop_kind_' + b.kind), stage: stage }) : T('shop_kind_' + b.kind);
+  }
+  function boothText(id) {
+    var b = boothById[id];
+    return b.kind === 'merch' ? T('it_booth', { stage: stageName(b.near || b.at) }) : T('shop_the', { name: boothName(b) });
+  }
   function optHTML(o, choice) {
     var on = choice && choice !== 'none' && choice.slot === o.slot && choice.booth === o.booth;
     return '<button type="button" class="mopt" data-merch-pick="' + o.slot + '|' + o.booth + '" aria-pressed="' + !!on + '">' +
-      '<b>' + esc(fmt(o.start)) + '</b><div>' + esc(T('it_booth_name', { stage: stageName(boothById[o.booth].at) })) + '</div>' +
+      '<b>' + esc(fmt(o.start)) + '</b><div>' + esc(boothName(boothById[o.booth])) + '</div>' +
       '<span>' + esc(o.where + (o.slack !== null ? ' · ' + T('it_spare', { n: Math.floor(o.slack) }) : '')) + '</span></button>';
   }
   function merchHTML(opts, choice, plan) {
-    if (!booths.length || !opts.length) return '';
-    var h = '<div class="merch"><h3>' + BAG + esc(T('it_merch_title')) + '</h3>';
+    if (!booths.length) return '';
+    var h = '<div class="merch"><h3>' + BAG + esc(T(KINDS.length > 1 ? 'shop_title' : 'it_merch_title')) + '</h3>';
+    if (KINDS.length > 1) h += '<div class="kinds" role="group" aria-label="' + esc(T('shop_pick')) + '"><span>' + esc(T('shop_pick')) + '</span>' +
+      KINDS.map(function (k) { return '<button type="button" class="kind" data-shopkind="' + k + '" aria-pressed="' + (k === shopKind) + '">' + esc(T('shop_kind_' + k)) + '</button>'; }).join('') + '</div>';
+    if (!opts.length) return h + '</div>';
     if (choice === 'none') {
-      h += '<p>' + esc(T('it_merch_none')) + '</p><div class="btns"><button type="button" class="mbtn link" data-merch="options">' + esc(T('it_merch_find')) + '</button></div>';
+      h += '<p>' + esc(T('it_shop_none')) + '</p><div class="btns"><button type="button" class="mbtn link" data-merch="options">' + esc(T('it_merch_find')) + '</button></div>';
     } else if (choice) {
       var at = plan.pre ? plan.pre.start : plan.post ? plan.post.start :
         (function () { var l = plan.legs.filter(function (x) { return x.merch; })[0]; return l ? l.leave + l.merch.w1 : null; })();
       var o = opts.filter(function (x) { return x.slot === choice.slot; })[0];
-      h += '<p>' + T('it_merch_set', { time: '<b>' + esc(fmt(at)) + '</b>', booth: esc(boothText(choice.booth)), where: esc(o ? o.where : '') }) + '</p>' +
+      h += '<p>' + T('it_shop_set', { time: '<b>' + esc(fmt(at)) + '</b>', booth: esc(boothText(choice.booth)), where: esc(o ? o.where : '') }) + '</p>' +
         '<div class="btns"><button type="button" class="mbtn" data-merch="options">' + esc(T('it_merch_change')) + '</button>' +
         '<button type="button" class="mbtn link" data-merch="none">' + esc(T('it_merch_remove')) + '</button></div>';
     } else {
@@ -591,8 +625,15 @@ FIL.ready(function () {
     if (leg) highlight(+leg.dataset.leg);
   });
   document.getElementById('summary').addEventListener('click', function (e) {
-    var pick = e.target.closest('[data-merch-pick]'), act = e.target.closest('[data-merch]');
-    if (pick) {
+    var pick = e.target.closest('[data-merch-pick]'), act = e.target.closest('[data-merch]'), kind = e.target.closest('[data-shopkind]');
+    if (kind) {
+      // A different kind of shopping: drop today's stop of the old kind and suggest one of the new kind.
+      shopKind = kind.dataset.shopkind; saveRaw('fil-shopkind', shopKind);
+      var c = merchChoices[day];
+      if (c && c !== 'none' && boothById[c.booth] && boothById[c.booth].kind !== shopKind) delete merchChoices[day];
+      if (c === 'none') delete merchChoices[day];
+      showMerchOptions = false;
+    } else if (pick) {
       var parts = pick.dataset.merchPick.split('|');
       merchChoices[day] = { slot: parts[0], booth: parts[1] };
       showMerchOptions = false;

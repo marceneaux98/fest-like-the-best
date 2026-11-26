@@ -5,19 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Route editor (festival map)</title>
 <style>
-  body { margin: 0; font: 14px system-ui, sans-serif; background: #2b2b33; color: #111; display: grid; grid-template-columns: 300px 1fr; height: 100vh; }
+  body { margin: 0; font: 14px system-ui, sans-serif; background: #2b2b33; color: #111; display: grid; grid-template-columns: 310px 1fr; height: 100vh; }
   #panel { background: #fff; padding: 12px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
   #panel h1 { font-size: 17px; margin: 0; color: #542e91; }
   fieldset { border: 1px solid #ddd; border-radius: 8px; padding: 6px 10px 8px; margin: 0; }
   legend { font-weight: 700; font-size: 13px; padding: 0 4px; }
   .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 5px 0; }
   button, select { font: inherit; padding: 5px 9px; border-radius: 6px; border: 1px solid #bbb; background: #f6f6f8; cursor: pointer; }
-  select { width: 100%; }
+  select.wide { width: 100%; }
   button:disabled { opacity: .45; cursor: default; }
   button.on { background: #f26631; color: #fff; border-color: #f26631; }
   button.primary { background: #542e91; color: #fff; border-color: #542e91; font-weight: 600; }
   #hint { background: #fff7d6; border: 1px solid #f0d36b; border-radius: 6px; padding: 7px 9px; font-size: 13px; line-height: 1.35; }
-  #routeInfo, #stageInfo, #status { font-size: 12px; color: #444; white-space: pre-wrap; line-height: 1.4; }
+  #routeInfo, #placeInfo, #status { font-size: 12px; color: #444; white-space: pre-wrap; line-height: 1.4; }
   .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 99px; background: #eee; }
   .tag.manual { background: #ffe9a8; } .tag.auto { background: #e6ddff; }
   #wrap { overflow: auto; position: relative; }
@@ -34,8 +34,8 @@
   <div id="hint">Loading the map…</div>
 
   <fieldset>
-    <legend>1 · Stage pins and entrances</legend>
-    <select id="stageSel" aria-label="Stage"></select>
+    <legend>1 · Stages and shops</legend>
+    <select id="placeSel" class="wide" aria-label="Stage or shop"></select>
     <div class="row">
       <button id="setPin" type="button">Place pin</button>
       <button id="setEnt" type="button">Add entrance</button>
@@ -44,12 +44,21 @@
       <button id="popEnt" type="button">Remove last entrance</button>
       <button id="autoEnt" type="button">Clear entrances</button>
     </div>
-    <div id="stageInfo"></div>
+    <div id="placeInfo"></div>
+    <div class="row" style="margin-top:8px">
+      <select id="shopKind" aria-label="Kind of shop">
+        <option value="merch">Merch booth</option>
+        <option value="arts">Marché des Arts</option>
+        <option value="monde">Marché du Monde</option>
+      </select>
+      <button id="addShop" type="button">Add shop</button>
+    </div>
+    <div class="row"><button id="delShop" type="button">Remove this shop</button></div>
   </fieldset>
 
   <fieldset>
     <legend>2 · Routes</legend>
-    <select id="routeSel" aria-label="Route"></select>
+    <select id="routeSel" class="wide" aria-label="Route"></select>
     <div class="row">
       <button id="draw" type="button">Draw this route</button>
       <button id="undo" type="button" disabled>Undo point</button>
@@ -65,9 +74,10 @@
 
   <fieldset>
     <legend>View</legend>
-    <div class="row"><label>Zoom <select id="zoom" style="width:auto"><option value="1">100%</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option></select></label></div>
+    <div class="row"><label>Zoom <select id="zoom"><option value="1">100%</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option></select></label></div>
     <div class="row"><label><input type="checkbox" id="dim" checked> Dim icons and labels</label></div>
     <div class="row"><label><input type="checkbox" id="showAll" checked> Show all routes</label></div>
+    <div class="row"><label><input type="checkbox" id="showNet"> Show walkable streets</label></div>
   </fieldset>
 
   <div class="row"><button id="save" class="primary" type="button" disabled>Save</button></div>
@@ -80,41 +90,69 @@
 <script>
 // Route editor for the festival map. Serve the site with `python serve.py` and open tools/poster-routes.html.
 //
-// How routes are made
-//   Automatic: the light-cyan streets drawn on assets/sitemap.svg are thinned to centre lines; every
-//   stage-to-stage route is the shortest path along them between the two stages' entrances.
-//   By hand: pick a route, click "Draw this route", click points along the way, then Finish. With
-//   "Follow the streets" on, the line runs along the drawn streets between your clicks; off, it goes
-//   straight (for shortcuts through a lot or a plaza). Each click remembers which it was.
+// Walkable streets
+//   Every street drawn on assets/sitemap.svg is walkable: the wide light-cyan festival streets and the
+//   thin dark-blue side streets. Side streets count as SIDE_COST times longer, so automatic routes keep
+//   to the festival streets unless a side street is clearly shorter. The streets are thinned to centre
+//   lines, and routes are shortest paths along them.
 //
-// Pins and entrances
-//   The pin is where the stage's label sits on the map. An entrance is where people walk into the
-//   stage from a street; a stage can have several (Internationale, FrancoSphere). Every route uses
-//   whichever pair of entrances gives the shortest walk, and the app adds a dotted hop from the pin
-//   to that entrance. With no entrance placed, the nearest street to the pin is used.
+// Places
+//   Stages (from locations.json) and shops: merch booths, Marché des Arts and Marché du Monde. Each has
+//   a pin (where its label sits) and one or more entrances (where people walk in from a street; with
+//   none placed, the nearest street to the pin). Routes use whichever pair of entrances gives the
+//   shortest walk; the app draws a dotted hop from each pin to the route's ends.
 //
-// Save writes assets/poster-routes.json (pins, entrances, every route, and the clicks of hand-drawn
-// routes so they can be edited again). Hand-drawn routes are kept when anything else changes.
+// Routes by hand
+//   Pick a route, "Draw this route", click points along the way, Finish. With "Follow the streets" on,
+//   the line runs along the streets between clicks; off, it goes straight (a shortcut). Hand-drawn
+//   routes are kept when pins or entrances move; the rest re-trace automatically.
+//
+// Distances: stage-to-stage walking distances come from real streets (routes.js). For shops, which have
+//   no real-street measurement, the distance is estimated from the route on the map, scaled by how map
+//   length compares with real distance across all stage pairs.
+//
+// Save writes assets/poster-routes.json: pins, shops, entrances, routes, estimated shop distances, and
+// the clicks of hand-drawn routes so they can be edited again.
 var OC = window.OVERLAY_CONFIG, W = OC.width, H = OC.height, S = 2;
-var SIDE_STREETS = ['#1c68b8', '#1c67b7', '#1d69b9'];
-var SIMPLIFY = 1.0, METRES_PER_PT = 0.63;
+var SIDE_STREETS = ['#1c68b8', '#1c67b7', '#1d69b9'], SIDE_COST = 1.6;
+var SIMPLIFY = 1.0, FT_PER_M = 3.28084;
 var NS = 'http://www.w3.org/2000/svg';
-var LOC = window.ROUTE_DATA.locations, ids = LOC.map(function (l) { return l.id; });
+var KIND_NAME = { merch: 'Merch booth', arts: 'Marché des Arts', monde: 'Marché du Monde' };
+var KIND_COLOR = { merch: '#f26631', arts: '#e155a9', monde: '#2bb3a3' };
+// First-time positions for the shops (poster points); move them with "Place pin".
+var SHOP_SEEDS = [
+  { id: 'monde-1', kind: 'monde', pin: [266, 150] }, { id: 'monde-2', kind: 'monde', pin: [205, 238] },
+  { id: 'arts-1', kind: 'arts', pin: [330, 252] }, { id: 'arts-2', kind: 'arts', pin: [452, 432] }
+];
+var LOC = window.ROUTE_DATA.locations, stageIds = LOC.map(function (l) { return l.id; });
 var nameOf = {}, colorOf = {}; LOC.forEach(function (l) { nameOf[l.id] = l.name; colorOf[l.id] = l.color || '#542e91'; });
-var keys = []; ids.forEach(function (a, i) { ids.slice(i + 1).forEach(function (b) { keys.push(a + '|' + b); }); });
-function realMetres(k) { var ab = k.split('|'), r = ROUTE_DATA.routes[k] || ROUTE_DATA.routes[ab[1] + '|' + ab[0]]; return r ? r.meters : null; }
 
 var $ = function (id) { return document.getElementById(id); };
-var hintEl = $('hint'), statusEl = $('status');
-function hint(t) { hintEl.textContent = t; }
+function hint(t) { $('hint').textContent = t; }
 
 // ---------- state ----------
-var pins = {}, entHint = {}, manual = {};      // entHint: id -> [[x,y]...] placed by hand; manual: key -> { wps: [{p:[x,y], follow}], endFollow }
-var entIdx = {}, entrances = {}, auto = {}, routes = {};   // entIdx/entrances: id -> list (snapped to the streets)
-function asList(e) { return !e ? null : typeof e[0] === 'number' ? [e] : e; }   // older files kept one entrance per stage
+var shops = [];                                // [{ id, kind }]
+var pins = {}, entHint = {}, manual = {};      // entHint: id -> [[x,y]…] placed by hand; manual: key -> { wps: [{p, follow}], endFollow }
+var entNodes = {}, entrances = {}, routes = {}, auto = {}, metres = {}, near = {};
 var mode = null, drawing = null, dirty = false;
-var cw = Math.round(W * S), ch = Math.round(H * S), N = cw * ch, img = null, skel = null, over = null;
-
+var over = null, graph = null;
+function asList(e) { return !e ? null : typeof e[0] === 'number' ? [e] : e; }
+function isShop(id) { return stageIds.indexOf(id) < 0; }
+function shopById(id) { return shops.filter(function (s) { return s.id === id; })[0]; }
+function places() { return stageIds.concat(shops.map(function (s) { return s.id; })); }
+function label(id) {
+  if (!isShop(id)) return nameOf[id];
+  var s = shopById(id); if (!s) return id;
+  var same = shops.filter(function (x) { return x.kind === s.kind; });
+  return KIND_NAME[s.kind] + (near[id] ? ' · ' + nameOf[near[id]] : same.length > 1 ? ' ' + (same.indexOf(s) + 1) : '');
+}
+function routeKeys() {                         // stage <-> stage and stage <-> shop (one shop per detour)
+  var k = [];
+  stageIds.forEach(function (a, i) { stageIds.slice(i + 1).forEach(function (b) { k.push(a + '|' + b); }); });
+  stageIds.forEach(function (a) { shops.forEach(function (s) { k.push(a + '|' + s.id); }); });
+  return k;
+}
+function realMetres(k) { var ab = k.split('|'), r = ROUTE_DATA.routes[k] || ROUTE_DATA.routes[ab[1] + '|' + ab[0]]; return r ? r.meters : null; }
 function setDirty(d) { dirty = d; $('save').disabled = !d; }
 window.addEventListener('beforeunload', function (e) { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
@@ -132,32 +170,46 @@ Promise.all([
   stage.appendChild(over);
 
   var saved = res[1] || {};
-  ids.forEach(function (id) {
+  stageIds.forEach(function (id) {
     var f = OC.stages[id] || [0.5, 0.5];
     pins[id] = (saved.pins && saved.pins[id]) || [f[0] * W, f[1] * H];
   });
+  if (saved.shops) {
+    shops = saved.shops.map(function (s) { return { id: s.id, kind: s.kind }; });
+    shops.forEach(function (s) { pins[s.id] = saved.pins[s.id]; });
+  } else {
+    // First run: the three merch booths beside their stages, and the market areas where the map draws them.
+    (ROUTE_DATA.merch_booths || []).forEach(function (b) {
+      shops.push({ id: b.id, kind: 'merch' }); pins[b.id] = [pins[b.at][0], pins[b.at][1] + 16];
+    });
+    SHOP_SEEDS.forEach(function (s) { shops.push({ id: s.id, kind: s.kind }); pins[s.id] = s.pin.slice(); });
+  }
   (saved.entranceSet || []).forEach(function (id) { var e = asList(saved.entrances && saved.entrances[id]); if (e) entHint[id] = e; });
   manual = saved.manual || {};
 
-  buildSkeleton(svg);
-  ids.forEach(function (id) { $('stageSel').add(new Option(nameOf[id], id)); });
-  keys.forEach(function (k) { $('routeSel').add(new Option('', k)); });
+  graph = buildGraph(svg);
   retrace();
-  hint('Pick a route and click "Draw this route", or pick a stage to move its pin or entrance. Clicking a pin on the map selects that stage.');
+  hint('Pick a route and click "Draw this route", or pick a stage or shop to move its pin or add entrances. Clicking a pin on the map selects it.');
   window.EDITOR_READY = true;
-}).catch(function (err) { hint('Failed: ' + (err && err.message || err)); });
+}).catch(function (err) { hint('Failed: ' + (err && err.stack || err)); });
 
-// ---------- street centre lines ----------
-function buildSkeleton(svg) {
-  var cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
-  var ctx = cv.getContext('2d'); ctx.scale(S, S); ctx.fillStyle = '#000';
-  svg.querySelectorAll('#layer-streets path').forEach(function (p) {
-    if (SIDE_STREETS.indexOf((p.getAttribute('fill') || '').toLowerCase()) >= 0) return;
-    ctx.fill(new Path2D(p.getAttribute('d')), p.getAttribute('fill-rule') === 'evenodd' ? 'evenodd' : 'nonzero');
-  });
-  var px = ctx.getImageData(0, 0, cw, ch).data, list = [];
-  img = new Uint8Array(N);
-  for (var i = 0; i < N; i++) if (px[i * 4 + 3] > 127) { img[i] = 1; list.push(i); }
+// ---------- street graph ----------
+// Paint the streets, thin them to centre lines, and keep only the centre-line pixels as graph nodes.
+function buildGraph(svg) {
+  var cw = Math.round(W * S), ch = Math.round(H * S), N = cw * ch;
+  function paint(filter) {
+    var cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+    var ctx = cv.getContext('2d'); ctx.scale(S, S); ctx.fillStyle = '#000';
+    svg.querySelectorAll('#layer-streets path').forEach(function (p) {
+      if (!filter((p.getAttribute('fill') || '').toLowerCase())) return;
+      ctx.fill(new Path2D(p.getAttribute('d')), p.getAttribute('fill-rule') === 'evenodd' ? 'evenodd' : 'nonzero');
+    });
+    return ctx.getImageData(0, 0, cw, ch).data;
+  }
+  var mainPx = paint(function (f) { return SIDE_STREETS.indexOf(f) < 0; });
+  var allPx = paint(function () { return true; });
+  var img = new Uint8Array(N), list = [];
+  for (var i = 0; i < N; i++) if (allPx[i * 4 + 3] > 127) { img[i] = 1; list.push(i); }
   // Zhang-Suen thinning
   var changed = true, del = [];
   while (changed) {
@@ -179,36 +231,44 @@ function buildSkeleton(svg) {
     }
     list = list.filter(function (p) { return img[p]; });
   }
-  skel = list;
+  var n = list.length, nodeOf = new Int32Array(N).fill(-1);
+  list.forEach(function (p, i) { nodeOf[p] = i; });
+  var xs = new Float32Array(n), ys = new Float32Array(n), cost = new Float32Array(n);
+  list.forEach(function (p, i) { var x = p % cw; xs[i] = x / S; ys[i] = (p - x) / cw / S; cost[i] = mainPx[p * 4 + 3] > 127 ? 1 : SIDE_COST; });
+  var nb = [-cw - 1, -cw, -cw + 1, -1, 1, cw - 1, cw, cw + 1], step = [1.4142, 1, 1.4142, 1, 1, 1.4142, 1, 1.4142];
+  var adj = list.map(function (p, i) {
+    var out = [];
+    for (var k = 0; k < 8; k++) { var j = nodeOf[p + nb[k]]; if (j >= 0) out.push(j, step[k] * (cost[i] + cost[j]) / 2); }
+    return out;
+  });
+  return { n: n, xs: xs, ys: ys, cost: cost, adj: adj };
 }
-function idxToPt(p) { var x = p % cw; return [Math.round(x / S * 10) / 10, Math.round((p - x) / cw / S * 10) / 10]; }
-function nearestSkel(pt) {
-  var x = pt[0] * S, y = pt[1] * S, best = -1, bd = Infinity;
-  for (var k = 0; k < skel.length; k++) {
-    var p = skel[k], sx = p % cw, sy = (p - sx) / cw, dd = (sx - x) * (sx - x) + (sy - y) * (sy - y);
-    if (dd < bd) { bd = dd; best = p; }
+function nodePt(i) { return [Math.round(graph.xs[i] * 10) / 10, Math.round(graph.ys[i] * 10) / 10]; }
+function nearestNode(pt, mainOnly) {
+  var best = -1, bd = Infinity;
+  for (var i = 0; i < graph.n; i++) {
+    if (mainOnly && graph.cost[i] > 1) continue;
+    var dx = graph.xs[i] - pt[0], dy = graph.ys[i] - pt[1], dd = dx * dx + dy * dy; if (dd < bd) { bd = dd; best = i; }
   }
   return best;
 }
-function dijkstra(src) {
-  var dist = new Float64Array(N).fill(Infinity), prev = new Int32Array(N).fill(-1), heap = [[0, src]];
+function shortest(src) {
+  var n = graph.n, dist = new Float64Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1), heap = [[0, src]];
   dist[src] = 0;
   function push(e) { heap.push(e); var i = heap.length - 1; while (i > 0) { var pi = (i - 1) >> 1; if (heap[pi][0] <= heap[i][0]) break; var t = heap[pi]; heap[pi] = heap[i]; heap[i] = t; i = pi; } }
   function pop() { var top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; var i = 0; for (;;) { var l = 2 * i + 1, r = l + 1, m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; var t = heap[m]; heap[m] = heap[i]; heap[i] = t; i = m; } } return top; }
-  var nb = [-cw - 1, -cw, -cw + 1, -1, 1, cw - 1, cw, cw + 1], cost = [1.4142, 1, 1.4142, 1, 1, 1.4142, 1, 1.4142];
   while (heap.length) {
     var e = pop(), d0 = e[0], u = e[1];
     if (d0 > dist[u]) continue;
-    for (var k = 0; k < 8; k++) { var v = u + nb[k]; if (v < 0 || v >= N || !img[v]) continue; var nd = d0 + cost[k]; if (nd < dist[v]) { dist[v] = nd; prev[v] = u; push([nd, v]); } }
+    var a = graph.adj[u];
+    for (var k = 0; k < a.length; k += 2) { var v = a[k], nd = d0 + a[k + 1]; if (nd < dist[v]) { dist[v] = nd; prev[v] = u; push([nd, v]); } }
   }
-  prev.dist = dist;
-  return prev;
+  return { dist: dist, prev: prev };
 }
-function chainTo(prev, src, dst) {
+function chainTo(tree, src, dst) {
   var cur = dst, chain = [];
-  while (cur !== -1) { chain.push(cur); if (cur === src) break; cur = prev[cur]; }
-  if (cur !== src) return null;
-  return chain.reverse().map(idxToPt);
+  while (cur !== -1) { chain.push(cur); if (cur === src) break; cur = tree.prev[cur]; }
+  return cur === src ? chain.reverse().map(nodePt) : null;
 }
 function simplify(pts, tol) {
   if (pts.length < 3) return pts;
@@ -222,43 +282,57 @@ function simplify(pts, tol) {
   }
   return pts.filter(function (_, i) { return keep[i]; });
 }
-function along(fromPt, toPt) {          // street path between two points (each snapped to the nearest centre line)
-  var a = nearestSkel(fromPt), b = nearestSkel(toPt);
-  var path = chainTo(dijkstra(a), a, b);
-  return path ? simplify(path, SIMPLIFY) : [fromPt, toPt];
+var treeCache = {};
+function tree(node) { return treeCache[node] || (treeCache[node] = shortest(node)); }
+function along(fromPt, toPt) {
+  var a = nearestNode(fromPt), b = nearestNode(toPt), p = chainTo(tree(a), a, b);
+  return p ? simplify(p, SIMPLIFY) : [fromPt, toPt];
 }
 function plen(pts) { var L = 0; for (var i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return L; }
-
-// ---------- routes ----------
-function retrace() {
-  ids.forEach(function (id) {
-    var list = (entHint[id] || [pins[id]]).map(nearestSkel);
-    entIdx[id] = list.filter(function (v, i) { return list.indexOf(v) === i; });
-    entrances[id] = entIdx[id].map(idxToPt);
-  });
-  var trees = {};                                      // entrance pixel -> shortest-path tree from it
-  ids.forEach(function (id) { entIdx[id].forEach(function (e) { if (!trees[e]) trees[e] = dijkstra(e); }); });
-  auto = {};
-  ids.forEach(function (a, ai) {
-    ids.slice(ai + 1).forEach(function (b) {
-      var best = null;                                 // the pair of entrances with the shortest walk
-      entIdx[a].forEach(function (ea) { entIdx[b].forEach(function (eb) {
-        var d = trees[ea].dist[eb];
-        if (!best || d < best.d) best = { d: d, ea: ea, eb: eb };
-      }); });
-      var p = best && isFinite(best.d) ? chainTo(trees[best.ea], best.ea, best.eb) : null;
-      auto[a + '|' + b] = p ? simplify(p, SIMPLIFY) : [entrances[a][0], entrances[b][0]];
-    });
-  });
-  routes = {};
-  keys.forEach(function (k) { routes[k] = manual[k] ? buildManual(k, manual[k].wps, manual[k].endFollow) : auto[k]; });
-  refreshLabels(); render();
-}
 function nearestOf(list, pt) {
   return list.reduce(function (best, e) { return Math.hypot(e[0] - pt[0], e[1] - pt[1]) < Math.hypot(best[0] - pt[0], best[1] - pt[1]) ? e : best; });
 }
+
+// ---------- routes ----------
+function retrace() {
+  treeCache = {};
+  places().forEach(function (id) {
+    // Entrances placed by hand may be on any street; the default (nearest to the pin) stays on a festival street.
+    var list = entHint[id] ? entHint[id].map(function (p) { return nearestNode(p); }) : [nearestNode(pins[id], true)];
+    entNodes[id] = list.filter(function (v, i) { return list.indexOf(v) === i; });
+    entrances[id] = entNodes[id].map(nodePt);
+  });
+  function best(a, b) {                        // the pair of entrances with the shortest walk
+    var out = null;
+    entNodes[a].forEach(function (ea) { entNodes[b].forEach(function (eb) {
+      var d = tree(ea).dist[eb]; if (!out || d < out.d) out = { d: d, ea: ea, eb: eb };
+    }); });
+    return out;
+  }
+  // Each shop belongs to its nearest stage (used for its name in the app).
+  near = {};
+  shops.forEach(function (s) {
+    var bestStage = null, bd = Infinity;
+    stageIds.forEach(function (st) { var b = best(st, s.id); if (b && b.d < bd) { bd = b.d; bestStage = st; } });
+    near[s.id] = bestStage;
+  });
+  auto = {}; routes = {};
+  routeKeys().forEach(function (k) {
+    var ab = k.split('|'), b = best(ab[0], ab[1]);
+    var p = b && isFinite(b.d) ? chainTo(tree(b.ea), b.ea, b.eb) : null;
+    auto[k] = p ? simplify(p, SIMPLIFY) : [entrances[ab[0]][0], entrances[ab[1]][0]];
+    routes[k] = manual[k] ? buildManual(k, manual[k].wps, manual[k].endFollow) : auto[k];
+  });
+  // Shop distances: map length (with the hops to the pins) x how map length compares with real distance.
+  function fullLen(k) { var ab = k.split('|'), r = routes[k]; return plen([pins[ab[0]]].concat(r, [pins[ab[1]]])); }
+  var ratios = routeKeys().filter(function (k) { return realMetres(k); }).map(function (k) { return realMetres(k) / fullLen(k); }).sort(function (a, b) { return a - b; });
+  var scale = ratios.length ? ratios[Math.floor(ratios.length / 2)] : 0.63;
+  metres = {};
+  routeKeys().forEach(function (k) { if (!realMetres(k)) metres[k] = Math.round(fullLen(k) * scale); });
+  refreshSelects(); refreshInfo(); render();
+}
 function buildManual(k, wps, endFollow) {
-  // Starts at the stage's entrance nearest the first click, ends at the other stage's entrance nearest the last.
+  // Starts at the entrance nearest the first click, ends at the other place's entrance nearest the last.
   var ab = k.split('|');
   var start = nearestOf(entrances[ab[0]], wps.length ? wps[0].p : entrances[ab[1]][0]);
   var end = nearestOf(entrances[ab[1]], wps.length ? wps[wps.length - 1].p : start);
@@ -270,20 +344,35 @@ function buildManual(k, wps, endFollow) {
   });
   return out.map(function (p) { return [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10]; });
 }
-function refreshStageInfo() {
-  var id = $('stageSel').value; if (!id || !entrances[id]) return;
-  $('stageInfo').textContent = nameOf[id] + ': ' + (entHint[id] ? entrances[id].length + ' entrance' + (entrances[id].length > 1 ? 's' : '') + ' placed by hand' : 'entrance = nearest street to the pin');
-}
-function refreshLabels() {
-  refreshStageInfo();
-  Array.prototype.forEach.call($('routeSel').options, function (o) {
-    var ab = o.value.split('|');
-    o.textContent = (manual[o.value] ? '✎ ' : '') + nameOf[ab[0]] + ' → ' + nameOf[ab[1]];
+
+// ---------- panel ----------
+function refreshSelects() {
+  var ps = $('placeSel'), keepP = ps.value, rs = $('routeSel'), keepR = rs.value;
+  ps.innerHTML = ''; rs.innerHTML = '';
+  var g1 = document.createElement('optgroup'); g1.label = 'Stages';
+  stageIds.forEach(function (id) { g1.appendChild(new Option(label(id), id)); });
+  var g2 = document.createElement('optgroup'); g2.label = 'Shops';
+  shops.forEach(function (s) { g2.appendChild(new Option(label(s.id), s.id)); });
+  ps.appendChild(g1); ps.appendChild(g2);
+  var r1 = document.createElement('optgroup'); r1.label = 'Stage to stage';
+  var r2 = document.createElement('optgroup'); r2.label = 'Stage to shop';
+  routeKeys().forEach(function (k) {
+    var ab = k.split('|');
+    (isShop(ab[1]) ? r2 : r1).appendChild(new Option((manual[k] ? '✎ ' : '') + label(ab[0]) + ' → ' + label(ab[1]), k));
   });
+  rs.appendChild(r1); rs.appendChild(r2);
+  if (keepP && places().indexOf(keepP) >= 0) ps.value = keepP;
+  if (keepR && routes[keepR]) rs.value = keepR;
+}
+function refreshInfo() {
+  var id = $('placeSel').value;
+  if (id) $('placeInfo').textContent = label(id) + ': ' + (entHint[id] ? entrances[id].length + ' entrance' + (entrances[id].length > 1 ? 's' : '') + ' placed by hand' : 'entrance = nearest festival street to the pin');
+  $('delShop').disabled = !isShop(id);
   var k = $('routeSel').value, r = routes[k] || [], real = realMetres(k);
+  if (!k) return;
   $('routeInfo').innerHTML = (manual[k] ? '<span class="tag manual">drawn by hand</span>' : '<span class="tag auto">automatic</span>') +
-    '\nOn the map ≈ ' + Math.round(plen(r) * METRES_PER_PT * 3.28084) + ' ft · real street distance ' + (real ? Math.round(real * 3.28084) + ' ft' : '?') +
-    '\n(The map is not to scale; walking times use the real distance.)';
+    '\n' + (real ? 'Real street distance ' + Math.round(real * FT_PER_M) + ' ft (used for walking times).'
+                 : 'Estimated ' + Math.round(metres[k] * FT_PER_M) + ' ft from the map (no real-street measurement for shops).');
 }
 
 // ---------- drawing ----------
@@ -291,10 +380,14 @@ function el(tag, attrs, parent) { var e = document.createElementNS(NS, tag); for
 function pts2(p) { return p.map(function (q) { return q.join(','); }).join(' '); }
 function render() {
   over.innerHTML = '';
-  var sel = $('routeSel').value, st = $('stageSel').value;
-  if ($('showAll').checked) keys.forEach(function (k) {
+  if ($('showNet').checked) {
+    var g = el('g', { opacity: .9 });
+    for (var i = 0; i < graph.n; i += 2) el('rect', { x: graph.xs[i], y: graph.ys[i], width: .8, height: .8, fill: graph.cost[i] > 1 ? '#7cf' : '#ff0' }, g);
+  }
+  var sel = $('routeSel').value, pl = $('placeSel').value;
+  if ($('showAll').checked) Object.keys(routes).forEach(function (k) {
     if (k === sel) return;
-    el('polyline', { points: pts2(routes[k]), fill: 'none', stroke: manual[k] ? '#ffd23f' : '#cbb8ff', 'stroke-width': 1.6, 'stroke-linejoin': 'round', opacity: .8 });
+    el('polyline', { points: pts2(routes[k]), fill: 'none', stroke: manual[k] ? '#ffd23f' : '#cbb8ff', 'stroke-width': 1.4, 'stroke-linejoin': 'round', opacity: isShop(k.split('|')[1]) ? .35 : .8 });
   });
   var cur = drawing ? currentDrawPath() : routes[sel];
   if (cur) {
@@ -303,16 +396,17 @@ function render() {
   }
   if (drawing) drawing.wps.forEach(function (w) { el('circle', { cx: w.p[0], cy: w.p[1], r: 3.5, fill: w.follow ? '#f26631' : '#fff', stroke: '#f26631', 'stroke-width': 1.5 }); });
   var ab = sel.split('|');
-  ids.forEach(function (id) {
-    var on = id === st, inRoute = ab.indexOf(id) >= 0;
+  places().forEach(function (id) {
+    var on = id === pl, inRoute = ab.indexOf(id) >= 0, shop = isShop(id);
     entrances[id].forEach(function (e) {
       el('line', { x1: pins[id][0], y1: pins[id][1], x2: e[0], y2: e[1], stroke: '#fff', 'stroke-width': inRoute || on ? 1.8 : 1, 'stroke-dasharray': '2 3' });
       el('rect', { x: e[0] - 3, y: e[1] - 3, width: 6, height: 6, fill: entHint[id] ? '#ffd23f' : '#fff', stroke: '#162061', 'stroke-width': 1 });
     });
     if (on) el('circle', { cx: pins[id][0], cy: pins[id][1], r: 11, fill: 'none', stroke: '#ffd23f', 'stroke-width': 2.5 });
-    el('circle', { cx: pins[id][0], cy: pins[id][1], r: 6.5, fill: colorOf[id], stroke: '#fff', 'stroke-width': 2 });
-    var t = el('text', { x: pins[id][0] + 9, y: pins[id][1] + 4, fill: '#fff', 'font-size': 11, 'font-weight': 700, stroke: '#162061', 'stroke-width': 3, 'paint-order': 'stroke' });
-    t.textContent = nameOf[id];
+    if (shop) el('rect', { x: pins[id][0] - 5.5, y: pins[id][1] - 5.5, width: 11, height: 11, rx: 2, fill: KIND_COLOR[shopById(id).kind], stroke: '#fff', 'stroke-width': 2 });
+    else el('circle', { cx: pins[id][0], cy: pins[id][1], r: 6.5, fill: colorOf[id], stroke: '#fff', 'stroke-width': 2 });
+    var t = el('text', { x: pins[id][0] + 9, y: pins[id][1] + 4, fill: '#fff', 'font-size': shop ? 9 : 11, 'font-weight': 700, stroke: '#162061', 'stroke-width': 3, 'paint-order': 'stroke' });
+    t.textContent = label(id);
   });
 }
 function currentDrawPath() {
@@ -322,19 +416,20 @@ function currentDrawPath() {
 }
 
 // ---------- modes ----------
+var IDLE = 'Pick a route and click "Draw this route", or pick a stage or shop to move its pin or add entrances. Clicking a pin on the map selects it.';
 function setMode(m) {
   mode = m;
   $('setPin').classList.toggle('on', m === 'pin');
   $('setEnt').classList.toggle('on', m === 'ent');
+  $('addShop').classList.toggle('on', m === 'shop');
   $('draw').classList.toggle('on', m === 'draw');
   ['undo', 'finish', 'cancel'].forEach(function (b) { $(b).disabled = m !== 'draw'; });
   $('draw').disabled = m === 'draw';
-  var st = nameOf[$('stageSel').value];
-  hint(m === 'pin' ? 'Click on the map where the ' + st + ' pin should sit (on the stage drawing).' :
-       m === 'ent' ? 'Click on a street where people walk into ' + st + '. Add as many as the stage has; each route uses the closest one.' :
-       m === 'draw' ? 'Click points along the way from ' + $('routeSel').selectedOptions[0].textContent.replace('✎ ', '') +
-         '. You only need a click at each turn. Untick "Follow the streets" before a click to go straight there (a shortcut). Then Finish.' :
-       'Pick a route and click "Draw this route", or pick a stage to move its pin or entrance. Clicking a pin on the map selects that stage.');
+  var who = label($('placeSel').value);
+  hint(m === 'pin' ? 'Click on the map where the ' + who + ' pin should sit.' :
+       m === 'ent' ? 'Click on a street where people walk into ' + who + ' (side streets work too). Add as many as it has; each route uses the closest.' :
+       m === 'shop' ? 'Click on the map where the new ' + KIND_NAME[$('shopKind').value] + ' is.' :
+       m === 'draw' ? 'Click points along the way, one at each turn. Untick "Follow the streets" before a click to go straight there (a shortcut). Then Finish.' : IDLE);
 }
 function evtPt(e) {
   var p = over.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
@@ -343,24 +438,37 @@ function evtPt(e) {
 }
 document.addEventListener('click', function (e) {
   if (!over || !over.contains(e.target)) return;
-  var pt = evtPt(e), id = $('stageSel').value;
+  var pt = evtPt(e), id = $('placeSel').value;
   if (mode === 'pin') { pins[id] = pt; setMode(null); setDirty(true); retrace(); return; }
   if (mode === 'ent') { (entHint[id] = entHint[id] || []).push(pt); setMode(null); setDirty(true); retrace(); return; }
+  if (mode === 'shop') {
+    var kind = $('shopKind').value, n = 1;
+    while (shopById(kind + '-' + n)) n++;
+    shops.push({ id: kind + '-' + n, kind: kind }); pins[kind + '-' + n] = pt;
+    setMode(null); setDirty(true); retrace(); $('placeSel').value = kind + '-' + n; refreshInfo(); render(); return;
+  }
   if (mode === 'draw') { drawing.wps.push({ p: pt, follow: $('follow').checked }); render(); return; }
-  // no mode: clicking near a pin selects that stage
-  var near = ids.filter(function (i) { return Math.hypot(pins[i][0] - pt[0], pins[i][1] - pt[1]) < 12; })[0];
-  if (near) { $('stageSel').value = near; render(); }
+  var hit = places().filter(function (i) { return Math.hypot(pins[i][0] - pt[0], pins[i][1] - pt[1]) < 12; })[0];
+  if (hit) { $('placeSel').value = hit; refreshInfo(); render(); }
 });
 $('setPin').onclick = function () { setMode(mode === 'pin' ? null : 'pin'); };
 $('setEnt').onclick = function () { setMode(mode === 'ent' ? null : 'ent'); };
-$('autoEnt').onclick = function () { delete entHint[$('stageSel').value]; setDirty(true); retrace(); };
+$('addShop').onclick = function () { setMode(mode === 'shop' ? null : 'shop'); };
+$('delShop').onclick = function () {
+  var id = $('placeSel').value; if (!isShop(id) || !confirm('Remove ' + label(id) + '?')) return;
+  shops = shops.filter(function (s) { return s.id !== id; });
+  delete pins[id]; delete entHint[id];
+  Object.keys(manual).forEach(function (k) { if (k.split('|').indexOf(id) >= 0) delete manual[k]; });
+  $('placeSel').value = stageIds[0]; setDirty(true); retrace();
+};
+$('autoEnt').onclick = function () { delete entHint[$('placeSel').value]; setDirty(true); retrace(); };
 $('popEnt').onclick = function () {
-  var id = $('stageSel').value; if (!entHint[id]) return;
+  var id = $('placeSel').value; if (!entHint[id]) return;
   entHint[id].pop(); if (!entHint[id].length) delete entHint[id];
   setDirty(true); retrace();
 };
-$('stageSel').onchange = function () { refreshStageInfo(); render(); setMode(mode === 'draw' ? 'draw' : null); };
-$('routeSel').onchange = function () { if (drawing) { drawing = null; setMode(null); } refreshLabels(); render(); };
+$('placeSel').onchange = function () { refreshInfo(); render(); if (mode !== 'draw') setMode(null); };
+$('routeSel').onchange = function () { if (drawing) { drawing = null; setMode(null); } refreshInfo(); render(); };
 $('draw').onclick = function () { drawing = { key: $('routeSel').value, wps: [] }; setMode('draw'); render(); };
 $('undo').onclick = function () { if (drawing) { drawing.wps.pop(); render(); } };
 $('cancel').onclick = function () { drawing = null; setMode(null); render(); };
@@ -372,11 +480,12 @@ $('finish').onclick = function () {
 $('revert').onclick = function () { delete manual[$('routeSel').value]; setDirty(true); retrace(); };
 $('follow').onchange = function () { if (drawing) render(); };
 $('showAll').onchange = render;
+$('showNet').onchange = render;
 $('dim').onchange = function () { $('stage').classList.toggle('dim', $('dim').checked); };
 $('zoom').onchange = function () { $('stage').style.width = (parseFloat($('zoom').value) * 100) + '%'; };
 document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape') { drawing = null; setMode(null); render(); }
-  if ((e.key === 'z' && (e.ctrlKey || e.metaKey)) && drawing) { e.preventDefault(); $('undo').onclick(); }
+  if (e.key === 'z' && (e.ctrlKey || e.metaKey) && drawing) { e.preventDefault(); $('undo').onclick(); }
 });
 
 // ---------- save ----------
@@ -384,18 +493,20 @@ function save() {
   var out = {
     built: new Date().toISOString().slice(0, 16).replace('T', ' '), width: W, height: H,
     note: 'Made with tools/poster-routes.html. Points are poster points [x, y] on the ' + W + ' x ' + H + ' page. ' +
-          'entrances: id -> list of street points (a stage can have several). Each route runs between the entrances ' +
-          'it uses; the app draws a dotted hop from each pin to the route ends.',
-    pins: pins, entrances: entrances, entranceSet: Object.keys(entHint), routes: routes, manual: manual
+          'entrances: id -> list of street points. Routes run between the entrances they use; the app draws a dotted ' +
+          'hop from each pin to the route ends. metres: estimated distances for routes to shops.',
+    pins: pins,
+    shops: shops.map(function (s) { return { id: s.id, kind: s.kind, near: near[s.id] }; }),
+    entrances: entrances, entranceSet: Object.keys(entHint), routes: routes, metres: metres, manual: manual
   };
-  statusEl.textContent = 'Saving…';
+  $('status').textContent = 'Saving…';
   return fetch('/__save/poster-routes.json', { method: 'POST', headers: { 'X-FLTB-Save': '1', 'Content-Type': 'application/json' }, body: JSON.stringify(out) })
     .then(function (r) { return r.text().then(function (t) {
-      statusEl.textContent = r.ok ? 'Saved ' + new Date().toLocaleTimeString() + '. Tell Claude to publish it.' : 'Error: ' + t;
+      $('status').textContent = r.ok ? 'Saved ' + new Date().toLocaleTimeString() + '. Tell Claude to publish it.' : 'Error: ' + t;
       if (r.ok) setDirty(false);
       window.SAVED = r.ok;
     }); })
-    .catch(function (err) { statusEl.textContent = 'Could not save (is python serve.py running?): ' + err.message; });
+    .catch(function (err) { $('status').textContent = 'Could not save (is python serve.py running?): ' + err.message; });
 }
 $('save').onclick = save;
 </script>

@@ -186,10 +186,14 @@ FIL.ready(function () {
     markers[l.id] = m;
   });
 
-  // Merch booth tags under their stage pins
-  (D.merch_booths || []).forEach(function (b) {
+  // Shops: placed on the map in the route editor; older route files only have merch booths at their stages.
+  if (sm.shops()) sm.shops().forEach(function (s) {
+    L.marker(sm.pt(s.id), { icon: L.divIcon({ className: '', html: '<span class="shop-pin ' + esc(s.kind) + '" title="' + esc(T('shop_kind_' + s.kind)) + '">' + esc(T('shop_tag_' + s.kind)) + '</span>', iconSize: null }),
+      interactive: false, zIndexOffset: 1500 }).addTo(map);
+  });
+  else (D.merch_booths || []).forEach(function (b) {
     var l = byId[b.at]; if (!l) return;
-    L.marker(sm.pt(l.id), { icon: L.divIcon({ className: '', html: '<span class="merch-pin" title="' + esc(b.name) + '">MERCH</span>', iconSize: null }),
+    L.marker(sm.pt(l.id), { icon: L.divIcon({ className: '', html: '<span class="merch-pin" title="' + esc(b.name) + '">' + esc(T('shop_tag_merch')) + '</span>', iconSize: null }),
       interactive: false, zIndexOffset: 1500 }).addTo(map);
   });
 
