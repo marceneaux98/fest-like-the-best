@@ -272,7 +272,7 @@
 FIL.ready(function () {
   var S = window.SCHEDULE_DATA, R = window.ROUTE_DATA, T = I18N.t, TN = I18N.tn;
   var tl = document.getElementById('timeline');
-  if (!S || !R) { tl.innerHTML = '<div class="empty">Could not load the schedule or routes (' + FIL.esc(window.SCHEDULE_ERROR || 'routes.js missing') + '). Run python build_feed.py and python build_routes.py, and open the site through python serve.py.</div>'; return; }
+  if (!S || !R) { tl.innerHTML = '<div class="empty">' + FIL.esc(FIL.loadError(window.SCHEDULE_ERROR || 'routes.js missing')) + '</div>'; return; }
 
   // Stage names and colours come from locations.json via routes.js (see common.js)
   var esc = FIL.esc, toMin = FIL.toMin, stageColor = FIL.stageColor;
@@ -301,7 +301,8 @@ FIL.ready(function () {
   var booths = PRS.shops
     ? PRS.shops.map(function (s) { return { id: s.id, kind: s.kind, at: s.id, near: s.near }; })
     : (R.merch_booths || []).filter(function (b) { return locs[b.at]; }).map(function (b) { return { id: b.id, kind: 'merch', at: b.at, near: b.at }; });
-  var boothById = {}; booths.forEach(function (b) { boothById[b.id] = b; });
+  // No prototype: an id from a share link such as "constructor" must not find a shop
+  var boothById = Object.create(null); booths.forEach(function (b) { boothById[b.id] = b; });
   var KINDS = ['merch', 'arts', 'monde'].filter(function (k) { return booths.some(function (b) { return b.kind === k; }); });
   var shopKind = loadRaw('fil-shopkind');
   if (KINDS.indexOf(shopKind) < 0) shopKind = KINDS[0];
@@ -381,7 +382,8 @@ FIL.ready(function () {
   // For each pair of consecutive picks, work out when to leave. If there's not enough time
   // to see all of the current set AND reach the next one by its start (minus the buffer),
   // the patron chooses: leave early, split the difference, or stay to the end and arrive late.
-  function walkMin(a, b) { return route(a, b).seconds * parseFloat(crowd.value) / 60; }
+  // Infinity when the route file has no distance for the pair, so that shop is never suggested
+  function walkMin(a, b) { var r = route(a, b); return r ? r.seconds * parseFloat(crowd.value) / 60 : Infinity; }
 
   // merch: null, or { slot, booth } — a merch stop folded into the plan.
   function buildPlan(merch) {
@@ -400,9 +402,9 @@ FIL.ready(function () {
       var r = route(cur.p.stage, next.p.stage);
       var walk = r.seconds * cf / 60, walkOnly = walk, merchInfo = null;
       var mb = merch && merch.slot === key ? boothById[merch.booth] : null;
-      if (mb) {
+      var r1 = mb && route(cur.p.stage, mb.at), r2 = mb && route(mb.at, next.p.stage);
+      if (r1 && r2) {
         // Detour: current stage -> booth -> shop -> next stage. Counts as "travel time" for this leg.
-        var r1 = route(cur.p.stage, mb.at), r2 = route(mb.at, next.p.stage);
         var w1 = r1.seconds * cf / 60, w2 = r2.seconds * cf / 60;
         walk = w1 + shop + w2; walkOnly = w1 + w2;
         r = { meters: r1.meters + r2.meters, seconds: r1.seconds + r2.seconds, path: r1.path.concat(r2.path), shape: SiteMap.join(r1.shape, r2.shape) };
@@ -439,13 +441,16 @@ FIL.ready(function () {
     // Merch before the first set or after the last one.
     var plan = { stops: stops, legs: legs, pre: null, post: null };
     var b = merch && boothById[merch.booth];
-    if (b && merch.slot === 'before') {
-      var first = stops[0].p, rb = route(b.at, first.stage), wb = rb.seconds * cf / 60;
+    var first = stops[0].p, last = stops[stops.length - 1];
+    var rb = b && merch.slot === 'before' ? route(b.at, first.stage) : null;
+    var ra = b && merch.slot === 'after' ? route(last.p.stage, b.at) : null;
+    if (rb) {
+      var wb = rb.seconds * cf / 60;
       var shopEnd = first.s - buf - wb;
       plan.pre = { booth: b, start: shopEnd - shop, end: shopEnd, walk: wb, meters: rb.meters, path: rb.path, shape: rb.shape, to: first };
     }
-    if (b && merch.slot === 'after') {
-      var last = stops[stops.length - 1], ra = route(last.p.stage, b.at), wa = ra.seconds * cf / 60;
+    if (ra) {
+      var wa = ra.seconds * cf / 60;
       var startShop = last.leave + wa;
       plan.post = { booth: b, start: startShop, end: startShop + shop, walk: wa, meters: ra.meters, path: ra.path, shape: ra.shape, from: last.p };
     }
@@ -458,11 +463,11 @@ FIL.ready(function () {
   function merchOptions(base) {
     var shop = +shopSel.value, out = [], booths = kindBooths();
     if (!booths.length || !base.stops.length) return out;
-    function nearest(fn) { return booths.map(fn).sort(function (a, b) { return a.walk - b.walk; })[0]; }
+    function nearest(fn) { return booths.map(fn).filter(function (o) { return isFinite(o.walk); }).sort(function (a, b) { return a.walk - b.walk; })[0]; }
     var first = base.stops[0].p, last = base.stops[base.stops.length - 1];
     var pre = nearest(function (b) { return { booth: b, walk: walkMin(b.at, first.stage) }; });
-    out.push({ slot: 'before', booth: pre.booth.id, start: first.s - +buffer.value - pre.walk - shop, slack: null,
-               where: T('it_where_before', { act: first.act }) });
+    if (pre) out.push({ slot: 'before', booth: pre.booth.id, start: first.s - +buffer.value - pre.walk - shop, slack: null,
+                        where: T('it_where_before', { act: first.act }) });
     base.legs.forEach(function (leg) {
       if (leg.tight) return;
       var best = null;
@@ -477,8 +482,8 @@ FIL.ready(function () {
       if (best) out.push(best);
     });
     var post = nearest(function (b) { return { booth: b, walk: walkMin(last.p.stage, b.at) }; });
-    out.push({ slot: 'after', booth: post.booth.id, start: last.leave + post.walk, slack: null,
-               where: T('it_where_after', { act: last.p.act }) });
+    if (post) out.push({ slot: 'after', booth: post.booth.id, start: last.leave + post.walk, slack: null,
+                         where: T('it_where_after', { act: last.p.act }) });
     return out;
   }
   // Suggestion: the in-between slot with the most spare time; otherwise before the first set.
@@ -656,6 +661,9 @@ FIL.ready(function () {
       choice = undefined; // picks changed since this was chosen
     }
     var plan = (choice && choice !== 'none') ? buildPlan(choice) : base;
+    if (plan !== base && !plan.pre && !plan.post && !plan.legs.some(function (l) { return l.merch; })) {
+      choice = undefined; plan = base;  // the route file can't measure the walk to that shop: drop the stop
+    }
 
     var walkMinutes = plan.legs.reduce(function (a, l) { return a + l.walkOnly; }, 0) +
                   (plan.pre ? plan.pre.walk : 0) + (plan.post ? plan.post.walk : 0);

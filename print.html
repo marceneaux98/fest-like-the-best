@@ -192,7 +192,7 @@ FIL.ready(function () {
   var S = window.SCHEDULE_DATA, R = window.ROUTE_DATA || {}, T = I18N.t, TN = I18N.tn;
   var esc = FIL.esc, toMin = FIL.toMin, store = FIL.store;
   var sheets = document.getElementById('sheets'), printBtn = document.getElementById('printBtn');
-  if (!S) { sheets.innerHTML = '<div class="pr-msg">Could not load the schedule (' + esc(window.SCHEDULE_ERROR || '') + '). Run python build_feed.py, and open the site through python serve.py.</div>'; return; }
+  if (!S) { sheets.innerHTML = '<div class="pr-msg">' + esc(FIL.loadError(window.SCHEDULE_ERROR || 'no schedule')) + '</div>'; return; }
 
   // Stages (names and column order) come from locations.json via routes.js; all of them print every day,
   // so each stage keeps the same column on every sheet.
@@ -327,7 +327,7 @@ FIL.ready(function () {
   var booths = PRS.shops
     ? PRS.shops.map(function (s) { return { id: s.id, kind: s.kind, at: s.id, near: s.near }; })
     : (R.merch_booths || []).filter(function (b) { return stageById[b.at]; }).map(function (b) { return { id: b.id, kind: 'merch', at: b.at, near: b.at }; });
-  var boothById = {}; booths.forEach(function (b) { boothById[b.id] = b; });
+  var boothById = Object.create(null); booths.forEach(function (b) { boothById[b.id] = b; });   // no prototype, as on My Day
   var hasRoutes = !!R.routes;
   // Walking pace from the real street routes, for shops (whose distances are estimated from the map)
   var PACE = (function () { var m = 0, s = 0; Object.keys(R.routes || {}).forEach(function (k) { m += R.routes[k].meters; s += R.routes[k].seconds; }); return s ? m / s : 1.3; })();

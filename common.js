@@ -18,6 +18,7 @@
 //   FIL.timeRange(s, e)           "4–5:15 PM" from minutes since midnight (English drops the first AM/PM when both match)
 //   FIL.plan.encode(edition, { picks, modes, merch, by }) / FIL.plan.decode(location.hash)
 //                                 a whole plan in a share link (see "share links" below)
+//   FIL.loadError(detail)         translated "couldn't load" text for the page; the detail goes to the console
 //
 // The brand bar (logo, product name, page links) is built here from a placeholder:
 //   <div class="brand-bar" data-page="lineup"></div>
@@ -149,38 +150,53 @@
     return h;
   }
   // -> null if the text isn't a plan link, else { edition, picks, modes, merch, by }
+  // A link can be typed or damaged by hand, so every part is checked against what the app itself
+  // writes; lookups use own properties only, so names like "constructor" or "__proto__" match nothing.
+  function own(obj, k) { return Object.prototype.hasOwnProperty.call(obj, k) ? obj[k] : undefined; }
+  var SHOP_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;      // as the route editor names them: merch-pavillon, arts-2
   function decodePlan(hash) {
     var q = {};
     String(hash || '').replace(/^#/, '').split('&').forEach(function (kv) {
       var i = kv.indexOf('='); if (i > 0) q[kv.slice(0, i)] = kv.slice(i + 1);
     });
-    if (!/^\d{4}$/.test(q.e || '') || q.p == null) return null;
+    if (!/^\d{4}$/.test(own(q, 'e') || '') || own(q, 'p') == null) return null;
     var e = q.e, picks = [];
     q.p.split('.').forEach(function (t) {
       var m = /^(\d\d)(\d\d)([a-z0-9-]+?)(\d{4})$/.exec(t);
       if (m) picks.push(e + '-' + m[1] + '-' + m[2] + '-' + m[3] + '-' + m[4]);
     });
+    function pick(i) { return /^\d+$/.test(i || '') ? picks[+i] : undefined; }
     var modes = {};
-    (q.o || '').split('.').forEach(function (t) {
-      var a = t.split('~');
-      if (a.length === 3 && picks[a[0]] && picks[a[1]] && CODE_MODE[a[2]]) modes[picks[a[0]] + '>' + picks[a[1]]] = CODE_MODE[a[2]];
+    (own(q, 'o') || '').split('.').forEach(function (t) {
+      var a = t.split('~'), mode = own(CODE_MODE, a[2]);
+      if (a.length === 3 && pick(a[0]) && pick(a[1]) && mode) modes[pick(a[0]) + '>' + pick(a[1])] = mode;
     });
     var merch = {};
-    (q.m || '').split('.').forEach(function (t) {
+    (own(q, 'm') || '').split('.').forEach(function (t) {
       var a = t.split('~');
       if (!/^\d{4}$/.test(a[0] || '')) return;
       var date = e + '-' + a[0].slice(0, 2) + '-' + a[0].slice(2);
       if (a[1] === 'n') { merch[date] = 'none'; return; }
-      if (a.length !== 3 || !a[2]) return;
-      var slot = CODE_SLOT[a[1]];
-      if (!slot) { var ij = a[1].split('_'); if (!picks[ij[0]] || !picks[ij[1]]) return; slot = picks[ij[0]] + '>' + picks[ij[1]]; }
+      if (a.length !== 3 || !SHOP_ID.test(a[2])) return;
+      var slot = own(CODE_SLOT, a[1]);
+      if (!slot) { var ij = a[1].split('_'); if (!pick(ij[0]) || !pick(ij[1])) return; slot = pick(ij[0]) + '>' + pick(ij[1]); }
       merch[date] = { slot: slot, booth: a[2] };
     });
     var by = '';
-    try { by = decodeURIComponent(q.by || '').trim().slice(0, 30); } catch (err) {}
+    try { by = decodeURIComponent(own(q, 'by') || '').trim().slice(0, 30); } catch (err) {}
     return { edition: e, picks: picks, modes: modes, merch: merch, by: by };
   }
 
+  // ---------- load errors ----------
+  // When the schedule or routes.js didn't load: patrons get a plain message in their language; the
+  // technical detail and how to fix it go to the browser console for whoever runs the site.
+  function loadError(detail) {
+    if (window.console) console.error('Fest like the Best could not start: ' + detail + '. Run python build_feed.py ' +
+      '(schedule) or python build_routes.py (routes.js), and open the site through python serve.py.');
+    return I18N.t('err_load');
+  }
+
   window.FIL = { esc: esc, toMin: toMin, store: store, stages: stages, stageById: stageById, stageColor: stageColor,
-                 ready: ready, stamp: stamp, timeRange: timeRange, plan: { encode: encodePlan, decode: decodePlan } };
+                 ready: ready, stamp: stamp, timeRange: timeRange, loadError: loadError,
+                 plan: { encode: encodePlan, decode: decodePlan } };
 })();

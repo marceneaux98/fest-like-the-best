@@ -145,7 +145,7 @@
 <script>
 FIL.ready(function () {
   var D = window.ROUTE_DATA;
-  if (!D) { document.getElementById('result').textContent = 'routes.js not found — run: python build_routes.py'; return; }
+  if (!D) { document.getElementById('result').textContent = FIL.loadError('routes.js missing'); return; }
 
   var esc = FIL.esc;
   var locs = FIL.stages, byId = FIL.stageById;
@@ -201,6 +201,7 @@ FIL.ready(function () {
   });
 
   var routeGroup = L.layerGroup().addTo(map);
+  var fittedPair = null;   // the two stages the map last zoomed to
 
   // Tapping pins: first sets From, second sets To, third starts over.
   function pick(id) {
@@ -226,6 +227,7 @@ FIL.ready(function () {
     if (!r) {
       resultEl.className = 'result empty';
       resultEl.textContent = T((a && b && a === b) ? 'pl_pick_diff' : 'pl_choose');
+      fittedPair = null;
     } else {
       var m = mins(r.seconds), base = r.seconds / 60;
       resultEl.className = 'result';
@@ -234,7 +236,11 @@ FIL.ready(function () {
         esc(T('pl_meta', { m: r.meters, ft: new Intl.NumberFormat(I18N.locale, { maximumFractionDigits: 0 }).format(Math.round(r.meters * 3.28084 / 10) * 10), mi: nf2.format(r.meters * 0.000621371), n: fmtMin(base) })) + '</div>';
       var shape = sm.shape(a, b);
       sm.draw(shape, routeGroup, { color: '#542e91', weight: 5 });
-      map.fitBounds(L.latLngBounds(shape.all), { padding: [60, 60], maxZoom: 1 });
+      // Zoom to a route only when a new pair of stages is picked; the crowd slider or Swap keeps
+      // whatever pan and zoom the patron has set.
+      var pair = [a, b].sort().join('|');
+      if (pair !== fittedPair) map.fitBounds(L.latLngBounds(shape.all), { padding: [60, 60], maxZoom: 1 });
+      fittedPair = pair;
     }
     drawMatrix(a, b);
   }
@@ -270,8 +276,7 @@ FIL.ready(function () {
     update();
   });
 
-  document.getElementById('foot').innerHTML = esc(T('pl_foot', { date: D.built })) + '<br>' +
-    'To change locations: edit <code>locations.json</code>, then run <code>python build_routes.py</code>.';
+  document.getElementById('foot').textContent = T('pl_foot', { date: D.built });
 
   update();
 });

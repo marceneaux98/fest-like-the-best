@@ -322,11 +322,11 @@ FIL.ready(function () {
   var S = window.SCHEDULE_DATA, T = I18N.t, TN = I18N.tn;
   var esc = FIL.esc, toMin = FIL.toMin, load = FIL.store.get, save = FIL.store.set;
   var view = document.getElementById('view');
-  if (!S) { view.innerHTML = '<div class="empty">Could not load the schedule (' + esc(window.SCHEDULE_ERROR || '') + '). Run python build_feed.py, and open the site through python serve.py.</div>'; return; }
+  if (!S) { view.innerHTML = '<div class="empty">' + esc(FIL.loadError(window.SCHEDULE_ERROR || 'no schedule')) + '</div>'; return; }
 
   // Stages (name, colour, display order) come from locations.json via routes.js.
   var STAGES = FIL.stages, stageById = FIL.stageById;
-  if (!STAGES.length) { view.innerHTML = '<div class="empty">routes.js not found — run: python build_routes.py</div>'; return; }
+  if (!STAGES.length) { view.innerHTML = '<div class="empty">' + esc(FIL.loadError('routes.js missing')) + '</div>'; return; }
 
   var perfs = S.performances;
   var byId = {}; perfs.forEach(function (p) { byId[p.id] = p; p.s = toMin(p.start); p.e = toMin(p.end); });

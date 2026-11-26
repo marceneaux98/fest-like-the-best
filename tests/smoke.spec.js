@@ -63,6 +63,29 @@ test('pick two Thursday sets and get a walking plan', async ({ page, request, ba
   expect(errors, 'no JavaScript errors on lineup.html or itinerary.html').toEqual([]);
 });
 
+// Share links can be typed or damaged by hand. One naming a shop that doesn't exist, even with a name every
+// JavaScript object has ("constructor"), must still open the plan, and My day must keep working after a reload
+// (the plan is saved on a device with no picks of its own).
+test('a damaged share link still opens the plan', async ({ page, request, baseURL }) => {
+  const schedule = await (await request.get(baseURL + '/data/schedule.json')).json();
+  const thursday = schedule.days.find((d) => d.weekday === 'Thursday');
+  const dayPerfs = schedule.performances.filter((p) => p.date === thursday.date).sort((a, b) => toMin(a.start) - toMin(b.start));
+  const first = dayPerfs[0];
+  const second = dayPerfs.find((p) => p.stage !== first.stage && toMin(p.start) >= toMin(first.end));
+  const code = (p) => p.date.slice(5, 7) + p.date.slice(8, 10) + p.stage + p.start.replace(':', '');   // see FIL.plan in common.js
+  const errors = [];
+  page.on('pageerror', (err) => errors.push('pageerror: ' + err.message));
+
+  await page.goto('/itinerary.html#e=' + schedule.edition + '&p=' + code(first) + '.' + code(second) +
+    '&m=' + code(first).slice(0, 4) + '~b~constructor');
+  const stops = page.locator('#timeline .stop:not(.merchstop)');
+  await expect(stops).toHaveCount(2);
+  await page.reload();
+  await expect(stops).toHaveCount(2);
+  await expect(page.locator('#timeline .leg .leave').first()).toHaveText(/\d{1,2}[:h]\d{2}/);
+  expect(errors, 'no JavaScript errors on My day').toEqual([]);
+});
+
 // Printable schedules (print.html): every festival day prints as one Letter page with every set on it and no text
 // cut off, and "My picks" (opened from My day) lists the picked sets with their leave-by times.
 test('printable schedules: one page per day, and my picks with leave-by times', async ({ page, request, baseURL }) => {
