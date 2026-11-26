@@ -87,7 +87,11 @@
     }
 
     // ---------- pins and routes ----------
-    function pinPoint(id) { var f = OC.stages[id] || [0.5, 0.5]; return [f[0] * W, f[1] * H]; }
+    // Pins placed in the route editor (poster-routes.json) win over the defaults in overlay.js.
+    function pinPoint(id) {
+      if (PR.pins && PR.pins[id]) return PR.pins[id];
+      var f = OC.stages[id] || [0.5, 0.5]; return [f[0] * W, f[1] * H];
+    }
     function pt(id) { return ll(pinPoint(id)); }
     function entrance(id) { return (PR.entrances && PR.entrances[id]) || pinPoint(id); }
 
