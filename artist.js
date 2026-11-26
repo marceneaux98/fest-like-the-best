@@ -94,8 +94,17 @@
     var paras = String(text).split(/\n\s*\n+/).map(function (s) { return s.trim(); }).filter(Boolean);
     var note = I18N.lang !== 'en' ? '<p class="as-bio-note">' + esc(T('art_bio_en')) + '</p>' : '';
     return note + '<div class="as-bio" lang="en">' + paras.map(function (s) {
-      return '<p>' + esc(s).replace(/\n/g, '<br>') + '</p>';
+      return '<p>' + linkify(esc(s)).replace(/\n/g, '<br>') + '</p>';
     }).join('') + '</div>';
+  }
+  // Web addresses written in a bio ("Read more… https://…") become links. Works on escaped text,
+  // so only http(s) addresses match and nothing can break out of the href.
+  function linkify(html) {
+    return html.replace(/https?:\/\/[^\s<]+/gi, function (u) {
+      var tail = (u.match(/(?:[.,;:!?)\]]|&quot;)+$/) || [''])[0];
+      u = u.slice(0, u.length - tail.length);
+      return '<a href="' + u + '" target="_blank" rel="noopener noreferrer">' + u + '</a>' + tail;
+    });
   }
   function linksHTML(links) {
     links = links || {};

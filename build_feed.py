@@ -134,7 +134,7 @@ def hhmm(col):
 
 # ---------------------------------------------------------------- artist photos
 PHOTO_EXTS = {"jpg", "jpeg", "png", "webp", "tif", "tiff"}
-MAX_DOWNLOAD = 40 * 1024 * 1024       # a band photo bigger than this is not a photo we want to fetch
+MAX_DOWNLOAD = 150 * 1024 * 1024      # print-quality band photos can be huge; anything bigger is skipped
 MANIFEST = "sources.json"
 PHOTO_FILE = re.compile(r"^\d+\.(jpe?g|png|webp|tiff?)$")
 
@@ -163,6 +163,7 @@ def load_pillow():
 def web_photo(data, pil, max_side, max_bytes):
     """Any image -> (JPEG bytes no larger than max_side on its long side, aiming under max_bytes)."""
     Image, ImageOps = pil
+    Image.MAX_IMAGE_PIXELS = 250000000  # print-quality photos are big; this still stops absurd ones
     im = Image.open(io.BytesIO(data))
     icc = im.info.get("icc_profile") if im.mode == "RGB" else None   # keep colours right; drop CMYK profiles
     try:

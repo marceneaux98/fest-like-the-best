@@ -249,3 +249,4 @@ header h1 small {
 }
 @keyframes as-pop { from { opacity: 0; transform: translateY(14px) scale(.98); } }
 @keyframes as-up { from { transform: translateY(100%); } }
+.as-bio a { color: var(--fil-purple); overflow-wrap: anywhere; }

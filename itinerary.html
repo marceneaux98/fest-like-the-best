@@ -67,6 +67,7 @@
   }
   .act-link:hover { color: var(--purple); text-decoration-style: solid; }
   .act-link:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; border-radius: 4px; }
+  .act-link .nw { white-space: nowrap; }
   .act-link svg { width: 17px; height: 17px; margin-left: 5px; vertical-align: -2px; color: var(--purple); }
   .stop .where { font-size: .85rem; color: var(--muted); }
   .bar { position: relative; height: 8px; background: #eeecf3; border-radius: 4px; margin: 10px 0 6px; overflow: hidden; }
@@ -436,8 +437,11 @@ FIL.ready(function () {
   // Act name: a button that opens the artist sheet (plain text for named events without an artist)
   function actHTML(p) {
     if (!FIL.artist.has(p)) return esc(p.act);
+    // The last word and the "i" stay together, so the icon never sits alone on a line
+    var words = esc(p.act).split(' '), last = words.pop();
     return '<button type="button" class="act-link" data-info="' + esc(p.id) + '" aria-haspopup="dialog" title="' +
-      esc(T('art_about', { act: p.act })) + '">' + esc(p.act) + FIL.artist.icon + '</button>';
+      esc(T('art_about', { act: p.act })) + '">' + (words.length ? words.join(' ') + ' ' : '') +
+      '<span class="nw">' + last + FIL.artist.icon + '</span></button>';
   }
 
   function stopHTML(st, i) {
