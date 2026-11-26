@@ -51,6 +51,14 @@
   .seg button[aria-pressed="true"] { background: var(--purple); color: #fff; }
   .chk { display: inline-flex; align-items: center; gap: 6px; font-size: .88rem; color: var(--muted); cursor: pointer; white-space: nowrap; }
   .chk input { accent-color: var(--purple); width: 16px; height: 16px; }
+  /* Opens print.html (black-and-white schedule to print or save as PDF) on the day shown here */
+  .print-link {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; white-space: nowrap;
+    border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--purple);
+    font-size: .88rem; font-weight: 600; text-decoration: none;
+  }
+  .print-link:hover { background: var(--bg); }
+  .print-link:focus-visible { outline: 3px solid var(--orange); outline-offset: 1px; }
 
   /* ---------- layout ---------- */
   main { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 0; align-items: start; }
@@ -264,6 +272,7 @@
     <button type="button" id="viewList" aria-pressed="false" data-i18n="lu_list">List</button>
   </div>
   <label class="chk"><input type="checkbox" id="onlyPicked"> <span data-i18n="lu_only">Only my picks</span></label>
+  <a class="print-link" href="print.html"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg><span data-i18n="pr_btn">Print / Save as PDF</span></a>
 </div>
 
 <main>
