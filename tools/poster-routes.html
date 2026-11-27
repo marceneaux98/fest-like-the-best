@@ -491,13 +491,24 @@ $('altDraw').onclick = function () {
   var i = saveAltForm(); closeAltForm(); setDirty(true);
   drawing = { key: $('routeSel').value, wps: [], alt: i }; setMode('draw'); refreshSelects(); renderAltList(); render();
 };
+// Two-step confirmation without pop-ups (the Claude Browser pane blocks confirm() boxes): the first click
+// changes the button's text for 4 seconds; a second click within that time does it.
+function confirmClick(btn, text, action) {
+  if (btn.dataset.armed === '1') { disarm(btn); action(); return; }
+  btn.dataset.label = btn.textContent; btn.dataset.armed = '1'; btn.textContent = text;
+  btn._t = setTimeout(function () { disarm(btn); }, 4000);
+}
+function disarm(btn) {
+  if (btn.dataset.armed !== '1') return;
+  clearTimeout(btn._t); btn.dataset.armed = ''; btn.textContent = btn.dataset.label;
+}
 $('altList').addEventListener('click', function (e) {
   var k = $('routeSel').value, ed = e.target.closest('[data-alt-edit]'), del = e.target.closest('[data-alt-del]');
   if (ed) openAltForm(+ed.dataset.altEdit);
-  if (del && confirm('Delete the alternate route "' + (alts[k][+del.dataset.altDel].label || '') + '"?')) {
+  if (del) confirmClick(del, 'Click again to delete', function () {
     alts[k].splice(+del.dataset.altDel, 1); if (!alts[k].length) delete alts[k];
     setDirty(true); retrace();
-  }
+  });
 });
 $('reviewed').onchange = function () {
   var k = $('routeSel').value, i = info[k] = info[k] || {};
@@ -596,11 +607,13 @@ $('setPin').onclick = function () { setMode(mode === 'pin' ? null : 'pin'); };
 $('setEnt').onclick = function () { setMode(mode === 'ent' ? null : 'ent'); };
 $('addShop').onclick = function () { setMode(mode === 'shop' ? null : 'shop'); };
 $('delShop').onclick = function () {
-  var id = $('placeSel').value; if (!isShop(id) || !confirm('Remove ' + label(id) + '?')) return;
-  shops = shops.filter(function (s) { return s.id !== id; });
-  delete pins[id]; delete entHint[id];
-  Object.keys(manual).forEach(function (k) { if (k.split('|').indexOf(id) >= 0) delete manual[k]; });
-  $('placeSel').value = stageIds[0]; setDirty(true); retrace();
+  var id = $('placeSel').value; if (!isShop(id)) return;
+  confirmClick($('delShop'), 'Click again to remove ' + label(id), function () {
+    shops = shops.filter(function (s) { return s.id !== id; });
+    delete pins[id]; delete entHint[id];
+    Object.keys(manual).forEach(function (k) { if (k.split('|').indexOf(id) >= 0) delete manual[k]; });
+    $('placeSel').value = stageIds[0]; setDirty(true); retrace();
+  });
 };
 $('autoEnt').onclick = function () { delete entHint[$('placeSel').value]; setDirty(true); retrace(); };
 $('popEnt').onclick = function () {
@@ -608,7 +621,7 @@ $('popEnt').onclick = function () {
   entHint[id].pop(); if (!entHint[id].length) delete entHint[id];
   setDirty(true); retrace();
 };
-$('placeSel').onchange = function () { refreshInfo(); render(); if (mode !== 'draw') setMode(null); };
+$('placeSel').onchange = function () { disarm($('delShop')); refreshInfo(); render(); if (mode !== 'draw') setMode(null); };
 $('routeSel').onchange = function () { if (drawing) { drawing = null; setMode(null); } closeAltForm(); refreshInfo(); render(); };
 $('draw').onclick = function () { drawing = { key: $('routeSel').value, wps: [] }; setMode('draw'); render(); };
 $('undo').onclick = function () { if (drawing) { drawing.wps.pop(); render(); } };
