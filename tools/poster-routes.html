@@ -194,6 +194,12 @@ function setDirty(d) { dirty = d; $('save').disabled = !d; }
 window.addEventListener('beforeunload', function (e) { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
 // ---------- load ----------
+// Opened straight from disk (file://), the browser blocks loading the map: say how to open it instead.
+if (location.protocol === 'file:') {
+  hint('This page needs the local server to show the map. In the project folder run: python serve.py ' +
+       '— then open http://localhost:8765/tools/poster-routes.html (Claude can start it for you).');
+  throw new Error('opened from disk');
+}
 Promise.all([
   fetch('../' + OC.svg, { cache: 'no-cache' }).then(function (r) { return r.text(); }),
   fetch('../' + OC.routes, { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
