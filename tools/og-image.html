@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Share image (dev tool)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,500;0,700;1,700&family=Yellowtail&display=swap">
+<style>
+  body { margin: 0; background: #555; font: 14px system-ui, sans-serif; }
+  header { background: #fff; padding: 8px 12px; display: flex; gap: 12px; align-items: center; }
+  canvas { display: block; margin: 12px; max-width: calc(100% - 24px); height: auto; box-shadow: 0 2px 10px rgba(0,0,0,.4); }
+  button { font: inherit; padding: 5px 10px; }
+</style>
+</head>
+<body>
+<header><strong>Share image</strong> <span id="status">Drawing…</span> <button id="save" type="button" disabled>Save to assets/og-image.png</button></header>
+<canvas id="c" width="1200" height="630"></canvas>
+<script>
+// Dev tool: draws the 1200 x 630 picture Facebook, iMessage and others show when someone shares the
+// site link: brand panel on the left, the festival poster map on the right. Save writes
+// assets/og-image.png through serve.py. Usage: tools/og-image.html[?save=1]
+var q = new URLSearchParams(location.search), c = document.getElementById('c'), x = c.getContext('2d');
+var PURPLE = '#542e91', ORANGE = '#f26631', NAVY = '#162061';
+function img(src) { return new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = bad; i.src = src; }); }
+function wrap(text, maxW, lh, x0, y0) {
+  var words = text.split(' '), line = '', y = y0;
+  words.forEach(function (w) {
+    var t = line ? line + ' ' + w : w;
+    if (x.measureText(t).width > maxW && line) { x.fillText(line, x0, y); line = w; y += lh; } else line = t;
+  });
+  x.fillText(line, x0, y); return y;
+}
+Promise.all([
+  fetch('../assets/sitemap.svg').then(function (r) { return r.text(); }),
+  img('../assets/logo.png'),
+  document.fonts.load('700 italic 40px Jost'), document.fonts.load('500 24px Jost'), document.fonts.load('80px Yellowtail')
+]).then(function (res) {
+  // Poster without the legend and logo (the brand panel carries the branding).
+  var svgText = res[0].replace(/<g id="layer-(legend|logo)"/g, '<g style="display:none" id="layer-$1"');
+  return img(URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml' }))).then(function (map) { return [map, res[1]]; });
+}).then(function (r) {
+  var map = r[0], logo = r[1];
+  x.fillStyle = NAVY; x.fillRect(0, 0, 1200, 630);
+  // map: right side, cropped to the festival streets
+  var sx = 60, sy = 40, sw = 640, sh = 500, dx = 470, dw = 730, dh = 630;
+  x.drawImage(map, sx / 774 * map.width, sy / 603 * map.height, sw / 774 * map.width, sh / 603 * map.height, dx, 0, dw, dh);
+  var g = x.createLinearGradient(470, 0, 620, 0); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  // brand panel
+  x.fillStyle = '#fff'; x.fillRect(0, 0, 540, 630);
+  x.fillStyle = g; x.fillRect(540, 0, 80, 630);
+  var lw = 440, lh = lw * logo.height / logo.width;
+  x.drawImage(logo, 56, 64, lw, lh);
+  x.fillStyle = PURPLE; x.font = '76px Yellowtail'; x.fillText('Fest like the Best', 52, 228);
+  x.fillStyle = '#1c1b22'; x.font = '500 27px Jost';
+  var y = wrap('Pick the sets you want, get a walking plan between stages, and print your schedule.', 430, 38, 56, 300);
+  x.fillStyle = ORANGE; x.beginPath(); x.roundRect(56, y + 46, 330, 56, 28); x.fill();
+  x.fillStyle = '#fff'; x.font = 'italic 700 24px Jost'; x.fillText('PREVIEW · TRY IT OUT', 82, y + 82);
+  x.fillStyle = '#6b6878'; x.font = '500 19px Jost'; x.fillText('Festival International de Louisiane', 56, 590);
+  document.getElementById('status').textContent = 'Ready';
+  document.getElementById('save').disabled = false;
+  window.DRAWN = true;
+  if (q.get('save') === '1') save();
+}).catch(function (e) { document.getElementById('status').textContent = 'Failed: ' + e; });
+function save() {
+  c.toBlob(function (blob) {
+    fetch('/__save/og-image.png', { method: 'POST', headers: { 'X-FLTB-Save': '1', 'Content-Type': 'image/png' }, body: blob })
+      .then(function (r) { return r.text().then(function (t) { document.getElementById('status').textContent = (r.ok ? 'OK: ' : 'Error: ') + t; window.SAVED = r.ok; }); });
+  }, 'image/png');
+}
+document.getElementById('save').onclick = save;
+</script>
+</body>
+</html>

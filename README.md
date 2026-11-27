@@ -92,3 +92,8 @@ The test code lives in `tests/` (Playwright needs Node, but only on GitHub; the 
 - Futura, Ando and Thirsty Script are licensed fonts; free look-alikes (Jost, Saira Condensed, Yellowtail) load unless the real fonts are installed or web-licensed.
 - Walking routes use OpenStreetMap streets and don't know about festival fencing or closed gates.
 - Picks are saved in each browser (localStorage), so they don't move between devices.
+
+## Feedback and sharing
+
+- Every page has a slim **Preview** strip with a **Tell us what you think** link. It opens the Monday form "Fest like the Best · Feedback" (ZSandbox → Fest Like The Best folder); each response becomes an item on that board, with the page and language the person came from filled in automatically. The link lives in `common.js` (`FEEDBACK_URL`).
+- Link previews (Facebook, iMessage, Slack) use the `og:` tags in each page's `<head>` and `assets/og-image.png`. To redraw the picture, run the server and open `tools/og-image.html`, then Save. After publishing a change, ask Facebook to re-read the link with its Sharing Debugger (developers.facebook.com/tools/debug).

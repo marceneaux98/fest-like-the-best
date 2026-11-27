@@ -26,6 +26,7 @@
   D.en = {
     lang_label: 'Language',
     nav_lineup: 'Lineup', nav_myday: 'My day', nav_map: 'Stage map',
+    preview_note: 'Preview · sample lineup from 2026', preview_feedback: 'Tell us what you think',
     dur_hm: '{h}h {m}m', dur_h: '{h}h', dur_m: '{m} min', min: '{n} min',
     sets_one: '{n} set', sets_other: '{n} sets',
     overlapping_one: '{n} overlapping', overlapping_other: '{n} overlapping',
@@ -221,6 +222,7 @@
   D.fr = {
     lang_label: 'Langue',
     nav_lineup: 'Programme', nav_myday: 'Ma journée', nav_map: 'Carte',
+    preview_note: 'Aperçu · programmation 2026 en exemple', preview_feedback: 'Donnez-nous votre avis',
     dur_hm: '{h} h {mm}', dur_h: '{h} h', dur_m: '{m} min', min: '{n} min',
     sets_one: '{n} concert', sets_other: '{n} concerts',
     overlapping_one: '{n} chevauchement', overlapping_other: '{n} chevauchements',
@@ -416,6 +418,7 @@
   D.es = {
     lang_label: 'Idioma',
     nav_lineup: 'Programa', nav_myday: 'Mi día', nav_map: 'Mapa',
+    preview_note: 'Vista previa · programa de 2026 como ejemplo', preview_feedback: 'Danos tu opinión',
     dur_hm: '{h} h {m} min', dur_h: '{h} h', dur_m: '{m} min', min: '{n} min',
     sets_one: '{n} concierto', sets_other: '{n} conciertos',
     overlapping_one: '{n} superpuesto', overlapping_other: '{n} superpuestos',
@@ -611,6 +614,7 @@
   D.vi = {
     lang_label: 'Ngôn ngữ',
     nav_lineup: 'Lịch diễn', nav_myday: 'Ngày của tôi', nav_map: 'Bản đồ',
+    preview_note: 'Bản xem trước · dùng lịch diễn 2026 làm mẫu', preview_feedback: 'Góp ý cho chúng tôi',
     dur_hm: '{h} giờ {m} phút', dur_h: '{h} giờ', dur_m: '{m} phút', min: '{n} phút',
     sets_one: '{n} buổi diễn', sets_other: '{n} buổi diễn',
     overlapping_one: '{n} trùng giờ', overlapping_other: '{n} trùng giờ',

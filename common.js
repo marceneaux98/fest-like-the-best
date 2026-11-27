@@ -53,11 +53,20 @@
     { id: 'itinerary', href: 'itinerary.html', key: 'nav_myday', label: 'My day' },
     { id: 'planner', href: 'planner.html', key: 'nav_map', label: 'Stage map' }
   ];
+  // Preview strip: this is a prototype shared for feedback. The link opens the Monday feedback form and
+  // tells it which page and language the person came from (hidden fields on the form).
+  var FEEDBACK_URL = 'https://forms.monday.com/forms/d0d5bb45f9bd831a861b61a473bfdeea?r=use1';
+  function feedbackHref(page) {
+    var lang = window.I18N ? I18N.lang : 'en';
+    return FEEDBACK_URL + '&page=' + encodeURIComponent(page || '') + '&lang=' + encodeURIComponent(lang);
+  }
   function mountBrandBar() {
     document.querySelectorAll('.brand-bar[data-page]').forEach(function (bar) {
       if (bar.children.length) return;
       var current = bar.getAttribute('data-page');
       bar.innerHTML =
+        '<p class="preview-note"><span data-i18n="preview_note">Preview · sample lineup from 2026</span> ' +
+          '<a href="' + feedbackHref(current) + '" target="_blank" rel="noopener" data-i18n="preview_feedback">Tell us what you think</a></p>' +
         '<a class="brand-logo" href="lineup.html"><img src="assets/logo.png" alt="Festival International de Louisiane, presented by LFT Fiber"></a>' +
         '<span class="brand-tag">Fest like the Best</span>' +
         '<nav class="brand-nav" aria-label="Pages">' +

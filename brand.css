@@ -47,7 +47,14 @@ button, select { font: inherit; color: inherit; }
 }
 /* Reserve the bar's height (one row; two on phones) so the page doesn't jump while common.js fills it in,
    the language menu is added and the web fonts arrive. The filled bar is never shorter than this. */
-.brand-bar { min-height: 65px; }
+.brand-bar { min-height: 103px; }   /* 65px bar + the preview strip */
+/* Preview strip across the top of the bar (it's a prototype shared for feedback) */
+.preview-note {
+  order: -1; flex: 1 0 calc(100% + 48px); margin: -12px -24px 0; padding: 5px 16px;
+  background: #f1ecfa; color: var(--fil-purple); font: 500 .8rem/1.3 var(--font-body); text-align: center;
+}
+.preview-note a { color: var(--fil-purple); font-weight: 700; text-decoration: underline; margin-left: 4px; white-space: nowrap; }
+@media print { .preview-note { display: none !important; } }
 .brand-logo { display: block; line-height: 0; flex: 0 1 auto; min-width: 0; }
 /* aspect-ratio = assets/logo.png (1497×200): the logo takes its full width before the image arrives,
    so the bar doesn't fit on one row first and then wrap (layout shift) */
@@ -129,7 +136,8 @@ header h1 small {
 @media (max-width: 560px) {
   header h1 small { display: block; margin: 6px 0 0; font-size: 1.15rem; }
   .brand-bar { padding: 10px 16px; gap: 10px 12px; }
-  .brand-bar { min-height: 92px; }   /* two rows on phones */
+  .brand-bar { min-height: 128px; }   /* two rows on phones + the preview strip */
+  .preview-note { flex-basis: calc(100% + 32px); margin: -10px -16px 0; font-size: .75rem; }
   .brand-logo img { height: 26px; }
   .brand-tag { font-size: 1.15rem; padding-top: 2px; }
   /* row 1: logo + tagline · row 2: page links + language menu */
