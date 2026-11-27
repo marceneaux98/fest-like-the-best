@@ -101,6 +101,11 @@ With the server running, open `tools/poster-routes.html`. For each route:
 - **Tip for this walk**: a short note ("Cut through the Chase Bank lot"). Ticked *Show this tip to patrons*, it appears on that walk in My Day and on the Stage Map.
 - **Alternate routes by day and time**: another way to walk the same pair at certain times, e.g. *Evening · Fri, Sat, Sun · 20:00 to 23:59*, drawn by hand with its own tip. My Day uses it when the walk falls in that window (and its distance for the walking time); the Stage Map lists and draws it.
 
+- **Snap to streets**: for a route drawn by hand with straight hops, keeps the clicks but runs the line along the streets between them.
+- **Check all routes**: lists anything worth a look: lines that leave the drawn streets (fine for a real shortcut), bump out or double back, are far off the real walking distance, start far from their pin, changed since review, or alternates not drawn yet. Click a finding to open that route with the spot circled; the list updates as you fix things.
+
+Automatic routes follow the streets' centre lines and are then pulled taut (as straight as the drawn street allows, keeping clear of its edges), so they don't jog at crossings.
+
 Save, then ask Claude to publish. Labels in the route list: ✓ reviewed, ⚠ changed since review, ✎ drawn by hand, ⇄ has alternates.
 
 ## Feedback and sharing

@@ -27,6 +27,10 @@
   #altForm { background: #fff7ef; border: 1px solid #f3c79c; border-radius: 8px; padding: 6px 8px; margin-top: 6px; }
   .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 99px; background: #eee; }
   .tag.manual { background: #ffe9a8; } .tag.auto { background: #e6ddff; }
+  #checkSum { font-size: 12px; margin: 4px 0; line-height: 1.35; }
+  #checkList button { display: block; width: 100%; text-align: left; font-size: 12px; line-height: 1.35; padding: 4px 7px; margin: 3px 0; background: #fff; border-color: #e2d9f3; }
+  #checkList button:hover, #checkList button.on { background: #f3eeff; border-color: #542e91; color: #111; }
+  #checkList button i { color: #666; }
   #wrap { overflow: auto; position: relative; }
   #stage { position: relative; width: 100%; }
   #stage > svg.map { width: 100%; height: auto; display: block; }
@@ -75,7 +79,7 @@
       <button id="cancel" type="button" disabled>Cancel</button>
     </div>
     <div class="row"><label><input type="checkbox" id="follow" checked> Follow the streets between clicks</label></div>
-    <div class="row"><button id="revert" type="button">Use the automatic route</button></div>
+    <div class="row"><button id="revert" type="button">Use the automatic route</button> <button id="snap" type="button" title="Keep your clicks, but run the line along the streets between them">Snap to streets</button></div>
     <div id="routeInfo"></div>
     <div class="row" style="margin-top:8px"><label><input type="checkbox" id="reviewed"> <b>Reviewed ✓</b></label> <span id="reviewCount" class="muted"></span></div>
     <label class="lbl" for="tip">Tip for this walk</label>
@@ -101,6 +105,14 @@
   </fieldset>
 
   <fieldset>
+    <legend>4 · Check all routes</legend>
+    <div class="muted">Looks for lines that leave the drawn streets, bump out or double back, don't match the real walking distance, or start far from their pin. Click a finding to open it on the map.</div>
+    <div class="row"><button id="check" type="button">Check all routes</button></div>
+    <div id="checkSum"></div>
+    <div id="checkList"></div>
+  </fieldset>
+
+  <fieldset>
     <legend>View</legend>
     <div class="row"><label>Zoom <select id="zoom"><option value="1">100%</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option></select></label></div>
     <div class="row"><label><input type="checkbox" id="dim" checked> Dim icons and labels</label></div>
@@ -122,7 +134,8 @@
 //   Every street drawn on assets/sitemap.svg is walkable: the wide light-cyan festival streets and the
 //   thin dark-blue side streets. Side streets count as SIDE_COST times longer, so automatic routes keep
 //   to the festival streets unless a side street is clearly shorter. The streets are thinned to centre
-//   lines, and routes are shortest paths along them.
+//   lines, routes are shortest paths along them, and then each route is pulled taut: as straight as the
+//   drawn street allows while keeping clear of its edges (centre lines jog at crossings; taut lines don't).
 //
 // Places
 //   Stages (from locations.json) and shops: merch booths, Marché des Arts and Marché du Monde. Each has
@@ -133,7 +146,12 @@
 // Routes by hand
 //   Pick a route, "Draw this route", click points along the way, Finish. With "Follow the streets" on,
 //   the line runs along the streets between clicks; off, it goes straight (a shortcut). Hand-drawn
-//   routes are kept when pins or entrances move; the rest re-trace automatically.
+//   routes are kept when pins or entrances move; the rest re-trace automatically. "Snap to streets"
+//   turns a hand-drawn route's straight hops into street-following ones (the clicks stay).
+//
+// Check all routes: lists lines that leave the drawn streets, bump out or double back, are far off the
+//   real walking distance, have no street connection, start far from their pin, changed since review,
+//   or are alternates not drawn yet. Click one to open it, with the spot circled on the map.
 //
 // Distances: stage-to-stage walking distances come from real streets (routes.js). For shops, which have
 //   no real-street measurement, the distance is estimated from the route on the map, scaled by how map
@@ -152,6 +170,9 @@
 var OC = window.OVERLAY_CONFIG, W = OC.width, H = OC.height, S = 2;
 var SIDE_STREETS = ['#1c68b8', '#1c67b7', '#1d69b9'], SIDE_COST = 1.6;
 var SIMPLIFY = 1.0, FT_PER_M = 3.28084;
+// Taut routes keep CLEAR poster points from the street's edge, or CLEAR_FRAC of the half-width where the
+// street is narrower than that (thin side streets), so the line stays well inside the drawn street.
+var CLEAR = 3, CLEAR_FRAC = 0.7;
 var NS = 'http://www.w3.org/2000/svg';
 var KIND_NAME = { merch: 'Merch booth', arts: 'Marché des Arts', monde: 'Marché du Monde' };
 var KIND_COLOR = { merch: '#f26631', arts: '#e155a9', monde: '#2bb3a3' };
@@ -172,6 +193,8 @@ var info = {}, alts = {}, altPts = {};       // info: key -> { reviewed, reviewe
 var pins = {}, entHint = {}, manual = {};      // entHint: id -> [[x,y]…] placed by hand; manual: key -> { wps: [{p, follow}], endFollow }
 var entNodes = {}, entrances = {}, routes = {}, auto = {}, metres = {}, near = {};
 var mode = null, drawing = null, dirty = false;
+var mPerPt = 0.63, noLink = {};                // metres of real walk per poster point (median); routes with no street link
+var checked = null, mark = null;               // findings of "Check all routes"; the finding circled on the map
 var over = null, graph = null;
 function asList(e) { return !e ? null : typeof e[0] === 'number' ? [e] : e; }
 function isShop(id) { return stageIds.indexOf(id) < 0; }
@@ -238,6 +261,12 @@ Promise.all([
   graph = buildGraph(svg);
   retrace();
   hint('Pick a route and click "Draw this route", or pick a stage or shop to move its pin or add entrances. Clicking a pin on the map selects it.');
+  // Lines traced by an older version of this editor: say so, and let Save keep the new ones.
+  var savedAlt = {}; Object.keys(saved.alts || {}).forEach(function (k) { savedAlt[k] = saved.alts[k].map(function (a) { return a.points || null; }); });
+  if (saved.routes && (JSON.stringify(saved.routes) !== JSON.stringify(routes) || JSON.stringify(savedAlt) !== JSON.stringify(altPts))) {
+    setDirty(true);
+    $('status').textContent = 'The route lines were re-traced (smoother lines, same streets). Have a look, then Save to keep them.';
+  }
   window.EDITOR_READY = true;
 }).catch(function (err) { hint('Failed: ' + (err && err.stack || err)); });
 
@@ -258,6 +287,7 @@ function buildGraph(svg) {
   var allPx = paint(function () { return true; });
   var img = new Uint8Array(N), list = [];
   for (var i = 0; i < N; i++) if (allPx[i * 4 + 3] > 127) { img[i] = 1; list.push(i); }
+  var dt = edgeDistance(img, cw, ch);          // before thinning changes img
   // Zhang-Suen thinning
   var changed = true, del = [];
   while (changed) {
@@ -289,7 +319,27 @@ function buildGraph(svg) {
     for (var k = 0; k < 8; k++) { var j = nodeOf[p + nb[k]]; if (j >= 0) out.push(j, step[k] * (cost[i] + cost[j]) / 2); }
     return out;
   });
-  return { n: n, xs: xs, ys: ys, cost: cost, adj: adj };
+  return { n: n, xs: xs, ys: ys, cost: cost, adj: adj, dt: dt, cw: cw };
+}
+// For each street pixel, how far it is to the street's edge (canvas px; 0 = not street). Two-pass chamfer.
+function edgeDistance(img, cw, ch) {
+  var N = cw * ch, dt = new Float32Array(N), D = Math.SQRT2, x, y, q, v;
+  for (q = 0; q < N; q++) dt[q] = img[q] ? 1e9 : 0;
+  for (y = 0; y < ch; y++) for (x = 0; x < cw; x++) {
+    q = y * cw + x; if (!dt[q]) continue;
+    v = x > 0 ? Math.min(dt[q], dt[q - 1] + 1) : 1;
+    if (y > 0) { v = Math.min(v, dt[q - cw] + 1); if (x > 0) v = Math.min(v, dt[q - cw - 1] + D); if (x < cw - 1) v = Math.min(v, dt[q - cw + 1] + D); }
+    else v = 1;
+    dt[q] = v;
+  }
+  for (y = ch - 1; y >= 0; y--) for (x = cw - 1; x >= 0; x--) {
+    q = y * cw + x; if (!dt[q]) continue;
+    v = x < cw - 1 ? Math.min(dt[q], dt[q + 1] + 1) : 1;
+    if (y < ch - 1) { v = Math.min(v, dt[q + cw] + 1); if (x < cw - 1) v = Math.min(v, dt[q + cw + 1] + D); if (x > 0) v = Math.min(v, dt[q + cw - 1] + D); }
+    else v = 1;
+    dt[q] = v;
+  }
+  return dt;
 }
 function nodePt(i) { return [Math.round(graph.xs[i] * 10) / 10, Math.round(graph.ys[i] * 10) / 10]; }
 function nearestNode(pt, mainOnly) {
@@ -332,9 +382,38 @@ function simplify(pts, tol) {
 }
 var treeCache = {};
 function tree(node) { return treeCache[node] || (treeCache[node] = shortest(node)); }
-function along(fromPt, toPt) {
-  var a = nearestNode(fromPt), b = nearestNode(toPt), p = chainTo(tree(a), a, b);
-  return p ? simplify(p, SIMPLIFY) : [fromPt, toPt];
+function along(fromPt, toPt) {                 // centre-line points between the streets nearest two points
+  var a = nearestNode(fromPt), b = nearestNode(toPt);
+  return chainTo(tree(a), a, b);
+}
+function dtAt(x, y) {                          // distance to the street's edge at a poster point (canvas px)
+  var cx = Math.round(x * S), cy = Math.round(y * S);
+  return cx < 0 || cy < 0 || cx >= graph.cw || cy * graph.cw >= graph.dt.length ? 0 : graph.dt[cy * graph.cw + cx];
+}
+function clearLine(a, b, need) {               // the straight line a-b stays at least `need` px inside the streets
+  var n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) * S / 0.7);
+  for (var s = 1; s < n; s++) if (dtAt(a[0] + (b[0] - a[0]) * s / n, a[1] + (b[1] - a[1]) * s / n) < need) return false;
+  return true;
+}
+// Pull a centre-line path taut: from each corner, go straight to the farthest point along the path that can
+// be reached in a straight line without coming closer to the street's edge than the path itself did
+// (up to CLEAR). Removes the jogs centre lines make at crossings and cuts corners the way people walk.
+// It looks up to LOOKAHEAD poster points past a point it can't reach, to skip little spurs (a click
+// slightly off a street's centre makes the path go out to it and back).
+var LOOKAHEAD = 25;
+function taut(pts) {
+  if (!pts || pts.length < 3) return pts;
+  var out = [pts[0]], i = 0, last = pts.length - 1, cap = CLEAR * S;
+  while (i < last) {
+    var best = i + 1, low = Math.min(dtAt(pts[i][0], pts[i][1]), dtAt(pts[best][0], pts[best][1])), miss = 0;
+    for (var m = i + 2; m <= last; m++) {
+      low = Math.min(low, dtAt(pts[m][0], pts[m][1]));
+      if (clearLine(pts[i], pts[m], Math.max(1, Math.min(cap, CLEAR_FRAC * low)))) { best = m; miss = 0; }
+      else if ((miss += Math.hypot(pts[m][0] - pts[m - 1][0], pts[m][1] - pts[m - 1][1])) > LOOKAHEAD) break;
+    }
+    out.push(pts[best]); i = best;
+  }
+  return out;
 }
 function plen(pts) { var L = 0; for (var i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return L; }
 function nearestOf(list, pt) {
@@ -368,13 +447,14 @@ function retrace() {
   routeKeys().forEach(function (k) {
     var ab = k.split('|'), b = best(ab[0], ab[1]);
     var p = b && isFinite(b.d) ? chainTo(tree(b.ea), b.ea, b.eb) : null;
-    auto[k] = p ? simplify(p, SIMPLIFY) : [entrances[ab[0]][0], entrances[ab[1]][0]];
+    auto[k] = p ? taut(p) : [entrances[ab[0]][0], entrances[ab[1]][0]];
+    if (p) delete noLink[k]; else noLink[k] = true;
     routes[k] = manual[k] ? buildManual(k, manual[k].wps, manual[k].endFollow) : auto[k];
   });
   // Shop distances: map length (with the hops to the pins) x how map length compares with real distance.
   function fullLen(k) { var ab = k.split('|'), r = routes[k]; return plen([pins[ab[0]]].concat(r, [pins[ab[1]]])); }
   var ratios = routeKeys().filter(function (k) { return realMetres(k); }).map(function (k) { return realMetres(k) / fullLen(k); }).sort(function (a, b) { return a - b; });
-  var scale = ratios.length ? ratios[Math.floor(ratios.length / 2)] : 0.63;
+  var scale = mPerPt = ratios.length ? ratios[Math.floor(ratios.length / 2)] : 0.63;
   metres = {};
   routeKeys().forEach(function (k) { if (!realMetres(k)) metres[k] = Math.round(fullLen(k) * scale); });
   altPts = {};
@@ -382,6 +462,7 @@ function retrace() {
     if (!routes[k]) { delete alts[k]; return; }              // its shop was removed
     altPts[k] = alts[k].map(function (a) { return a.wps && a.wps.length ? buildManual(k, a.wps, a.endFollow) : null; });
   });
+  if (checked) runCheck();                     // keep the findings current while fixing them
   refreshSelects(); refreshInfo(); render();
 }
 function buildManual(k, wps, endFollow) {
@@ -389,12 +470,20 @@ function buildManual(k, wps, endFollow) {
   var ab = k.split('|');
   var start = nearestOf(entrances[ab[0]], wps.length ? wps[0].p : entrances[ab[1]][0]);
   var end = nearestOf(entrances[ab[1]], wps.length ? wps[wps.length - 1].p : start);
-  var out = [start], cur = start;
+  // Clicks in a row that follow the streets make one stretch, pulled taut as a whole; straight hops stay as drawn.
+  var out = [start], cur = start, run = null;
+  function flush() {
+    if (!run) return;
+    var t = taut(run), o = out[out.length - 1];
+    out = out.concat(t[0][0] === o[0] && t[0][1] === o[1] ? t.slice(1) : t);
+    run = null;
+  }
   wps.concat([{ p: end, follow: endFollow }]).forEach(function (w) {
-    var seg = w.follow ? along(cur, w.p) : [cur, w.p];
-    out = out.concat(seg.slice(1));
-    cur = w.follow ? seg[seg.length - 1] : w.p;
+    var seg = w.follow ? along(cur, w.p) : null;
+    if (seg) { run = run ? run.concat(seg.slice(1)) : seg; cur = seg[seg.length - 1]; }
+    else { flush(); out.push(w.p); cur = w.p; }
   });
+  flush();
   return out.map(function (p) { return [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10]; });
 }
 
@@ -423,6 +512,8 @@ function refreshInfo() {
   $('delShop').disabled = !isShop(id);
   var k = $('routeSel').value, r = routes[k] || [], real = realMetres(k);
   if (!k) return;
+  $('revert').disabled = !manual[k];
+  $('snap').disabled = !manual[k] || !hasStraight(manual[k]);
   $('routeInfo').innerHTML = (manual[k] ? '<span class="tag manual">drawn by hand</span>' : '<span class="tag auto">automatic</span>') +
     '\n' + (real ? 'Real street distance ' + Math.round(real * FT_PER_M) + ' ft (used for walking times).'
                  : 'Estimated ' + Math.round(metres[k] * FT_PER_M) + ' ft from the map (no real-street measurement for shops).') +
@@ -457,7 +548,9 @@ function renderAltList() {
   box.innerHTML = list.length ? '' : '<div class="muted">No alternate routes for this walk.</div>';
   list.forEach(function (a, i) {
     var row = document.createElement('div'); row.className = 'alt-row';
-    row.innerHTML = '<b></b><span class="muted"></span><button type="button" data-alt-edit="' + i + '">Edit</button><button type="button" data-alt-del="' + i + '">Delete</button>';
+    row.innerHTML = '<b></b><span class="muted"></span><button type="button" data-alt-edit="' + i + '">Edit</button>' +
+      (hasStraight(a) ? '<button type="button" data-alt-snap="' + i + '" title="Run the line along the streets between your clicks">Snap to streets</button>' : '') +
+      '<button type="button" data-alt-del="' + i + '">Delete</button>';
     row.querySelector('b').textContent = a.label || 'Alternate';
     row.querySelector('span').textContent = whenText(a) + (a.wps && a.wps.length ? '' : ' · not drawn yet');
     box.appendChild(row);
@@ -503,8 +596,9 @@ function disarm(btn) {
   clearTimeout(btn._t); btn.dataset.armed = ''; btn.textContent = btn.dataset.label;
 }
 $('altList').addEventListener('click', function (e) {
-  var k = $('routeSel').value, ed = e.target.closest('[data-alt-edit]'), del = e.target.closest('[data-alt-del]');
+  var k = $('routeSel').value, ed = e.target.closest('[data-alt-edit]'), del = e.target.closest('[data-alt-del]'), sn = e.target.closest('[data-alt-snap]');
   if (ed) openAltForm(+ed.dataset.altEdit);
+  if (sn) { snap(alts[k][+sn.dataset.altSnap]); setDirty(true); retrace(); }
   if (del) confirmClick(del, 'Click again to delete', function () {
     alts[k].splice(+del.dataset.altDel, 1); if (!alts[k].length) delete alts[k];
     setDirty(true); retrace();
@@ -547,6 +641,10 @@ function render() {
     t.textContent = (alts[sel][i].label || 'Alternate') + ' (alternate)';
   });
   if (drawing) drawing.wps.forEach(function (w) { el('circle', { cx: w.p[0], cy: w.p[1], r: 3.5, fill: w.follow ? '#f26631' : '#fff', stroke: '#f26631', 'stroke-width': 1.5 }); });
+  if (mark && mark.at && (mark.k ? mark.k === sel : mark.place === pl)) {
+    el('circle', { cx: mark.at[0], cy: mark.at[1], r: 10, fill: 'none', stroke: '#fff', 'stroke-width': 5 });
+    el('circle', { cx: mark.at[0], cy: mark.at[1], r: 10, fill: 'none', stroke: '#e0115f', 'stroke-width': 2.5 });
+  }
   var ab = sel.split('|');
   places().forEach(function (id) {
     var on = id === pl, inRoute = ab.indexOf(id) >= 0, shop = isShop(id);
@@ -635,6 +733,124 @@ $('finish').onclick = function () {
   drawing = null; setMode(null); setDirty(true); retrace();
 };
 $('revert').onclick = function () { delete manual[$('routeSel').value]; setDirty(true); retrace(); };
+function hasStraight(m) { return m.wps && (m.wps.some(function (w) { return !w.follow; }) || m.endFollow === false); }
+function snap(m) { m.wps.forEach(function (w) { w.follow = true; }); m.endFollow = true; }
+$('snap').onclick = function () { var k = $('routeSel').value; if (!manual[k]) return; snap(manual[k]); setDirty(true); retrace(); };
+
+// ---------- check all routes ----------
+function dist(a, b) { return Math.hypot(b[0] - a[0], b[1] - a[1]); }
+function ft(pt) { return Math.round(pt * mPerPt * FT_PER_M / 10) * 10; }
+function offStreet(pts) {                      // the longest stretch outside the drawn streets (poster pt) and its middle
+  var best = { len: 0, at: null }, run = 0, from = null;
+  for (var i = 1; i < pts.length; i++) {
+    var a = pts[i - 1], b = pts[i], L = dist(a, b), n = Math.max(1, Math.ceil(L / 0.5));
+    for (var s = 0; s < n; s++) {
+      var x = a[0] + (b[0] - a[0]) * (s + 0.5) / n, y = a[1] + (b[1] - a[1]) * (s + 0.5) / n;
+      if (dtAt(x, y) > 0) { run = 0; continue; }
+      if (!run) from = [x, y];
+      run += L / n;
+      if (run > best.len) best = { len: run, at: [(from[0] + x) / 2, (from[1] + y) / 2] };
+    }
+  }
+  return best;
+}
+function bump(pts) {                           // the worst place the line goes out and back where it could run straight
+  var worst = null;
+  for (var i = 0; i < pts.length - 2; i++) {
+    var arc = dist(pts[i], pts[i + 1]);
+    for (var j = i + 2; j < pts.length; j++) {
+      arc += dist(pts[j - 1], pts[j]);
+      if (arc > 150) break;
+      var chord = dist(pts[i], pts[j]), extra = arc - chord;
+      if (extra < 4 || extra < 0.1 * chord || (worst && extra <= worst.extra)) continue;
+      if (!clearLine(pts[i], pts[j], 2)) continue;
+      var far = null, fd = -1;
+      for (var m = i + 1; m < j; m++) {
+        var d = Math.abs((pts[j][1] - pts[i][1]) * pts[m][0] - (pts[j][0] - pts[i][0]) * pts[m][1] + pts[j][0] * pts[i][1] - pts[j][1] * pts[i][0]) / (chord || 1e-9);
+        if (d > fd) { fd = d; far = pts[m]; }
+      }
+      worst = { extra: extra, at: far };
+    }
+  }
+  return worst;
+}
+function doubleBack(pts) {                     // a corner sharper than 150 degrees (the line turns back on itself)
+  for (var i = 1; i < pts.length - 1; i++) {
+    var ax = pts[i][0] - pts[i - 1][0], ay = pts[i][1] - pts[i - 1][1], bx = pts[i + 1][0] - pts[i][0], by = pts[i + 1][1] - pts[i][1];
+    var la = Math.hypot(ax, ay), lb = Math.hypot(bx, by);
+    if (la > 0.5 && lb > 0.5 && (ax * bx + ay * by) / (la * lb) < -0.866) return pts[i];
+  }
+  return null;
+}
+function lineIssues(pts, out, base) {
+  var o = offStreet(pts);
+  if (o.len > 6) out.push(Object.assign({ text: 'Leaves the drawn streets for about ' + ft(o.len) + ' ft. Fine if it is a shortcut people really take (a parking lot, a passage); if not, use Snap to streets.', at: o.at }, base));
+  var b = bump(pts);
+  if (b) out.push(Object.assign({ text: 'Bumps out about ' + ft(b.extra) + ' ft where it could run straight. Redraw that bit, or Snap to streets.', at: b.at }, base));
+  var d = doubleBack(pts);
+  if (d) out.push(Object.assign({ text: 'Doubles back on itself here (a click off to the side?).', at: d }, base));
+}
+function runCheck() {
+  var out = [], keys = routeKeys(), nAlts = 0;
+  places().forEach(function (id) {
+    var closest = entrances[id].reduce(function (m, e) { return Math.min(m, dist(pins[id], e)); }, Infinity);
+    if (closest > 60) out.push({ place: id, at: pins[id], text: 'The pin is about ' + ft(closest) + ' ft from its nearest entrance, so the dotted line from the pin to every route is long. Fine for a big stage ground; otherwise add an entrance nearer the pin, or move the pin.' });
+  });
+  keys.forEach(function (k) {
+    var ab = k.split('|'), r = routes[k], base = { k: k };
+    if (noLink[k] && !manual[k]) out.push({ k: k, at: r[0], text: 'No street connection found, so it is drawn as a straight line. Draw it by hand.' });
+    else lineIssues(r, out, base);
+    var real = realMetres(k);
+    if (real) {                                // walking times use the real distance, so a big mismatch matters
+      var full = plen([pins[ab[0]]].concat(r, [pins[ab[1]]])), hops = full - plen(r), map = full * mPerPt, q = map / real;
+      if (q > 1.5 || q < 0.67) out.push({ k: k, at: r[Math.floor(r.length / 2)], text: 'On the map this walk is about ' + Math.round(map * FT_PER_M / 10) * 10 + ' ft, but the real streets give ' +
+        Math.round(real * FT_PER_M / 10) * 10 + ' ft (used for the walking time). ' +
+        (q > 1 && hops > 0.3 * full ? 'Much of it is the dotted lines from the pins to the route.' :
+         q > 1 ? 'The line may go the long way round.' : 'The real walk goes round something the map line cuts through, or the line takes a way the street data doesn\'t know (a lot, a passage).') });
+    }
+    if (changedSinceReview(k)) out.push({ k: k, at: r[Math.floor(r.length / 2)], text: 'Changed by more than 10% since you reviewed it. Look again and tick Reviewed.' });
+    (alts[k] || []).forEach(function (a, i) {
+      nAlts++;
+      var p = altPts[k] && altPts[k][i], ab2 = { k: k, alt: a.label || 'Alternate' };
+      if (!p) out.push(Object.assign({ at: r[0], text: 'Not drawn yet.' }, ab2));
+      else lineIssues(p, out, ab2);
+    });
+  });
+  checked = out;
+  if (mark && !out.some(function (f) { return f.k === mark.k && f.place === mark.place && f.alt === mark.alt && f.text.slice(0, 24) === mark.text.slice(0, 24); })) mark = null;
+  var n = {}; out.forEach(function (f) { if (f.k) n[f.k] = 1; });
+  $('checkSum').innerHTML = '<b>' + keys.length + ' routes' + (nAlts ? ' and ' + nAlts + ' alternate' + (nAlts > 1 ? 's' : '') : '') + ' checked.</b> ' +
+    (out.length ? out.length + ' thing' + (out.length > 1 ? 's' : '') + ' to look at' + (Object.keys(n).length ? ' on ' + Object.keys(n).length + ' route' + (Object.keys(n).length > 1 ? 's' : '') : '') + ':' : 'All look fine.');
+  var box = $('checkList'); box.innerHTML = '';
+  out.forEach(function (f, i) {
+    var b = document.createElement('button'); b.type = 'button'; b.dataset.find = i;
+    var ab = f.k ? f.k.split('|') : null;
+    b.innerHTML = '<b></b><br><span></span>';
+    b.querySelector('b').textContent = ab ? label(ab[0]) + ' → ' + label(ab[1]) + (f.alt ? ' · ' + f.alt + ' (alternate)' : '') : label(f.place);
+    b.querySelector('span').textContent = f.text;
+    if (mark && mark.text === f.text && mark.k === f.k && mark.alt === f.alt) b.classList.add('on');
+    box.appendChild(b);
+  });
+  return out;
+}
+$('check').onclick = function () { runCheck(); render(); };
+$('checkList').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-find]'); if (!b || !checked) return;
+  var f = checked[+b.dataset.find];
+  if (drawing) { drawing = null; setMode(null); }
+  closeAltForm();
+  if (f.k) $('routeSel').value = f.k;
+  if (f.place) $('placeSel').value = f.place;
+  mark = f;
+  Array.prototype.forEach.call($('checkList').children, function (x) { x.classList.toggle('on', x === b); });
+  refreshInfo(); render(); scrollToPt(f.at);
+});
+function scrollToPt(p) {                       // bring a poster point into view when zoomed in
+  if (!p) return;
+  var wrap = $('wrap'), st = $('stage');
+  wrap.scrollLeft = p[0] / W * st.clientWidth - wrap.clientWidth / 2;
+  wrap.scrollTop = p[1] / H * st.clientHeight - wrap.clientHeight / 2;
+}
 $('follow').onchange = function () { if (drawing) render(); };
 $('showAll').onchange = render;
 $('showNet').onchange = render;
