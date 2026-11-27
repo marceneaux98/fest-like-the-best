@@ -93,6 +93,16 @@ The test code lives in `tests/` (Playwright needs Node, but only on GitHub; the 
 - Walking routes use OpenStreetMap streets and don't know about festival fencing or closed gates.
 - Picks are saved in each browser (localStorage), so they don't move between devices.
 
+## Reviewing routes (route editor)
+
+With the server running, open `tools/poster-routes.html`. For each route:
+
+- **Reviewed ✓**: tick it once the route is how people should really walk. The count shows progress ("8 of 21 stage routes reviewed"). If a reviewed route later changes shape by more than 10% (for example after the 2027 map is swapped in), it is marked ⚠ so only those need a second look.
+- **Tip for this walk**: a short note ("Cut through the Chase Bank lot"). Ticked *Show this tip to patrons*, it appears on that walk in My Day and on the Stage Map.
+- **Alternate routes by day and time**: another way to walk the same pair at certain times, e.g. *Evening · Fri, Sat, Sun · 20:00 to 23:59*, drawn by hand with its own tip. My Day uses it when the walk falls in that window (and its distance for the walking time); the Stage Map lists and draws it.
+
+Save, then ask Claude to publish. Labels in the route list: ✓ reviewed, ⚠ changed since review, ✎ drawn by hand, ⇄ has alternates.
+
 ## Feedback and sharing
 
 - Every page has a slim **Preview** strip with a **Tell us what you think** link. It opens the Monday form "Fest like the Best · Feedback" (ZSandbox → Fest Like The Best folder); each response becomes an item on that board, with the page and language the person came from filled in automatically. The link lives in `common.js` (`FEEDBACK_URL`).

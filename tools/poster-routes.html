@@ -18,6 +18,13 @@
   button.primary { background: #542e91; color: #fff; border-color: #542e91; font-weight: 600; }
   #hint { background: #fff7d6; border: 1px solid #f0d36b; border-radius: 6px; padding: 7px 9px; font-size: 13px; line-height: 1.35; }
   #routeInfo, #placeInfo, #status { font-size: 12px; color: #444; white-space: pre-wrap; line-height: 1.4; }
+  .muted { font-size: 12px; color: #666; }
+  .lbl { display: block; font-size: 12px; font-weight: 600; margin: 8px 0 3px; }
+  textarea, input[type=text], input[type=time] { font: inherit; font-size: 13px; padding: 4px 6px; border: 1px solid #bbb; border-radius: 6px; box-sizing: border-box; }
+  textarea, input[type=text] { width: 100%; }
+  .alt-row { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; font-size: 13px; padding: 4px 0; border-bottom: 1px dashed #ddd; }
+  .alt-row button { padding: 2px 7px; font-size: 12px; }
+  #altForm { background: #fff7ef; border: 1px solid #f3c79c; border-radius: 8px; padding: 6px 8px; margin-top: 6px; }
   .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 99px; background: #eee; }
   .tag.manual { background: #ffe9a8; } .tag.auto { background: #e6ddff; }
   #wrap { overflow: auto; position: relative; }
@@ -70,6 +77,27 @@
     <div class="row"><label><input type="checkbox" id="follow" checked> Follow the streets between clicks</label></div>
     <div class="row"><button id="revert" type="button">Use the automatic route</button></div>
     <div id="routeInfo"></div>
+    <div class="row" style="margin-top:8px"><label><input type="checkbox" id="reviewed"> <b>Reviewed ✓</b></label> <span id="reviewCount" class="muted"></span></div>
+    <label class="lbl" for="tip">Tip for this walk</label>
+    <textarea id="tip" rows="2" placeholder="e.g. Cut through the Chase Bank lot; Jefferson is packed after 8 PM Fri–Sun"></textarea>
+    <div class="row"><label><input type="checkbox" id="tipPublic" checked> Show this tip to patrons</label></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>3 · Alternate routes by day and time</legend>
+    <div class="muted" style="margin-bottom:4px">A different way to walk this route at certain times, e.g. an evening route that avoids a packed street. My Day uses it when the walk falls in its window.</div>
+    <div id="altList"></div>
+    <div id="altForm" hidden>
+      <label class="lbl" for="altLabel">Name</label>
+      <input type="text" id="altLabel" placeholder="e.g. Evening">
+      <div class="lbl">Days</div>
+      <div class="row" id="altDays"></div>
+      <div class="row">From <input type="time" id="altFrom"> to <input type="time" id="altTo"></div>
+      <label class="lbl" for="altTip">Tip for this version (optional, shown to patrons)</label>
+      <textarea id="altTip" rows="2" placeholder="e.g. Jefferson is packed at night; go round by the Chase lot"></textarea>
+      <div class="row"><button id="altDraw" type="button" class="primary">Save and draw this route</button> <button id="altSaveOnly" type="button">Save without redrawing</button> <button id="altCancel" type="button">Cancel</button></div>
+    </div>
+    <div class="row"><button id="altAdd" type="button">Add an alternate route</button></div>
   </fieldset>
 
   <fieldset>
@@ -111,8 +139,16 @@
 //   no real-street measurement, the distance is estimated from the route on the map, scaled by how map
 //   length compares with real distance across all stage pairs.
 //
-// Save writes assets/poster-routes.json: pins, shops, entrances, routes, estimated shop distances, and
-// the clicks of hand-drawn routes so they can be edited again.
+// Review, tips and alternates
+//   Tick "Reviewed" when a route is how people should really walk it; the editor remembers the route's
+//   length then, and marks it ⚠ if it later changes by more than 10% (e.g. after swapping in a new map).
+//   A tip is a short note about the walk; ticked "Show to patrons", My Day shows it on that walk.
+//   An alternate route is another way to walk the same pair at certain days and times (e.g. "Evening,
+//   Fri–Sun from 8 PM"), always drawn by hand; My Day uses it when the walk falls in its window.
+//
+// Save writes assets/poster-routes.json: pins, shops, entrances, routes, estimated shop distances,
+// review marks and tips (info), alternates (alts) and the clicks of hand-drawn routes so they can be
+// edited again.
 var OC = window.OVERLAY_CONFIG, W = OC.width, H = OC.height, S = 2;
 var SIDE_STREETS = ['#1c68b8', '#1c67b7', '#1d69b9'], SIDE_COST = 1.6;
 var SIMPLIFY = 1.0, FT_PER_M = 3.28084;
@@ -132,6 +168,7 @@ function hint(t) { $('hint').textContent = t; }
 
 // ---------- state ----------
 var shops = [];                                // [{ id, kind }]
+var info = {}, alts = {}, altPts = {};       // info: key -> { reviewed, reviewedLen, reviewedAt, tip, tipPublic }; alts: key -> [{ id, label, days, from, to, tip, wps, endFollow }]
 var pins = {}, entHint = {}, manual = {};      // entHint: id -> [[x,y]…] placed by hand; manual: key -> { wps: [{p, follow}], endFollow }
 var entNodes = {}, entrances = {}, routes = {}, auto = {}, metres = {}, near = {};
 var mode = null, drawing = null, dirty = false;
@@ -157,6 +194,12 @@ function setDirty(d) { dirty = d; $('save').disabled = !d; }
 window.addEventListener('beforeunload', function (e) { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
 // ---------- load ----------
+// Opened straight from disk (file://), the browser blocks loading the map: say how to open it instead.
+if (location.protocol === 'file:') {
+  hint('This page needs the local server to show the map. In the project folder run: python serve.py ' +
+       '— then open http://localhost:8765/tools/poster-routes.html (Claude can start it for you).');
+  throw new Error('opened from disk');
+}
 Promise.all([
   fetch('../' + OC.svg, { cache: 'no-cache' }).then(function (r) { return r.text(); }),
   fetch('../' + OC.routes, { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
@@ -186,6 +229,11 @@ Promise.all([
   }
   (saved.entranceSet || []).forEach(function (id) { var e = asList(saved.entrances && saved.entrances[id]); if (e) entHint[id] = e; });
   manual = saved.manual || {};
+  info = saved.info || {};
+  alts = {};
+  Object.keys(saved.alts || {}).forEach(function (k) {
+    alts[k] = saved.alts[k].map(function (a) { return { id: a.id, label: a.label, days: a.days || [], from: a.from, to: a.to, tip: a.tip || '', wps: a.wps || [], endFollow: a.endFollow !== false }; });
+  });
 
   graph = buildGraph(svg);
   retrace();
@@ -329,6 +377,11 @@ function retrace() {
   var scale = ratios.length ? ratios[Math.floor(ratios.length / 2)] : 0.63;
   metres = {};
   routeKeys().forEach(function (k) { if (!realMetres(k)) metres[k] = Math.round(fullLen(k) * scale); });
+  altPts = {};
+  Object.keys(alts).forEach(function (k) {
+    if (!routes[k]) { delete alts[k]; return; }              // its shop was removed
+    altPts[k] = alts[k].map(function (a) { return a.wps && a.wps.length ? buildManual(k, a.wps, a.endFollow) : null; });
+  });
   refreshSelects(); refreshInfo(); render();
 }
 function buildManual(k, wps, endFollow) {
@@ -358,7 +411,7 @@ function refreshSelects() {
   var r2 = document.createElement('optgroup'); r2.label = 'Stage to shop';
   routeKeys().forEach(function (k) {
     var ab = k.split('|');
-    (isShop(ab[1]) ? r2 : r1).appendChild(new Option((manual[k] ? '✎ ' : '') + label(ab[0]) + ' → ' + label(ab[1]), k));
+    (isShop(ab[1]) ? r2 : r1).appendChild(new Option(routePrefix(k) + label(ab[0]) + ' → ' + label(ab[1]), k));
   });
   rs.appendChild(r1); rs.appendChild(r2);
   if (keepP && places().indexOf(keepP) >= 0) ps.value = keepP;
@@ -372,8 +425,89 @@ function refreshInfo() {
   if (!k) return;
   $('routeInfo').innerHTML = (manual[k] ? '<span class="tag manual">drawn by hand</span>' : '<span class="tag auto">automatic</span>') +
     '\n' + (real ? 'Real street distance ' + Math.round(real * FT_PER_M) + ' ft (used for walking times).'
-                 : 'Estimated ' + Math.round(metres[k] * FT_PER_M) + ' ft from the map (no real-street measurement for shops).');
+                 : 'Estimated ' + Math.round(metres[k] * FT_PER_M) + ' ft from the map (no real-street measurement for shops).') +
+    (changedSinceReview(k) ? '\n⚠ This route has changed since you reviewed it. Check it and tick Reviewed again.' : '');
+  var inf = info[k] || {};
+  $('reviewed').checked = !!inf.reviewed;
+  $('tip').value = inf.tip || '';
+  $('tipPublic').checked = inf.tipPublic !== false;
+  var sk = stageKeys(), done = sk.filter(function (x) { return info[x] && info[x].reviewed; }).length;
+  $('reviewCount').textContent = done + ' of ' + sk.length + ' stage routes reviewed';
+  renderAltList();
 }
+
+// ---------- review, tips and alternates ----------
+var DAYS = ['wed', 'thu', 'fri', 'sat', 'sun'], DAY_NAME = { wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
+var editingAlt = null;                        // index of the alternate in the form, or 'new'
+function stageKeys() { return routeKeys().filter(function (k) { return !isShop(k.split('|')[1]); }); }
+function changedSinceReview(k) {
+  var i = info[k]; if (!i || !i.reviewed || !i.reviewedLen || !routes[k]) return false;
+  return Math.abs(plen(routes[k]) - i.reviewedLen) / i.reviewedLen > 0.1;
+}
+function routePrefix(k) {
+  var i = info[k] || {};
+  return (changedSinceReview(k) ? '⚠ ' : i.reviewed ? '✓ ' : '') + (manual[k] ? '✎ ' : '') + ((alts[k] || []).length ? '⇄ ' : '');
+}
+function whenText(a) {
+  var d = a.days && a.days.length && a.days.length < DAYS.length ? a.days.map(function (x) { return DAY_NAME[x]; }).join(', ') + ' · ' : 'Every day · ';
+  return d + (a.from || '00:00') + '–' + (a.to || '23:59');
+}
+function renderAltList() {
+  var k = $('routeSel').value, list = alts[k] || [], box = $('altList');
+  box.innerHTML = list.length ? '' : '<div class="muted">No alternate routes for this walk.</div>';
+  list.forEach(function (a, i) {
+    var row = document.createElement('div'); row.className = 'alt-row';
+    row.innerHTML = '<b></b><span class="muted"></span><button type="button" data-alt-edit="' + i + '">Edit</button><button type="button" data-alt-del="' + i + '">Delete</button>';
+    row.querySelector('b').textContent = a.label || 'Alternate';
+    row.querySelector('span').textContent = whenText(a) + (a.wps && a.wps.length ? '' : ' · not drawn yet');
+    box.appendChild(row);
+  });
+}
+function openAltForm(i) {
+  var k = $('routeSel').value, a = i === 'new' ? { label: 'Evening', days: ['fri', 'sat', 'sun'], from: '20:00', to: '23:59', tip: '' } : alts[k][i];
+  editingAlt = i;
+  $('altLabel').value = a.label || ''; $('altFrom').value = a.from || '00:00'; $('altTo').value = a.to || '23:59'; $('altTip').value = a.tip || '';
+  $('altDays').innerHTML = DAYS.map(function (d) { return '<label><input type="checkbox" value="' + d + '"' + ((a.days || []).indexOf(d) >= 0 ? ' checked' : '') + '> ' + DAY_NAME[d] + '</label>'; }).join(' ');
+  $('altForm').hidden = false; $('altAdd').hidden = true;
+}
+function closeAltForm() { editingAlt = null; $('altForm').hidden = true; $('altAdd').hidden = false; }
+function saveAltForm() {
+  var k = $('routeSel').value;
+  var a = {
+    label: $('altLabel').value.trim() || 'Alternate',
+    days: Array.prototype.map.call($('altDays').querySelectorAll('input:checked'), function (c) { return c.value; }),
+    from: $('altFrom').value || '00:00', to: $('altTo').value || '23:59', tip: $('altTip').value.trim()
+  };
+  if (!a.days.length) a.days = DAYS.slice();
+  var list = alts[k] = alts[k] || [];
+  if (editingAlt === 'new') { a.id = 'alt' + Date.now().toString(36); a.wps = []; a.endFollow = true; list.push(a); return list.length - 1; }
+  Object.keys(a).forEach(function (f) { list[editingAlt][f] = a[f]; });
+  return editingAlt;
+}
+$('altAdd').onclick = function () { openAltForm('new'); };
+$('altCancel').onclick = closeAltForm;
+$('altSaveOnly').onclick = function () { saveAltForm(); closeAltForm(); setDirty(true); retrace(); };
+$('altDraw').onclick = function () {
+  var i = saveAltForm(); closeAltForm(); setDirty(true);
+  drawing = { key: $('routeSel').value, wps: [], alt: i }; setMode('draw'); refreshSelects(); renderAltList(); render();
+};
+$('altList').addEventListener('click', function (e) {
+  var k = $('routeSel').value, ed = e.target.closest('[data-alt-edit]'), del = e.target.closest('[data-alt-del]');
+  if (ed) openAltForm(+ed.dataset.altEdit);
+  if (del && confirm('Delete the alternate route "' + (alts[k][+del.dataset.altDel].label || '') + '"?')) {
+    alts[k].splice(+del.dataset.altDel, 1); if (!alts[k].length) delete alts[k];
+    setDirty(true); retrace();
+  }
+});
+$('reviewed').onchange = function () {
+  var k = $('routeSel').value, i = info[k] = info[k] || {};
+  i.reviewed = $('reviewed').checked;
+  if (i.reviewed) { i.reviewedLen = Math.round(plen(routes[k]) * 10) / 10; i.reviewedAt = new Date().toISOString().slice(0, 10); }
+  else { delete i.reviewedLen; delete i.reviewedAt; }
+  setDirty(true); refreshSelects(); refreshInfo();
+};
+$('tip').oninput = function () { var k = $('routeSel').value; (info[k] = info[k] || {}).tip = $('tip').value; setDirty(true); };
+$('tipPublic').onchange = function () { var k = $('routeSel').value; (info[k] = info[k] || {}).tipPublic = $('tipPublic').checked; setDirty(true); };
 
 // ---------- drawing ----------
 function el(tag, attrs, parent) { var e = document.createElementNS(NS, tag); for (var a in attrs) e.setAttribute(a, attrs[a]); (parent || over).appendChild(e); return e; }
@@ -394,6 +528,13 @@ function render() {
     el('polyline', { points: pts2(cur), fill: 'none', stroke: '#fff', 'stroke-width': 7, 'stroke-linejoin': 'round' });
     el('polyline', { points: pts2(cur), fill: 'none', stroke: drawing ? '#f26631' : '#542e91', 'stroke-width': 4, 'stroke-linejoin': 'round' });
   }
+  if (!drawing) (altPts[sel] || []).forEach(function (p, i) {
+    if (!p) return;
+    el('polyline', { points: pts2(p), fill: 'none', stroke: '#ff9a3c', 'stroke-width': 3, 'stroke-dasharray': '6 4', 'stroke-linejoin': 'round' });
+    var m = p[Math.floor(p.length / 2)];
+    var t = el('text', { x: m[0] + 4, y: m[1] - 4, fill: '#ffd8b0', 'font-size': 10, 'font-weight': 700, stroke: '#162061', 'stroke-width': 3, 'paint-order': 'stroke' });
+    t.textContent = (alts[sel][i].label || 'Alternate') + ' (alternate)';
+  });
   if (drawing) drawing.wps.forEach(function (w) { el('circle', { cx: w.p[0], cy: w.p[1], r: 3.5, fill: w.follow ? '#f26631' : '#fff', stroke: '#f26631', 'stroke-width': 1.5 }); });
   var ab = sel.split('|');
   places().forEach(function (id) {
@@ -429,7 +570,7 @@ function setMode(m) {
   hint(m === 'pin' ? 'Click on the map where the ' + who + ' pin should sit.' :
        m === 'ent' ? 'Click on a street where people walk into ' + who + ' (side streets work too). Add as many as it has; each route uses the closest.' :
        m === 'shop' ? 'Click on the map where the new ' + KIND_NAME[$('shopKind').value] + ' is.' :
-       m === 'draw' ? 'Click points along the way, one at each turn. Untick "Follow the streets" before a click to go straight there (a shortcut). Then Finish.' : IDLE);
+       m === 'draw' ? (drawing && drawing.alt != null ? 'Drawing the alternate "' + (alts[drawing.key][drawing.alt].label || '') + '". ' : '') + 'Click points along the way, one at each turn. Untick "Follow the streets" before a click to go straight there (a shortcut). Then Finish.' : IDLE);
 }
 function evtPt(e) {
   var p = over.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
@@ -468,13 +609,16 @@ $('popEnt').onclick = function () {
   setDirty(true); retrace();
 };
 $('placeSel').onchange = function () { refreshInfo(); render(); if (mode !== 'draw') setMode(null); };
-$('routeSel').onchange = function () { if (drawing) { drawing = null; setMode(null); } refreshInfo(); render(); };
+$('routeSel').onchange = function () { if (drawing) { drawing = null; setMode(null); } closeAltForm(); refreshInfo(); render(); };
 $('draw').onclick = function () { drawing = { key: $('routeSel').value, wps: [] }; setMode('draw'); render(); };
 $('undo').onclick = function () { if (drawing) { drawing.wps.pop(); render(); } };
 $('cancel').onclick = function () { drawing = null; setMode(null); render(); };
 $('finish').onclick = function () {
   if (!drawing) return;
-  manual[drawing.key] = { wps: drawing.wps, endFollow: $('follow').checked };
+  if (drawing.alt != null) {
+    var a = alts[drawing.key][drawing.alt];
+    a.wps = drawing.wps; a.endFollow = $('follow').checked;
+  } else manual[drawing.key] = { wps: drawing.wps, endFollow: $('follow').checked };
   drawing = null; setMode(null); setDirty(true); retrace();
 };
 $('revert').onclick = function () { delete manual[$('routeSel').value]; setDirty(true); retrace(); };
@@ -497,7 +641,23 @@ function save() {
           'hop from each pin to the route ends. metres: estimated distances for routes to shops.',
     pins: pins,
     shops: shops.map(function (s) { return { id: s.id, kind: s.kind, near: near[s.id] }; }),
-    entrances: entrances, entranceSet: Object.keys(entHint), routes: routes, metres: metres, manual: manual
+    entrances: entrances, entranceSet: Object.keys(entHint), routes: routes, metres: metres, manual: manual,
+    info: (function () { var o = {}; Object.keys(info).forEach(function (k) { if (routes[k]) o[k] = info[k]; }); return o; })(),
+    alts: (function () {
+      // points: the drawn path; metres: its walking distance, scaled from the main route's distance
+      var o = {};
+      Object.keys(alts).forEach(function (k) {
+        var ab = k.split('|'), base = realMetres(k) || metres[k];
+        var full = function (p) { return plen([pins[ab[0]]].concat(p, [pins[ab[1]]])); };
+        o[k] = alts[k].map(function (a, i) {
+          var p = altPts[k] && altPts[k][i];
+          return { id: a.id, label: a.label, days: a.days, from: a.from, to: a.to, tip: a.tip || '',
+                   points: p || null, metres: p && base ? Math.round(base * full(p) / full(routes[k])) : null,
+                   wps: a.wps || [], endFollow: a.endFollow !== false };
+        });
+      });
+      return o;
+    })()
   };
   $('status').textContent = 'Saving…';
   return fetch('/__save/poster-routes.json', { method: 'POST', headers: { 'X-FLTB-Save': '1', 'Content-Type': 'application/json' }, body: JSON.stringify(out) })

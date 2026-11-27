@@ -243,6 +243,14 @@ FIL.ready(function () {
       resultEl.innerHTML = '<div class="time">' + fmtMin(m) + ' <small>' + esc(T('pl_min_walk')) + '</small></div>' +
         '<div class="meta">' + esc(byId[a].name) + ' → ' + esc(byId[b].name) + '<br>' +
         esc(T('pl_meta', { m: r.meters, ft: new Intl.NumberFormat(I18N.locale, { maximumFractionDigits: 0 }).format(Math.round(r.meters * 3.28084 / 10) * 10), mi: nf2.format(r.meters * 0.000621371), n: fmtMin(base) })) + '</div>';
+      // Tip and time-of-day alternates (set in the route editor)
+      var tip = sm.tip(a, b), alts = sm.alternates(a, b);
+      if (tip) resultEl.innerHTML += '<div class="meta">' + esc(T('it_tip', { tip: tip })) + '</div>';
+      if (alts.length) resultEl.innerHTML += '<div class="meta"><b>' + esc(T('pl_alts')) + '</b><br>' + alts.map(function (x) {
+        var sec = x.metres ? r.seconds * x.metres / r.meters : r.seconds;
+        return esc(T('pl_alt_line', { label: x.label, when: SiteMap.whenText(x), n: fmtMin(mins(sec)) })) + (x.tip ? '<br><i>' + esc(x.tip) + '</i>' : '');
+      }).join('<br>') + '</div>';
+      alts.forEach(function (x) { sm.draw(sm.shape(a, b, x.points), routeGroup, { color: '#f26631', weight: 4, opacity: .9, dash: '6 6', casing: false }); });
       var shape = sm.shape(a, b);
       sm.draw(shape, routeGroup, { color: '#542e91', weight: 5 });
       map.fitBounds(L.latLngBounds(shape.all), { padding: [60, 60], maxZoom: 1 });
