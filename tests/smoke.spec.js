@@ -103,7 +103,7 @@ test('printable schedules: one page per day, and my picks with leave-by times', 
   const second = dayPerfs.find((p) => p.stage !== first.stage && toMin(p.start) >= toMin(first.end));
   await page.evaluate((ids) => localStorage.setItem('fil-picks', JSON.stringify(ids)), [first.id, second.id]);
   await page.goto('/itinerary.html?day=' + thursday.date);
-  await page.locator('a.back.print').click();
+  await page.locator('a.print-btn').click();
   await expect(page).toHaveURL(/\/print\.html\?view=mine&day=\d{4}-\d{2}-\d{2}$/);
   expect(page.url()).toContain('day=' + thursday.date);
   await expect(page.locator('#sheets')).toHaveAttribute('data-ready', '1');

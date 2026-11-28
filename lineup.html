@@ -17,7 +17,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <style>
   /* Colours, fonts and base styles come from brand.css */
-  :root { --hour: 96px; }            /* grid height of one hour */
+  :root { --hour: 128px; }           /* grid height of one hour: a 30-minute set has room for time, name and "Also" */
   body { min-height: 100vh; }
 
   /* ---------- header ---------- */
@@ -83,48 +83,95 @@
   .grid .corner { left: 0; z-index: 4; }
   .times { position: sticky; left: 0; z-index: 2; background: #fff; }
   .grid { display: grid; position: relative; min-width: 840px; }
+  /* Column heads filled with each stage's poster colour (the "ink" shade, so the white name stays readable) */
   .grid .corner, .grid .stage-head {
     position: sticky; top: 0; z-index: 3; background: #fff; border-bottom: 1px solid var(--line);
-    padding: 10px 8px; font-size: .8rem; font-weight: 700; text-align: center; line-height: 1.2;
+    padding: 10px 6px; font-size: .8rem; font-weight: 700; text-align: center; line-height: 1.2;
   }
-  .stage-head i { display: block; height: 4px; border-radius: 2px; margin: 6px auto 0; width: 40px; }
+  /* Stage names in the festival's condensed display face, on the deep stage colour, with the bright
+     poster colour as a band underneath */
+  .grid .stage-head {
+    background: linear-gradient(180deg, var(--stage-ink), color-mix(in srgb, var(--stage-ink) 80%, #000));
+    color: #fff; border-bottom: 5px solid var(--stage); box-shadow: inset -1px 0 rgba(255,255,255,.3);
+    display: flex; align-items: center; justify-content: center; padding: 10px 4px 8px;
+    font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; line-height: 1.05;
+    text-transform: uppercase; letter-spacing: .04em; text-shadow: 0 1px 2px rgba(0,0,0,.35);
+  }
+  .grid .corner { border-bottom-width: 5px; }
   .times { border-right: 1px solid var(--line); }
-  .times div { position: absolute; right: 8px; font-size: .72rem; color: var(--muted); transform: translateY(-50%); font-variant-numeric: tabular-nums; }
-  .col { position: relative; border-right: 1px solid var(--line); }
+  .times div {
+    position: absolute; right: 8px; font-size: .76rem; font-weight: 600; color: var(--ink);
+    transform: translateY(-50%); font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .col { position: relative; border-right: 1px solid var(--line); background: color-mix(in srgb, var(--stage) 3%, #fff); }
   .col:last-child { border-right: none; }
-  .hourline { position: absolute; left: 0; right: 0; border-top: 1px solid #f0eef4; }
-  .hourline.half { border-top-style: dashed; }
+  .hourline { position: absolute; left: 0; right: 0; border-top: 1px solid #ebe8f0; }
+  .hourline.half { border-top: 1px dashed #f0eef4; }
 
+  /* ---------- a set on the grid ----------
+     Top: a full-width time bar in the stage colour (bold white time; wraps at the dash only if it must).
+     Below: the name across the full block width (up to 3 lines), the origin, and, pinned to the
+     bottom, the artist's other shows ("Also: Sun 2 PM", a check mark = already in the plan).
+     Right end, touching the bottom of the time bar: the artist ("Bio") button; the name's first line stops short of it.
+     Picked: the block turns solid stage colour and the time bar flips to white. */
   .set {
-    position: absolute; left: 4px; right: 4px; border-radius: 8px;
-    background: color-mix(in srgb, var(--stage) 12%, #fff); border: 1px solid color-mix(in srgb, var(--stage) 35%, #fff);
-    border-left: 4px solid var(--stage); overflow: hidden;
-    transition: box-shadow .12s, transform .12s;
+    position: absolute; left: 3px; right: 3px; border-radius: 8px; overflow: hidden; container-type: inline-size;
+    background: color-mix(in srgb, var(--stage) 15%, #fff); border: 1px solid color-mix(in srgb, var(--stage) 50%, #fff);
+    transition: box-shadow .12s, background-color .12s;
   }
-  /* The whole block adds/removes the set; the "i" in its corner opens the artist sheet (artist.js) */
+  /* The whole block adds/removes the set; the artist button in its corner opens the artist sheet (artist.js) */
   .set-hit {
-    display: flex; flex-direction: column; gap: 2px; width: 100%; height: 100%; padding: 6px 8px 6px 10px;
-    border: none; background: none; color: inherit; text-align: left; cursor: pointer;
+    display: flex; flex-direction: column; width: 100%; height: 100%; padding: 0;
+    border: none; background: none; color: inherit; text-align: left; cursor: pointer; font: inherit;
   }
-  .set:hover { box-shadow: 0 3px 10px rgba(0,0,0,.12); z-index: 2; }
+  .set:hover { box-shadow: 0 3px 10px rgba(0,0,0,.14); z-index: 2; }
   .set:has(.set-hit:focus-visible) { outline: 3px solid var(--orange); outline-offset: 1px; }
   .set-hit:focus-visible { outline: none; }
-  .set .info-btn { position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; color: color-mix(in srgb, var(--stage) 72%, #000); }
-  .set .info-btn svg { width: 17px; height: 17px; }
-  .set.picked .info-btn { background: rgba(255,255,255,.22); color: #fff; }
-  .set.picked .info-btn:hover { background: rgba(255,255,255,.38); }
-  .set.short .info-btn { top: 0; right: 1px; width: 20px; height: 20px; }
-  .set.short .info-btn svg { width: 15px; height: 15px; }
-  /* keep the first line of the name clear of the "i" */
-  .set .act::before { content: ""; float: right; width: 22px; height: 1em; }
+  .set .when {
+    flex: none; min-height: 24px; padding: 4px 7px; line-height: 1.15;
+    background: var(--stage-ink); color: #fff; letter-spacing: .01em;
+    font-size: .76rem; font-weight: 700; overflow: hidden;
+  }
+  .set .body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 2px; padding: 4px 7px 5px; overflow: hidden; }
+  .set .act {
+    font-weight: 700; font-size: .84rem; line-height: 1.15; color: var(--ink); flex-shrink: 0;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere;
+  }
+  /* room for the artist button beside the name's first lines (--bar = time bar height, set by fitSets) */
+  .set.has-bio .act::before { content: ""; float: right; width: 22px; height: 1.1em; }
   .set .tk { font-weight: 800; }
-  .set .act { font-weight: 700; font-size: .82rem; line-height: 1.15; }
-  .set .meta { font-size: .72rem; color: var(--muted); }
-  .set.picked { background: var(--stage); border-color: var(--stage); color: #fff; }
-  .set.picked .meta { color: rgba(255,255,255,.88); }
-  .set.conflict { box-shadow: 0 0 0 2px var(--danger); }
+  /* Where the artist is from: bold, in a dark shade of the stage colour */
+  .set .origin {
+    flex-shrink: 0; font-size: .74rem; font-weight: 600; color: color-mix(in srgb, var(--stage-ink) 70%, var(--ink));
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .set .info-btn {
+    position: absolute; right: 2px; top: calc(var(--bar, 24px) - 4px); width: 24px; min-width: 24px; height: 24px;
+    background: #fff; color: var(--stage-ink); box-shadow: 0 0 0 1px color-mix(in srgb, var(--stage) 45%, #fff);
+  }
+  .set .info-btn:hover { background: color-mix(in srgb, var(--stage) 12%, #fff); }
+  .set .info-btn svg { width: 16px; height: 16px; }
+  /* Wide columns (big screens): room for the word "Bio" */
+  @container (min-width: 165px) {
+    .set .info-btn, .set.short .info-btn { width: auto; padding: 0 8px 0 5px; }
+    .set .info-btn .lbl { display: inline; }
+    .set.has-bio .act::before { width: 50px; }
+  }
+
+  .set.picked { background: var(--stage-ink); border-color: var(--stage-ink); color: #fff; box-shadow: 0 2px 8px color-mix(in srgb, var(--stage-ink) 45%, transparent); }
+  .set.picked .when { background: #fff; color: var(--stage-ink); }
+  .set.picked .act { color: #fff; }
+  .set.picked .origin { color: #fff; }
+  .set.picked .info-btn { box-shadow: none; }
+  .set.conflict { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--danger); }
   .set.dim { opacity: .28; }
-  .set.short .meta { display: none; }
+  /* 30-minute sets: time bar + one line of name */
+  .set.short .when { min-height: 20px; padding-top: 2px; padding-bottom: 2px; }
+  .set.short .info-btn { width: 22px; min-width: 22px; height: 22px; top: calc(var(--bar, 20px) - 3px); right: 1px; }
+  .set.short .info-btn svg { width: 14px; height: 14px; }
+  .set.short .body { padding-top: 1px; padding-bottom: 1px; }
+  .set.short .act, .set.short.has-also .act { -webkit-line-clamp: 1; font-size: .8rem; }
+  .set.short .origin, .set.short .also-days { display: none; }
 
   /* ---------- list view ---------- */
   .slot { margin-bottom: 18px; }
@@ -132,28 +179,37 @@
   .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
   .card {
     position: relative;
-    background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--stage); border-radius: 10px;
+    background: #fff; border: 1px solid var(--line); border-left: 5px solid var(--stage); border-radius: 10px;
   }
   .card-hit {
     display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; text-align: left; cursor: pointer;
-    width: 100%; height: 100%; padding: 10px 46px 10px 12px; border: none; background: none; color: inherit; border-radius: inherit;
+    width: 100%; height: 100%; padding: 10px 12px; border: none; background: none; color: inherit; border-radius: inherit; font: inherit;
   }
   .card:hover { border-color: color-mix(in srgb, var(--stage) 50%, var(--line)); border-left-color: var(--stage); }
   .card:has(.card-hit:focus-visible) { outline: 3px solid var(--orange); outline-offset: 1px; }
   .card-hit:focus-visible { outline: none; }
+  /* "Bio" pill, top right, beside the time line (which leaves room for it) */
   .card .info-btn {
-    position: absolute; top: 6px; right: 6px; width: 34px; height: 34px;
-    background: color-mix(in srgb, var(--stage) 10%, #fff); color: color-mix(in srgb, var(--stage) 72%, #000);
+    position: absolute; top: 8px; right: 8px; height: 30px; padding: 0 11px 0 8px;
+    background: color-mix(in srgb, var(--stage) 12%, #fff); color: var(--stage-ink);
+    border: 1px solid color-mix(in srgb, var(--stage) 35%, #fff);
   }
-  .card .info-btn:hover { background: color-mix(in srgb, var(--stage) 20%, #fff); }
+  .card .info-btn .lbl { display: inline; }
+  .card .info-btn:hover { background: color-mix(in srgb, var(--stage) 22%, #fff); }
+  .card .when-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-height: 26px; padding-right: 84px; }
+  .card .when {
+    display: inline-block; padding: 3px 8px; border-radius: 6px; background: var(--stage-ink); color: #fff;
+    font-size: .8rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .card .stg { font-size: .8rem; font-weight: 700; color: var(--stage-ink); }
   .tick {
     width: 22px; height: 22px; border-radius: 6px; border: 2px solid color-mix(in srgb, var(--stage) 60%, #fff);
     display: grid; place-items: center; font-weight: 800; font-size: .8rem; color: #fff; margin-top: 1px;
   }
   .card.picked { background: color-mix(in srgb, var(--stage) 9%, #fff); }
   .card.picked .tick { background: var(--stage); border-color: var(--stage); }
-  .card .act { font-weight: 700; font-size: .95rem; }
-  .card .meta { font-size: .8rem; color: var(--muted); margin-top: 2px; }
+  .card .act { font-weight: 700; font-size: 1rem; margin-top: 6px; line-height: 1.2; }
+  .card .meta { font-size: .82rem; font-weight: 600; color: color-mix(in srgb, var(--stage-ink) 70%, var(--ink)); margin-top: 2px; }
   .card .also { font-size: .75rem; color: var(--purple); margin-top: 4px; }
   .card .warn, .pick .warn { font-size: .75rem; color: var(--danger); font-weight: 600; margin-top: 4px; }
   .empty { padding: 40px 16px; text-align: center; color: var(--muted); }
@@ -168,7 +224,7 @@
   .pick {
     border-left: 4px solid var(--stage); padding: 6px 0 6px 10px; margin-bottom: 8px; position: relative;
   }
-  .pick .t { font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .pick .t { font-size: .8rem; font-weight: 700; color: var(--stage-ink); font-variant-numeric: tabular-nums; }
   .pick .act { font-weight: 700; font-size: .9rem; padding-right: 22px; }
   .pick .st { font-size: .78rem; color: var(--muted); }
   .pick .x {
@@ -190,6 +246,18 @@
   .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 12px; font-size: .78rem; color: var(--muted); }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
   .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  /* Key: what the check mark and the artist button mean (grid and list) */
+  .legend .key { color: var(--ink); }
+  .legend .key-pick {
+    display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 5px;
+    background: var(--purple); color: #fff; font-size: .72rem; font-weight: 800;
+  }
+  .legend .key-bio {
+    display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 8px 0 5px; border-radius: 999px;
+    border: 1px solid var(--line); background: #fff; color: var(--purple); font-weight: 700; font-size: .72rem;
+  }
+  .legend .key-bio svg { width: 14px; height: 14px; }
+  .legend .sep { width: 1px; align-self: stretch; background: var(--line); }
 
   /* Phone: picks summary + Plan button pinned to the bottom of the screen */
   .dock { display: none; }
@@ -201,25 +269,21 @@
 
   /* Other shows by an artist already in the plan */
   .set.twin { border-style: dashed; border-left-style: solid; }
-  .twin-pill {
-    position: absolute; top: 4px; right: 4px; background: var(--purple); color: #fff; border-radius: 999px;
-    font-size: .62rem; font-weight: 700; padding: 1px 6px; line-height: 1.4; text-transform: uppercase;
-  }
-  .set.picked .twin-pill { display: none; }
 
   /* "Also: Sat 2:15 PM · Sun 2 PM" pinned to the bottom of each grid block */
-  .set .act { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; flex-shrink: 0; }
   .set .also-days {
-    margin-top: auto; padding-top: 3px; border-top: 1px dashed color-mix(in srgb, var(--stage) 40%, transparent);
-    font-size: .66rem; font-weight: 700; line-height: 1.25; color: color-mix(in srgb, var(--stage) 75%, #000);
+    flex-shrink: 0; margin-top: auto; padding-top: 3px; border-top: 1px dashed color-mix(in srgb, var(--stage) 45%, transparent);
+    font-size: .68rem; font-weight: 700; line-height: 1.25; color: var(--stage-ink);
   }
-  .set.picked .also-days { color: rgba(255, 255, 255, .92); border-top-color: rgba(255, 255, 255, .45); }
-  .set.short .also-days { display: none; }
+  .set.picked .also-days { color: #fff; border-top-color: rgba(255, 255, 255, .5); }
   .set.has-also .act { -webkit-line-clamp: 2; }                 /* leave room for the "Also" line */
-  .set .meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
-  /* 45–55 min blocks: one-line name, one-line "Also" */
-  .set.compact .act { -webkit-line-clamp: 1; }
-  .set.compact .also-days { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* 45–55 min blocks: two-line name (one when there is an "Also" line), one-line "Also" */
+  .set.compact .act { -webkit-line-clamp: 2; }
+  .set.compact .when { min-height: 22px; padding-top: 3px; padding-bottom: 3px; }
+  .set.compact .body { padding-top: 2px; padding-bottom: 2px; }
+  .set.compact .also-days { padding-top: 2px; line-height: 1.15; }
+  .set.compact.has-also .act { -webkit-line-clamp: 1; }
+  .set.compact .also-days, .set.one-also .also-days { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .card .twin-tag {
     display: inline-block; margin-top: 6px; padding: 2px 8px; border-radius: 999px;
     background: color-mix(in srgb, var(--purple) 12%, #fff); color: var(--purple); font-size: .75rem; font-weight: 600;
@@ -359,6 +423,12 @@ FIL.ready(function () {
   function fmt(m) { return I18N.time(m, true); }
   // English: "4–5:15 PM" instead of "4 PM–5:15 PM" when both are AM or both PM (see common.js)
   function fmtRange(p) { return FIL.timeRange(p.s, p.e); }
+  // Grid blocks are narrow: French "14 h 30–15 h 45" becomes "14h30–15h45", as festival programmes print it,
+  // and a shared am/pm is written once in every language ("12:45 p.m.–2 p.m." -> "12:45–2 p.m.", like English)
+  function tight(s) {
+    if (I18N.lang === 'fr') s = s.replace(/(\d)[\s  ]*h[\s  ]*/g, '$1h');
+    return s.replace(/^(\d[\d:.]*)([\s  ]*[^\d\s  –][^\d–]*)–(\d[\d:.]*)\2$/, '$1–$3$2');
+  }
   function when(q) { return I18N.weekdayShort(q.date) + ' ' + fmt(q.s) + ' · ' + stageById[q.stage].name; }
   function matches(p) {
     if (state.only && !picks.has(p.id)) return false;
@@ -428,11 +498,16 @@ FIL.ready(function () {
       '<small class="stamp">' + (S.updated ? esc(T('lu_updated', { when: FIL.stamp(S.updated) })) : '&nbsp;') + '</small>';
   }
 
+  // Grid: the stage colours are on the column heads, so only the key. List: stage colours, then the key.
   function renderLegend(dayPerfs) {
     var used = STAGES.filter(function (s) { return dayPerfs.some(function (p) { return p.stage === s.id; }); });
-    document.getElementById('legend').innerHTML = state.view === 'list'
-      ? used.map(function (s) { return '<span><i style="background:' + s.color + '"></i>' + esc(s.name) + '</span>'; }).join('')
-      : '';
+    var key = '<span class="key"><b class="key-pick" aria-hidden="true">✓</b>' + esc(T('art_in_plan')) + '</span>' +
+      '<span class="key"><span class="key-bio" aria-hidden="true">' + FIL.artist.icon + esc(T('art_bio_btn')) + '</span>' +
+      esc(T('lu_key_bio')) + '</span>';
+    document.getElementById('legend').innerHTML = !dayPerfs.length ? '' : state.view === 'list'
+      ? used.map(function (s) { return '<span><i style="background:' + s.color + '"></i>' + esc(s.name) + '</span>'; }).join('') +
+        '<span class="sep" aria-hidden="true"></span>' + key
+      : key;
   }
 
   function renderGrid(dayPerfs) {
@@ -445,19 +520,19 @@ FIL.ready(function () {
 
     var h = '<div class="grid-wrap"><div class="grid" style="grid-template-columns: 64px repeat(' + stages.length + ', minmax(110px, 1fr))">';
     h += '<div class="corner"></div>';
-    stages.forEach(function (s) { h += '<div class="stage-head">' + esc(s.name) + '<i style="background:' + s.color + '"></i></div>'; });
+    stages.forEach(function (s) { h += '<div class="stage-head" style="--stage:' + s.color + ';--stage-ink:' + s.ink + '">' + esc(s.name) + '</div>'; });
 
     h += '<div class="times" style="height:' + height + 'px">';
     for (var t = t0; t <= t1; t += 60) h += '<div style="top:' + Math.max(8, Math.min(height - 8, (t - t0) * ppm)) + 'px">' + esc(fmt(t)) + '</div>';
     h += '</div>';
 
     stages.forEach(function (s) {
-      h += '<div class="col" style="height:' + height + 'px">';
+      h += '<div class="col" style="--stage:' + s.color + ';height:' + height + 'px">';
       for (var t = t0; t < t1; t += 30) h += '<div class="hourline' + (t % 60 ? ' half' : '') + '" style="top:' + (t - t0) * ppm + 'px"></div>';
       dayPerfs.filter(function (p) { return p.stage === s.id; }).forEach(function (p) {
-        var top = (p.s - t0) * ppm, ht = Math.max(22, (p.e - p.s) * ppm - 3);
+        var top = (p.s - t0) * ppm, ht = Math.max(40, (p.e - p.s) * ppm - 3);
         var on = picks.has(p.id), twins = on ? [] : pickedTwins(p);
-        var cls = 'set' + (on ? ' picked' : '') + (twins.length ? ' twin' : '') + (otherShows(p).length ? ' has-also' : '') + (conflictsOf(p).length ? ' conflict' : '') +
+        var cls = 'set' + (on ? ' picked' : '') + (FIL.artist.has(p) ? ' has-bio' : '') + (twins.length ? ' twin' : '') + (otherShows(p).length ? ' has-also' : '') + (conflictsOf(p).length ? ' conflict' : '') +
           (matches(p) ? '' : ' dim') + (ht < 48 ? ' short' : ht < 90 ? ' compact' : '');
         var others = otherShows(p);
         var tip = p.act + (p.origin ? ' (' + p.origin + ')' : '') + ' · ' + fmtRange(p) + (p.note ? '\n' + p.note : '') +
@@ -465,18 +540,62 @@ FIL.ready(function () {
         // Bottom line: the artist's other shows (day + time), ✓ = already in the plan
         var alsoLine = others.length
           ? '<span class="also-days">' + esc(T('lu_also', { list: others.map(function (q) {
-              return (picks.has(q.id) ? '✓ ' : '') + I18N.weekdayShort(q.date) + ' ' + fmt(q.s);
+              // no-break spaces keep "Sun 12:30 PM" on one line; the list wraps between shows
+              return ((picks.has(q.id) ? '✓ ' : '') + I18N.weekdayShort(q.date) + ' ' + tight(fmt(q.s))).replace(/ /g, ' ');
             }).join(' · ') })) + '</span>'
           : '';
-        h += '<div class="' + cls + '" style="--stage:' + s.color + ';top:' + (top + 1) + 'px;height:' + ht + 'px">' +
+        h += '<div class="' + cls + '" style="--stage:' + s.color + ';--stage-ink:' + s.ink + ';top:' + (top + 1) + 'px;height:' + ht + 'px">' +
           '<button type="button" class="set-hit" data-id="' + p.id + '" aria-pressed="' + on + '" title="' + esc(tip) + '">' +
+          // no-break spaces: if a long time must wrap ("11:45 AM–12:45 PM"), it breaks only at the dash
+          '<span class="when">' + esc(tight(fmtRange(p))).replace(/ /g, '&nbsp;') + '</span><span class="body">' +
           '<span class="act">' + (on ? '<span class="tk" aria-hidden="true">✓ </span>' : '') + esc(p.act) + '</span>' +
-          '<span class="meta">' + esc(fmtRange(p)) + (p.origin ? ' · ' + esc(p.origin) : '') + '</span>' +
-          alsoLine + '</button>' + FIL.artist.button(p) + '</div>';
+          (p.origin ? '<span class="origin">' + esc(p.origin) + '</span>' : '') +
+          alsoLine + '</span></button>' + FIL.artist.button(p) + '</div>';
       });
       h += '</div>';
     });
     view.innerHTML = h + '</div></div>';
+    fitSets();
+  }
+
+  // Names, "Also" lists and translations vary in length, so after drawing, a block that is too full
+  // gives up its origin line first, then shortens "Also" to one line, then name lines (down to one).
+  // The time always stays: if it runs onto two lines, its text first gets a little smaller (to .68rem).
+  function fitSets() {
+    // Stage names: as large as the column allows (long ones like INTERNATIONALE shrink on phones)
+    var range = document.createRange();
+    view.querySelectorAll('.stage-head').forEach(function (h) {
+      var fs = 1.05, room = h.clientWidth - 8;
+      function widest() {
+        range.selectNodeContents(h);
+        return Math.max.apply(null, Array.prototype.map.call(range.getClientRects(), function (r) { return r.width; }));
+      }
+      while (widest() > room && fs > 0.75) { fs -= 0.05; h.style.fontSize = fs + 'rem'; }
+    });
+    view.querySelectorAll('.set').forEach(function (set) {
+      var w = set.querySelector('.when'), fs = 0.76;
+      range.selectNodeContents(w);
+      while (range.getClientRects().length > 1 && fs > 0.69) { fs -= 0.02; w.style.fontSize = fs + 'rem'; }
+      set.style.setProperty('--bar', w.offsetHeight + 'px'); // the artist button sits just below the time bar
+
+      var b = set.querySelector('.body');
+      function over() { return b.scrollHeight > b.clientHeight + 1; }
+      if (over()) {
+        var o = b.querySelector('.origin'), a = b.querySelector('.act');
+        if (o) o.remove();
+        if (over() && b.querySelector('.also-days')) set.classList.add('one-also');
+        var n = parseInt(getComputedStyle(a).webkitLineClamp, 10) || 3;
+        while (over() && n > 1) a.style.webkitLineClamp = --n;
+      }
+      // In short blocks the origin or "Also" line can sit beside the artist button: keep it clear
+      var btn = set.querySelector('.info-btn');
+      if (btn) {
+        var bottom = btn.getBoundingClientRect().bottom, room = btn.offsetWidth + 4 + 'px';
+        b.querySelectorAll('.origin, .also-days').forEach(function (el) {
+          if (el.getBoundingClientRect().top < bottom - 1) el.style.paddingRight = room;
+        });
+      }
+    });
   }
 
   function renderList(dayPerfs) {
@@ -495,11 +614,12 @@ FIL.ready(function () {
         var s = stageById[p.stage], on = picks.has(p.id), c = conflictsOf(p);
         var twins = on ? [] : pickedTwins(p);
         var also = otherShows(p).filter(function (q) { return twins.indexOf(q) < 0; });
-        return '<div class="card' + (on ? ' picked' : '') + (twins.length ? ' twin' : '') + '" style="--stage:' + s.color + '">' +
+        return '<div class="card' + (on ? ' picked' : '') + (twins.length ? ' twin' : '') + '" style="--stage:' + s.color + ';--stage-ink:' + s.ink + '">' +
           '<button type="button" class="card-hit" data-id="' + p.id + '" aria-pressed="' + on + '">' +
           '<span class="tick">' + (on ? '✓' : '') + '</span><span>' +
+          '<div class="when-row"><span class="when">' + esc(fmtRange(p)) + '</span><span class="stg">' + esc(s.name) + '</span></div>' +
           '<div class="act">' + esc(p.act) + '</div>' +
-          '<div class="meta">' + esc(s.name) + ' · ' + esc(fmtRange(p)) + (p.origin ? ' · ' + esc(p.origin) : '') + '</div>' +
+          (p.origin ? '<div class="meta">' + esc(p.origin) + '</div>' : '') +
           (twins.length ? '<div class="twin-tag">✓ ' + esc(T('dup_badge', { when: twins.map(when).join('; ') })) + '</div>' : '') +
           (c.length ? '<div class="warn">' + esc(T('lu_overlaps', { acts: c.map(function (q) { return q.act; }).join(', ') })) + '</div>' : '') +
           (also.length ? '<div class="also">' + esc(T('lu_also', { list: also.map(when).join('; ') })) + '</div>' : '') +
@@ -517,7 +637,7 @@ FIL.ready(function () {
       : T('lu_nothing_day');
     document.getElementById('picks').innerHTML = list.length ? list.map(function (p) {
       var s = stageById[p.stage], c = conflictsOf(p);
-      return '<div class="pick" style="--stage:' + s.color + '"><div class="t">' + esc(fmtRange(p)) + '</div>' +
+      return '<div class="pick" style="--stage:' + s.color + ';--stage-ink:' + s.ink + '"><div class="t">' + esc(fmtRange(p)) + '</div>' +
         '<div class="act">' + esc(p.act) + '</div><div class="st">' + esc(s.name) + '</div>' +
         (c.length ? '<div class="warn">' + esc(T('lu_overlaps', { acts: c.map(function (q) { return q.act; }).join(', ') })) + '</div>' : '') +
         '<button class="x" type="button" data-remove="' + p.id + '" aria-label="' + esc(T('lu_remove', { act: p.act })) + '">×</button></div>';
@@ -594,6 +714,8 @@ FIL.ready(function () {
   });
 
   render();
+  // The brand font can arrive after the first draw and is a little wider than the fallback: fit again.
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (state.view === 'grid') fitSets(); });
 });
 </script>
 </body>

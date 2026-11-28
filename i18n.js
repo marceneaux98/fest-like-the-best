@@ -86,6 +86,8 @@
 
     // "About this artist" sheet (artist.js)
     art_about: 'About {act}',
+    art_bio_btn: 'Bio',
+    lu_key_bio: 'Photo, bio and links',
     art_close: 'Close',
     art_photo_alt: 'Photo of {name}',
     art_no_bio: 'Bio coming soon.',
@@ -283,6 +285,8 @@
 
     // "About this artist" sheet (artist.js)
     art_about: 'À propos de {act}',
+    art_bio_btn: 'Bio',
+    lu_key_bio: 'Photo, biographie et liens',
     art_close: 'Fermer',
     art_photo_alt: 'Photo de {name}',
     art_no_bio: 'Biographie à venir.',
@@ -480,6 +484,8 @@
 
     // "About this artist" sheet (artist.js)
     art_about: 'Acerca de {act}',
+    art_bio_btn: 'Bio',
+    lu_key_bio: 'Foto, biografía y enlaces',
     art_close: 'Cerrar',
     art_photo_alt: 'Foto de {name}',
     art_no_bio: 'Biografía próximamente.',
@@ -677,6 +683,8 @@
 
     // "About this artist" sheet (artist.js)
     art_about: 'Giới thiệu {act}',
+    art_bio_btn: 'Tiểu sử',
+    lu_key_bio: 'Ảnh, tiểu sử và liên kết',
     art_close: 'Đóng',
     art_photo_alt: 'Ảnh của {name}',
     art_no_bio: 'Tiểu sử sẽ sớm được cập nhật.',
