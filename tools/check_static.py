@@ -201,10 +201,37 @@ def check_i18n():
             print("      i18n: %s is missing %d English keys (they fall back to English)" % (lang, gaps))
 
 
+def check_offline():
+    """Every file sw.js saves for offline use must exist, and the manifest's icons too."""
+    try:
+        src = read("sw.js")
+    except OSError:
+        fail("sw.js is missing (offline support)")
+        return
+    m = re.search(r"var CORE = \[(.*?)\];", src, re.S)
+    if not m:
+        fail("sw.js: could not find the CORE list of files")
+        return
+    files = re.findall(r"'([^']+)'", m.group(1))
+    local = [f for f in files if not f.startswith("http") and f != "./"]
+    missing = [f for f in local if not os.path.isfile(os.path.join(ROOT, f))]
+    try:
+        icons = [i["src"] for i in json.loads(read("manifest.json")).get("icons", [])]
+    except (OSError, ValueError) as e:
+        fail("manifest.json is missing or not valid JSON: %s" % e)
+        icons = []
+    missing += [i for i in icons if not os.path.isfile(os.path.join(ROOT, i))]
+    for f in missing:
+        fail("offline: %s is listed in sw.js or manifest.json but doesn't exist" % f)
+    if not missing:
+        ok("offline: all %d files sw.js saves and %d app icons exist" % (len(local), len(icons)))
+
+
 def main():
     check_python()
     check_json()
     check_i18n()
+    check_offline()
     lines = ["## Static checks", ""]
     if failures:
         lines += ["**%d problem(s):**" % len(failures), ""] + ["- " + f for f in failures]

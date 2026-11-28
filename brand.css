@@ -55,6 +55,8 @@ button, select { font: inherit; color: inherit; }
 }
 .preview-note a { color: var(--fil-purple); font-weight: 700; text-decoration: underline; margin-left: 4px; white-space: nowrap; }
 @media print { .preview-note { display: none !important; } }
+/* Same strip when there's no signal and the schedule is the copy saved on the phone (common.js, sw.js) */
+.preview-note.offline-note { background: #fff4e6; color: #7a4100; font-weight: 600; }
 .brand-logo { display: block; line-height: 0; flex: 0 1 auto; min-width: 0; }
 /* aspect-ratio = assets/logo.png (1497×200): the logo takes its full width before the image arrives,
    so the bar doesn't fit on one row first and then wrap (layout shift) */
