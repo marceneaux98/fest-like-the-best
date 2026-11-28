@@ -11,6 +11,10 @@
 //   FIL.stages                    stages in display order: { id, name, color, lat, lng } from locations.json (via routes.js)
 //   FIL.stageById[id]
 //   FIL.stageColor(id)            colour for a stage id (falls back to brand purple)
+//   FIL.walk(a, b)                { meters, seconds } walking between two stages or a stage and a shop, or null:
+//                                 measured along the route drawn on the festival map (assets/poster-routes.json
+//                                 "metres", set by the route editor), else the street router's figure (routes.js).
+//                                 seconds at the router's walking pace (~5 km/h); pages apply the crowd factor.
 //   FIL.ready(fn)                 loads data/schedule.json (data/preview/… with ?preview=1) into
 //                                 window.SCHEDULE_DATA and, on map pages, the traced map routes into
 //                                 window.POSTER_ROUTES, then calls fn(). Pages wrap their code in this.
@@ -46,6 +50,21 @@
   var stageById = {};
   stages.forEach(function (s) { stageById[s.id] = s; });
   function stageColor(id) { return stageById[id] ? stageById[id].color : FALLBACK; }
+
+  // ---------- walking distances ----------
+  var PACE = (function () {                     // metres per second, from the street router's own figures
+    var m = 0, s = 0;
+    Object.keys(R && R.routes || {}).forEach(function (k) { m += R.routes[k].meters; s += R.routes[k].seconds; });
+    return s ? m / s : 1.39;
+  })();
+  function walk(a, b) {
+    if (a === b) return { meters: 0, seconds: 0 };
+    var PR = window.POSTER_ROUTES, M = PR && PR.metres;
+    var m = M ? (M[a + '|' + b] != null ? M[a + '|' + b] : M[b + '|' + a]) : null;
+    if (m != null) return { meters: m, seconds: m / PACE };
+    var r = R && R.routes && (R.routes[a + '|' + b] || R.routes[b + '|' + a]);
+    return r ? { meters: r.meters, seconds: r.seconds } : null;
+  }
 
   // ---------- brand bar ----------
   var PAGES = [
@@ -190,6 +209,6 @@
     return { edition: e, picks: picks, modes: modes, merch: merch, by: by };
   }
 
-  window.FIL = { esc: esc, toMin: toMin, store: store, stages: stages, stageById: stageById, stageColor: stageColor,
+  window.FIL = { esc: esc, toMin: toMin, store: store, stages: stages, stageById: stageById, stageColor: stageColor, walk: walk,
                  ready: ready, stamp: stamp, timeRange: timeRange, plan: { encode: encodePlan, decode: decodePlan } };
 })();

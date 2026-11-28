@@ -319,8 +319,6 @@ FIL.ready(function () {
   var shopKind = loadRaw('fil-shopkind');
   if (KINDS.indexOf(shopKind) < 0) shopKind = KINDS[0];
   function kindBooths() { return booths.filter(function (b) { return b.kind === shopKind; }); }
-  // Walking pace from the real street routes, for shops (whose distances are estimated from the map).
-  var PACE = (function () { var m = 0, s = 0; Object.keys(R.routes).forEach(function (k) { m += R.routes[k].meters; s += R.routes[k].seconds; }); return s ? m / s : 1.3; })();
   // Per day: undefined = show a suggestion, 'none' = patron said no thanks, {slot, booth} = chosen.
   // slot is 'before', 'after', or the key of the walk between two picks.
   var merchChoices = loadJSON('fil-merch', {});
@@ -384,12 +382,8 @@ FIL.ready(function () {
     var alt = when ? sm.variant(a, b, when.date, when.at) : null;
     var shape = sm.shape(a, b, alt ? alt.points : null);
     if (a === b) return { meters: 0, seconds: 0, path: [], shape: shape };
-    var r = R.routes[a + '|' + b] || R.routes[b + '|' + a];
-    if (!r) {                                      // a shop: distance estimated from the map
-      var est = PRS.metres && (PRS.metres[a + '|' + b] || PRS.metres[b + '|' + a]);
-      if (est == null) return null;
-      r = { meters: est, seconds: est / PACE };
-    }
+    var r = FIL.walk(a, b);                        // measured along the route drawn on the map (common.js)
+    if (!r) return null;
     var out = { meters: r.meters, seconds: r.seconds, path: shape.all, shape: shape, alt: alt,
                 tip: (alt && alt.tip) || sm.tip(a, b) };
     if (alt && alt.metres) { out.seconds = r.seconds * alt.metres / r.meters; out.meters = alt.metres; }

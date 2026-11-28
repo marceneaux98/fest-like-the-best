@@ -326,7 +326,7 @@ FIL.ready(function () {
   }
 
   // ---------- my picks: the My Day plan for a day ----------
-  // Same rules and saved settings as itinerary.html (buildPlan there): walk times from routes.js × the crowd
+  // Same rules and saved settings as itinerary.html (buildPlan there): walk times (FIL.walk) × the crowd
   // factor, "arrive early by", the leave-early / split / stay-to-the-end choice per overlap, and the merch
   // stop if the patron added one (merch booth, Marché des Arts or Marché du Monde). Keep the two in step when the
   // plan rules change.
@@ -340,14 +340,9 @@ FIL.ready(function () {
     : (R.merch_booths || []).filter(function (b) { return stageById[b.at]; }).map(function (b) { return { id: b.id, kind: 'merch', at: b.at, near: b.at }; });
   var boothById = {}; booths.forEach(function (b) { boothById[b.id] = b; });
   var hasRoutes = !!R.routes;
-  // Walking pace from the real street routes, for shops (whose distances are estimated from the map)
-  var PACE = (function () { var m = 0, s = 0; Object.keys(R.routes || {}).forEach(function (k) { m += R.routes[k].meters; s += R.routes[k].seconds; }); return s ? m / s : 1.3; })();
-  function route(a, b) {
+  function route(a, b) {                        // measured along the route drawn on the map (FIL.walk, common.js)
     if (a === b || !hasRoutes) return { meters: 0, seconds: 0 };
-    var r = R.routes[a + '|' + b] || R.routes[b + '|' + a];
-    if (r) return r;
-    var est = PRS.metres && (PRS.metres[a + '|' + b] || PRS.metres[b + '|' + a]);
-    return est == null ? { meters: 0, seconds: 0 } : { meters: est, seconds: est / PACE };
+    return FIL.walk(a, b) || { meters: 0, seconds: 0 };
   }
   function stageName(id) { return stageById[id] ? stageById[id].name : id; }
   function buildPlan(date, merch) {
