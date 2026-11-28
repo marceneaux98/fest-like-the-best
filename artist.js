@@ -7,7 +7,8 @@
 //                         once the schedule has loaded; perfs need .s/.e (minutes since midnight).
 //                         toggle(id) is the page's own add/remove (lineup's asks "switch / keep both").
 //   FIL.artist.has(p)     true when the performance has an artist to show (named events don't)
-//   FIL.artist.button(p, cls)   HTML for the small "i" button that opens the sheet ('' when !has(p))
+//   FIL.artist.button(p, cls)   HTML for the "Bio" button (artist icon + label) that opens the sheet ('' when !has(p)).
+//                               Pages hide the .lbl text where there is no room; the icon and aria-label stay.
 //   FIL.artist.open(id)   show the sheet for a performance id
 //   FIL.artist.refresh()  update the open sheet after the plan changed (pages call it after redrawing)
 //
@@ -26,7 +27,8 @@
   var dlg = null, current = null, shownPicked = null;
 
   var ICON = {
-    info: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.1"/></svg>',
+    // A person (the artist), not an "i": patrons read the circled i as a status mark, not as "about the artist"
+    info: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="3.8"/><path d="M4.8 20.2c.9-3.9 3.8-6 7.2-6s6.3 2.1 7.2 6"/></svg>',
     website: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>',
     instagram: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.3 6.7v.1" stroke-linecap="round" stroke-width="2.6"/></svg>',
     facebook: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14.5 21v-7.5H17l.5-3.5h-3V7.8c0-1 .4-1.8 1.8-1.8h1.4V3.1A16 16 0 0 0 15.5 3c-2.7 0-4.4 1.6-4.4 4.6V10H8.5v3.5h2.6V21z"/></svg>',
@@ -56,7 +58,8 @@
     if (!has(p)) return '';
     var label = esc(T('art_about', { act: p.act }));
     return '<button type="button" class="info-btn' + (cls ? ' ' + cls : '') + '" data-info="' + esc(p.id) + '"' +
-      ' aria-haspopup="dialog" aria-label="' + label + '" title="' + label + '">' + ICON.info + '</button>';
+      ' aria-haspopup="dialog" aria-label="' + label + '" title="' + label + '">' + ICON.info +
+      '<span class="lbl" aria-hidden="true">' + esc(T('art_bio_btn')) + '</span></button>';
   }
 
   // ---------- pieces of the sheet ----------

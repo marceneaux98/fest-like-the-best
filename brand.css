@@ -153,11 +153,16 @@ header h1 small {
 }
 
 /* ---------- "About this artist" (artist.js): a bottom sheet on phones, a dialog on wider screens ---------- */
-/* The small round "i" button on grid blocks and list cards; each page places it */
+/* The "Bio" button (artist icon + label) on grid blocks and list cards; each page places it.
+   Round icon-only by default; a page shows the .lbl text where there is room (it becomes a pill). */
 .info-btn {
-  display: inline-grid; place-items: center; width: 28px; height: 28px; padding: 0; border: none; border-radius: 50%;
-  background: rgba(255, 255, 255, .8); color: var(--fil-purple); cursor: pointer; line-height: 0;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  min-width: 28px; height: 28px; padding: 0; border: none; border-radius: 999px;
+  background: rgba(255, 255, 255, .8); color: var(--fil-purple); cursor: pointer; line-height: 1;
+  font: inherit; font-size: .74rem; font-weight: 700; letter-spacing: .02em; white-space: nowrap;
 }
+.info-btn svg { flex: none; }
+.info-btn .lbl { display: none; }
 .info-btn:hover { background: #fff; }
 .info-btn:focus-visible { outline: 3px solid var(--fil-orange); outline-offset: 1px; }
 
