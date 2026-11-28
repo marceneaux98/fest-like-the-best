@@ -11,6 +11,8 @@ Static web app (no framework, no build) for Festival International de Louisiane 
 - Overlaps / tight connections: patron chooses leave early, split the difference, or stay to the end.
 - Picking an artist already in the plan opens a "Switch / Keep both / Cancel" prompt; grid blocks list the artist's other shows at the bottom ("Also: …", ✓ = in plan).
 - Picking or changing options must not reset scroll position or re-zoom the map.
+- No crowd-factor slider and no map-layer toggles (removed 2026-11-27 at Max's request): walk times use the fixed `FIL.crowd` (locations.json `crowd_factor_default`), and the map always shows its standard layers. The Shopping section on My Day folds away.
+- Lineup and My Day end with previous / next day buttons (after the last day with picks, My Day links to the next festival day's lineup via `lineup.html?day=`).
 
 ## Working notes
 - Schedule data: source of truth is Monday.com (board IDs/columns in `feed.config.json`). `build_feed.py` writes `data/schedule.json` + `data/artists.json`; pages load them at runtime via `FIL.ready()`. The 2027 lineup is confidential until announced: never set `public_from` for 2027 or commit `data/preview/`; the sync workflow is manual only. The Artist board holds SSNs and payment details, so only allowlisted columns are ever read.
