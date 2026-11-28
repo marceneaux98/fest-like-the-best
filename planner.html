@@ -61,7 +61,6 @@
   .result.empty { background: var(--bg); color: var(--muted); border: 1px dashed var(--line); display: flex; align-items: center; justify-content: center; text-align: center; font-size: .9rem; }
   .slider-row { display: flex; align-items: center; gap: 10px; }
   .slider-row input { flex: 1; accent-color: var(--orange); }
-  #crowdVal { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 3.2em; text-align: right; }
   .hint { font-size: .78rem; color: var(--muted); margin-top: 4px; }
   table { width: 100%; border-collapse: collapse; font-size: .78rem; font-variant-numeric: tabular-nums; }
   th, td { padding: 5px 4px; text-align: center; border-bottom: 1px solid var(--line); }
@@ -123,23 +122,12 @@
 
   <div id="result" class="result empty"></div>
 
-  <div>
-    <label for="crowd" data-i18n="crowd_factor">Crowd factor</label>
-    <div class="slider-row">
-      <input id="crowd" type="range" min="1" max="2.5" step="0.05">
-      <span id="crowdVal"></span>
-    </div>
-    <div class="hint" data-i18n="pl_crowd_hint">1.0× = normal walking pace (~5 km/h). Raise it for festival crowds.</div>
-  </div>
-
   <div id="overlayBox">
-    <label data-i18n="map_layers">Show on the festival map</label>
-    <div id="mapLayers" role="group" data-i18n-aria="map_layers" aria-label="Show on the festival map"></div>
     <div class="hint" id="overlayStatus" data-i18n="overlay_note">The illustrated map is approximate and not to scale.</div>
   </div>
 
   <div>
-    <label data-i18n="pl_matrix">All walk times (min, with crowd factor)</label>
+    <label data-i18n="pl_matrix">All walk times (min, at festival-crowd pace)</label>
     <table id="matrix"></table>
   </div>
 
@@ -161,12 +149,11 @@ FIL.ready(function () {
   var esc = FIL.esc;
   var locs = FIL.stages, byId = FIL.stageById;
   var fromSel = document.getElementById('from'), toSel = document.getElementById('to');
-  var crowd = document.getElementById('crowd'), crowdVal = document.getElementById('crowdVal');
   var resultEl = document.getElementById('result');
 
   function getRoute(a, b) { return FIL.walk(a, b); }  // measured along the route drawn on the map (common.js)
   var T = I18N.t;
-  function mins(sec) { return sec * parseFloat(crowd.value) / 60; }
+  function mins(sec) { return sec * FIL.crowd / 60; }     // festival-crowd pace (common.js)
   var nf1 = new Intl.NumberFormat(I18N.locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   var nf2 = new Intl.NumberFormat(I18N.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   function fmtMin(m) { return m < 10 ? nf1.format(m) : Math.round(m).toString(); }
@@ -177,13 +164,8 @@ FIL.ready(function () {
     locs.forEach(function (l) { sel.add(new Option(l.name, l.id)); });
   });
 
-  // Crowd factor (remembered per browser)
-  var saved = null;
-  try { saved = localStorage.getItem('crowdFactor'); } catch (e) {}
-  crowd.value = saved || D.crowd_factor_default || 1;
-
   // Map: the festival's own illustrated map, upright (see site-overlay.js)
-  var sm = SiteMap.create('map', { layersBox: document.getElementById('mapLayers'), status: document.getElementById('overlayStatus') });
+  var sm = SiteMap.create('map', { status: document.getElementById('overlayStatus') });
   var map = sm.map;
 
   var markers = {};
@@ -216,7 +198,6 @@ FIL.ready(function () {
 
   function update() {
     var a = fromSel.value, b = toSel.value;
-    crowdVal.textContent = nf2.format(parseFloat(crowd.value)) + '×';
 
     Object.keys(markers).forEach(function (id) {
       var el = markers[id].getElement(); if (!el) return;
@@ -278,10 +259,6 @@ FIL.ready(function () {
   });
   fromSel.addEventListener('change', update);
   toSel.addEventListener('change', update);
-  crowd.addEventListener('input', function () {
-    try { localStorage.setItem('crowdFactor', crowd.value); } catch (e) {}
-    update();
-  });
 
   document.getElementById('foot').innerHTML = esc(T('pl_foot', { date: D.built })) + '<br>' +
     'To change locations: edit <code>locations.json</code>, then run <code>python build_routes.py</code>.';

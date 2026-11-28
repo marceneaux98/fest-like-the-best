@@ -16,7 +16,8 @@
 //   FIL.walk(a, b)                { meters, seconds } walking between two stages or a stage and a shop, or null:
 //                                 measured along the route drawn on the festival map (assets/poster-routes.json
 //                                 "metres", set by the route editor), else the street router's figure (routes.js).
-//                                 seconds at the router's walking pace (~5 km/h); pages apply the crowd factor.
+//                                 seconds at the router's walking pace (~4.5 km/h); pages apply FIL.crowd.
+//   FIL.crowd                     how much slower festival crowds make a walk (fixed, from locations.json; was a slider)
 //   FIL.ready(fn)                 loads data/schedule.json (data/preview/… with ?preview=1) into
 //                                 window.SCHEDULE_DATA and, on map pages, the traced map routes into
 //                                 window.POSTER_ROUTES, then calls fn(). Pages wrap their code in this.
@@ -261,6 +262,7 @@
     return s && typeof s === 'object' ? s : shopsFromMerch(store.get('fil-merch', {}));
   }
 
-  window.FIL = { esc: esc, toMin: toMin, store: store, stages: stages, stageById: stageById, stageColor: stageColor, stageInk: stageInk, walk: walk,
+  var crowd = (R && R.crowd_factor_default) || 1.3;
+  window.FIL = { esc: esc, toMin: toMin, store: store, stages: stages, stageById: stageById, stageColor: stageColor, stageInk: stageInk, walk: walk, crowd: crowd,
                  ready: ready, stamp: stamp, timeRange: timeRange, plan: { encode: encodePlan, decode: decodePlan, loadShops: loadShops, shopsFromMerch: shopsFromMerch } };
 })();

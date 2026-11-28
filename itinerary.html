@@ -158,6 +158,12 @@
   .shops-count { font-size: .8rem; font-weight: 700; color: var(--muted); }
   .shops-count.done { color: #1f7a45; }          /* --ok darkened to pass AA (5.3:1 on white) for small text */
   .shops .shops-intro { margin: 2px 0 0; font-size: .8rem; color: var(--muted); }
+  .shops > summary { list-style: none; cursor: pointer; }
+  .shops > summary::-webkit-details-marker { display: none; }
+  .shops > summary::after { content: ''; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); margin: -4px 4px 0 0; transition: transform .15s; }
+  .shops[open] > summary::after { transform: rotate(-135deg); margin-top: 4px; }
+  .shops > summary .shops-count { margin-left: auto; }
+  .shops:not([open]) > summary { margin-bottom: 0; }
   .shop-card { --kind: #f26631; border: 1px solid var(--line); border-left: 4px solid var(--kind); border-radius: 10px; padding: 9px 11px; margin-top: 9px; }
   .shop-card.arts { --kind: #c2187a; }
   .shop-card.monde { --kind: #11867a; }
@@ -254,12 +260,7 @@
   <div class="scroll">
     <div id="summary"></div>
     <details class="settings">
-      <summary data-i18n="it_settings">Walking &amp; map settings</summary>
-      <div class="set-row">
-        <label for="crowd" data-i18n="crowd_factor">Crowd factor</label>
-        <input id="crowd" type="range" min="1" max="2.5" step="0.05">
-        <output id="crowdVal"></output>
-      </div>
+      <summary data-i18n="it_settings">Walking &amp; shopping settings</summary>
       <div class="set-row">
         <label for="buffer" data-i18n="it_buffer">Arrive early by</label>
         <select id="buffer" data-minutes="0,5,10,15"></select>
@@ -268,11 +269,10 @@
         <label for="shop" data-i18n="it_shop">Merch shopping time</label>
         <select id="shop" data-minutes="10,15,20,30"></select>
       </div>
-      <div class="set-row"><label data-i18n="map_layers">Show on the festival map</label></div>
-      <div id="mapLayers" role="group" data-i18n-aria="map_layers" aria-label="Show on the festival map"></div>
-      <div class="tiny" id="overlayStatus" data-i18n="it_settings_note">Walk times assume ~5 km/h × the crowd factor. Barriers and closures aren’t included.</div>
+      <div class="tiny" id="overlayStatus" data-i18n="it_settings_note">Walk times allow for festival crowds (about 2 mph). Barriers and closures aren’t included.</div>
     </details>
     <div class="timeline" id="timeline"></div>
+    <nav class="day-nav" id="dayNav" data-i18n-aria="day_nav_aria" aria-label="Other days"></nav>
   </div>
 </aside>
 <div id="map"></div>
@@ -316,11 +316,10 @@ FIL.ready(function () {
   var picks = new Set(loadJSON('fil-picks', []).filter(function (id) { return byId[id]; }));
   var legModes = loadJSON('fil-legmodes', {});   // per pair of picks: 'early' | 'split' | 'end'
 
-  var crowd = document.getElementById('crowd'), buffer = document.getElementById('buffer'), shopSel = document.getElementById('shop');
+  var buffer = document.getElementById('buffer'), shopSel = document.getElementById('shop');
   [buffer, shopSel].forEach(function (sel) {
     sel.dataset.minutes.split(',').forEach(function (n) { sel.add(new Option(T('min', { n: n }), n)); });
   });
-  crowd.value = parseFloat(loadRaw('crowdFactor')) || R.crowd_factor_default || 1.3;
   buffer.value = loadRaw('fil-buffer') || '5';
   shopSel.value = loadRaw('fil-shop') || '15';
 
@@ -339,6 +338,9 @@ FIL.ready(function () {
   // slot is 'before', 'after', or the key of the walk between two picks.
   var shopChoices = FIL.plan.loadShops();
   var openOpts = null;   // the kind of shop whose list of times is open
+  // The Shopping section folds away: open while something is still to plan, folded once all are planned or
+  // skipped, unless the patron opened or folded it themselves (remembered on this device).
+  var shopsOpen = (function () { var v = loadRaw('fil-shops-open'); return v === '1' ? true : v === '0' ? false : null; })();
   var BAG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 8h13l-1 12.5h-11z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg>';
 
   // ---------- share links (see FIL.plan in common.js) ----------
@@ -410,11 +412,11 @@ FIL.ready(function () {
   // For each pair of consecutive picks, work out when to leave. If there's not enough time
   // to see all of the current set AND reach the next one by its start (minus the buffer),
   // the patron chooses: leave early, split the difference, or stay to the end and arrive late.
-  function walkMin(a, b) { return route(a, b).seconds * parseFloat(crowd.value) / 60; }
+  function walkMin(a, b) { return route(a, b).seconds * FIL.crowd / 60; }
 
   // shopStops: null, or today's shopping stops [{ kind, slot, booth }] (at most one per slot), folded into the plan.
   function buildPlan(shopStops) {
-    var cf = parseFloat(crowd.value), buf = +buffer.value, shop = +shopSel.value;
+    var cf = FIL.crowd, buf = +buffer.value, shop = +shopSel.value;
     var bySlot = {}; (shopStops || []).forEach(function (s) { if (boothById[s.booth]) bySlot[s.slot] = boothById[s.booth]; });
     var list = perfs.filter(function (p) { return p.date === day && picks.has(p.id); }).sort(function (a, b) { return a.s - b.s || a.e - b.e; });
     var stops = list.map(function (p) { return { p: p }; }), legs = [];
@@ -522,7 +524,7 @@ FIL.ready(function () {
 
   // ---------- map ----------
   // The festival's own illustrated map, upright (see site-overlay.js)
-  var sm = SiteMap.create('map', { layersBox: document.getElementById('mapLayers') });
+  var sm = SiteMap.create('map', {});
   var map = sm.map;
   var mapLayer = L.layerGroup().addTo(map), legLines = [];
   var LINE = '#542e91', LINE_HI = '#f26631';
@@ -674,16 +676,17 @@ FIL.ready(function () {
     renderDays();
     document.getElementById('shared').innerHTML = sharedHTML();
     document.getElementById('shareBtn').hidden = !picks.size || !!preview;
-    document.getElementById('crowdVal').textContent = new Intl.NumberFormat(I18N.locale, { minimumFractionDigits: 2 }).format(parseFloat(crowd.value)) + '×';
     if (!day) {
       document.getElementById('summary').innerHTML = '';
       tl.innerHTML = '<div class="empty">' + esc(T('it_empty')) + '<br><a href="lineup.html">' + esc(T('it_empty_link')) + '</a></div>';
+      document.getElementById('dayNav').innerHTML = '';
       mapLayer.clearLayers();
       return;
     }
     document.getElementById('title').textContent = T('it_title_day', { weekday: I18N.weekday(day) });
 
     // Shopping: the plan without stops gives the free time; then fold in the stops planned for today.
+    document.getElementById('dayNav').innerHTML = dayNavHTML();
     var base = buildPlan(null), todayStops = stopsOn(day);
     var plan = todayStops.length ? buildPlan(todayStops) : base;
 
@@ -746,6 +749,28 @@ FIL.ready(function () {
       '<b>' + esc(fmt(o.start)) + '</b><div>' + esc(boothName(boothById[o.booth])) + '</div>' +
       '<span>' + esc(o.where + (o.slack !== null ? ' · ' + T('it_spare', { n: Math.floor(o.slack) }) : '')) + '</span></button>';
   }
+  // ---------- other days ----------
+  // At the end of the plan: the previous and next day with picks, or (after the last one) the next festival
+  // day's lineup to pick more.
+  function dayNavHTML() {
+    var i = -1; daysWithPicks.forEach(function (d, j) { if (d.date === day) i = j; });
+    var prev = daysWithPicks[i - 1], next = daysWithPicks[i + 1];
+    var later = !next && S.days.filter(function (d) { return d.date > day; })[0];
+    return (prev ? '<button type="button" class="day-prev" data-goday="' + prev.date + '">' + esc(T('day_prev', { weekday: I18N.weekday(prev.date) })) + '</button>' : '') +
+      (next ? '<button type="button" class="day-next" data-goday="' + next.date + '">' + esc(T('day_next', { weekday: I18N.weekday(next.date) })) + '</button>'
+            : later ? '<a class="day-next" href="lineup.html?day=' + later.date + '">' + esc(T('it_pick_day', { weekday: I18N.weekday(later.date) })) + '</a>' : '');
+  }
+  document.getElementById('dayNav').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-goday]'); if (!b) return;
+    day = b.dataset.goday; openOpts = null;
+    history.replaceState(null, '', '?day=' + day);
+    render();
+    // Start the new day from the top, with its tab in view and focused
+    document.querySelector('.scroll').scrollTop = 0; window.scrollTo(0, 0);
+    var tab = document.querySelector('#days [aria-selected="true"]');
+    if (tab) { tab.scrollIntoView({ block: 'nearest', inline: 'nearest' }); tab.focus({ preventScroll: true }); }
+  });
+
   // ---------- shopping checklist ----------
   // Each kind of shop (festival merch first, then Marché des Arts and Marché du Monde) is planned once over
   // the festival. Each gets a card: planned today, planned on another day, skipped, or not planned yet
@@ -799,8 +824,9 @@ FIL.ready(function () {
     var many = KINDS.length > 1, total = KINDS.length;
     var count = !many ? '' : planned === total ? T('shop_all') : planned + skipped === total ? T('shop_all_set', { n: planned, s: skipped }) :
       T('shop_count', { n: planned, total: total });
-    var h = '<div class="merch shops"><div class="shops-head"><h3>' + BAG + esc(T(many ? 'shop_title' : 'it_merch_title')) + '</h3>' +
-      (count ? '<span class="shops-count' + (planned + skipped === total ? ' done' : '') + '">' + esc(count) + '</span>' : '') + '</div>' +
+    var allSet = planned + skipped === total, open = shopsOpen !== null ? shopsOpen : !allSet;
+    var h = '<details class="merch shops"' + (open ? ' open' : '') + '><summary class="shops-head"><h3>' + BAG + esc(T(many ? 'shop_title' : 'it_merch_title')) + '</h3>' +
+      (count ? '<span class="shops-count' + (allSet ? ' done' : '') + '">' + esc(count) + '</span>' : '') + '</summary>' +
       (many ? '<p class="shops-intro">' + esc(T('shop_intro')) + '</p>' : '');
     KINDS.forEach(function (k) {
       var c = shopChoices[k], st = states[k], others = {};
@@ -839,7 +865,7 @@ FIL.ready(function () {
       h += '<div class="shop-card ' + k + ' ' + st + '"><div class="shop-head">' + (many ? '<h4>' + esc(T('shop_kind_' + k)) + '</h4>' : '') +
         '<span class="badge">' + esc(badge) + '</span></div>' + body + '</div>';
     });
-    return h + '</div>';
+    return h + '</details>';
   }
 
   // "About this artist" sheet (artist.js): its button adds or removes the show from the plan.
@@ -875,6 +901,8 @@ FIL.ready(function () {
     if (leg) highlight(+leg.dataset.leg);
   });
   document.getElementById('summary').addEventListener('click', function (e) {
+    var fold = e.target.closest('.shops > summary');
+    if (fold) { shopsOpen = !fold.parentNode.open; saveRaw('fil-shops-open', shopsOpen ? '1' : '0'); return; }  // the browser opens/folds it
     var pick = e.target.closest('[data-shop-pick]'), act = e.target.closest('[data-shop-act]');
     if (pick) {
       var parts = pick.dataset.shopPick.split('|');   // kind | slot | booth: plan it today (moves it from another day)
@@ -954,7 +982,6 @@ FIL.ready(function () {
     function fallback() { linkIn.focus(); linkIn.select(); try { if (document.execCommand('copy')) done(); } catch (err) {} }
   });
   shopSel.addEventListener('change', function () { saveRaw('fil-shop', shopSel.value); render(); });
-  crowd.addEventListener('input', function () { saveRaw('crowdFactor', crowd.value); render(); });
   buffer.addEventListener('change', function () { saveRaw('fil-buffer', buffer.value); render(); });
 
   render();

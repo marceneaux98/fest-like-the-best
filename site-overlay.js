@@ -60,7 +60,9 @@
 
     // ---------- the illustration ----------
     var svgEl = null;
-    var layersOn = recallJSON('fil-maplayers', null) || DEFAULT_LAYERS;
+    // Layer choices only apply where the page offers the toggles (none do now), so a layer someone hid
+    // earlier can't stay hidden with no way to bring it back.
+    var layersOn = (ui.layersBox && recallJSON('fil-maplayers', null)) || DEFAULT_LAYERS;
     function applyLayers() {
       if (!svgEl) return;
       LAYERS.forEach(function (name) {
