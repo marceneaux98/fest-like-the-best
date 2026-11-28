@@ -28,9 +28,11 @@
   .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 99px; background: #eee; }
   .tag.manual { background: #ffe9a8; } .tag.auto { background: #e6ddff; }
   #checkSum { font-size: 12px; margin: 4px 0; line-height: 1.35; }
-  #checkList button { display: block; width: 100%; text-align: left; font-size: 12px; line-height: 1.35; padding: 4px 7px; margin: 3px 0; background: #fff; border-color: #e2d9f3; }
-  #checkList button:hover, #checkList button.on { background: #f3eeff; border-color: #542e91; color: #111; }
-  #checkList button i { color: #666; }
+  #checkList .find { margin: 3px 0 7px; }
+  #checkList button.open { display: block; width: 100%; text-align: left; font-size: 12px; line-height: 1.35; padding: 4px 7px; background: #fff; border-color: #e2d9f3; }
+  #checkList button.open:hover, #checkList button.open.on { background: #f3eeff; border-color: #542e91; color: #111; }
+  #checkList button.okbtn { font-size: 11px; padding: 1px 8px; margin-top: 2px; }
+  #checkList .find.ok button.open { opacity: .55; }
   #wrap { overflow: auto; position: relative; }
   #stage { position: relative; width: 100%; }
   #stage > svg.map { width: 100%; height: auto; display: block; }
@@ -107,7 +109,7 @@
   <fieldset>
     <legend>4 · Check routes and distances</legend>
     <div class="muted">Looks for lines that leave the drawn streets, bump out or double back, disagree with the street router's distance, or start far from their pin. Click a finding to open it on the map.</div>
-    <div class="row"><button id="check" type="button">Check all routes</button></div>
+    <div class="row"><button id="check" type="button">Check all routes</button> <label><input type="checkbox" id="showOk"> Show ones marked right</label></div>
     <div id="checkSum"></div>
     <div id="checkList"></div>
     <div id="geoInfo" class="muted" style="margin-top:8px"></div>
@@ -153,7 +155,9 @@
 //
 // Check all routes: lists lines that leave the drawn streets, bump out or double back, disagree with the
 //   street router's distance, have no street connection, start far from their pin, changed since review,
-//   or are alternates not drawn yet. Click one to open it, with the spot circled on the map.
+//   or are alternates not drawn yet. Click one to open it, with the spot circled on the map. A line that
+//   leaves the streets or disagrees with the router on purpose (a walkway the street data doesn't know)
+//   can be marked "It's right": it stays hidden while the line keeps within 10% of its length then.
 //
 // Walking distances (what My Day and the Stage Map use for walking times) are measured along each line,
 //   with the dotted hops from the pins, on the map fitted to real streets: the editor lines the poster's
@@ -262,7 +266,7 @@ Promise.all([
   info = saved.info || {};
   alts = {};
   Object.keys(saved.alts || {}).forEach(function (k) {
-    alts[k] = saved.alts[k].map(function (a) { return { id: a.id, label: a.label, days: a.days || [], from: a.from, to: a.to, tip: a.tip || '', wps: a.wps || [], endFollow: a.endFollow !== false }; });
+    alts[k] = saved.alts[k].map(function (a) { return { id: a.id, label: a.label, days: a.days || [], from: a.from, to: a.to, tip: a.tip || '', wps: a.wps || [], endFollow: a.endFollow !== false, ok: a.ok }; });
   });
 
   graph = buildGraph(svg);
@@ -890,7 +894,7 @@ function doubleBack(pts) {                     // a corner sharper than 150 degr
 }
 function lineIssues(pts, out, base) {
   var o = offStreet(pts);
-  if (o.len > 6) out.push(Object.assign({ text: 'Leaves the drawn streets for about ' + ft(o.len) + ' ft. Fine if it is a shortcut people really take (a parking lot, a passage); if not, use Snap to streets.', at: o.at }, base));
+  if (o.len > 6) out.push(Object.assign({ type: 'off', sig: { len: Math.round(plen(pts)) }, text: 'Leaves the drawn streets for about ' + ft(o.len) + ' ft. Fine if it is a shortcut people really take (a parking lot, a passage); if not, use Snap to streets.', at: o.at }, base));
   var b = bump(pts);
   if (b) out.push(Object.assign({ text: 'Bumps out about ' + ft(b.extra) + ' ft where it could run straight. Redraw that bit, or Snap to streets.', at: b.at }, base));
   var d = doubleBack(pts);
@@ -907,9 +911,19 @@ function routerCheck(k, line) {
   if (dist(e0, line[0]) > 8 || dist(e1, line[line.length - 1]) > 8) return 'stale';
   var mine = geoLen(line), q = mine / r.meters;
   if (Math.abs(mine - r.meters) < 30 || (q >= 0.75 && q <= 1.33)) return null;
-  return 'From entrance to entrance this line is ' + ftOf(mine) + ' ft; the street router (OpenStreetMap) makes it ' + ftOf(r.meters) + ' ft. ' +
-    (q < 1 ? 'Fine if the line takes a way the street data doesn\'t know (a lot, a passage, a closed-off street); otherwise check it.'
-           : 'There may be a shorter way: check the line goes the way people should walk.');
+  return { sig: { len: Math.round(mine), router: r.meters },
+    text: 'From entrance to entrance this line is ' + ftOf(mine) + ' ft; the street router (OpenStreetMap) makes it ' + ftOf(r.meters) + ' ft. ' +
+    (q < 1 ? 'Fine if the line takes a way the street data doesn\'t know (a lot, a passage, a closed-off street): then click It\'s right. Otherwise check it.'
+           : 'There may be a shorter way: check the line goes the way people should walk.') };
+}
+// "It's right": a finding the user confirmed (a real shortcut, a walkway the street data doesn't know) stays
+// hidden while the line keeps within 10% of its length then (and the router's figure, for router checks).
+// Kept on the route's info (or on the alternate) as ok[type] = { len, router, at }.
+function near10(a, b) { return a != null && b != null && Math.abs(a - b) <= 0.1 * Math.max(a, b); }
+function okOwner(f, make) { return f.altI != null ? alts[f.k][f.altI] : make ? (info[f.k] = info[f.k] || {}) : info[f.k]; }
+function isOk(f) {
+  var o = okOwner(f), ok = o && o.ok && o.ok[f.type];
+  return !!ok && near10(ok.len, f.sig.len) && (f.sig.router == null || near10(ok.router, f.sig.router));
 }
 function runCheck() {
   var out = [], keys = routeKeys(), nAlts = 0, stale = [];
@@ -922,11 +936,11 @@ function runCheck() {
     if (noLink[k] && !manual[k]) out.push({ k: k, at: r[0], text: 'No street connection found, so it is drawn as a straight line. Draw it by hand.' });
     else lineIssues(r, out, base);
     var rc = routerCheck(k, r);
-    if (rc === 'stale') stale.push(k); else if (rc) out.push({ k: k, at: r[Math.floor(r.length / 2)], text: rc });
+    if (rc === 'stale') stale.push(k); else if (rc) out.push({ k: k, type: 'router', sig: rc.sig, at: r[Math.floor(r.length / 2)], text: rc.text });
     if (changedSinceReview(k)) out.push({ k: k, at: r[Math.floor(r.length / 2)], text: 'Changed by more than 10% since you reviewed it. Look again and tick Reviewed.' });
     (alts[k] || []).forEach(function (a, i) {
       nAlts++;
-      var p = altPts[k] && altPts[k][i], ab2 = { k: k, alt: a.label || 'Alternate' };
+      var p = altPts[k] && altPts[k][i], ab2 = { k: k, alt: a.label || 'Alternate', altI: i };
       if (!p) out.push(Object.assign({ at: r[0], text: 'Not drawn yet.' }, ab2));
       else lineIssues(p, out, ab2);
     });
@@ -935,23 +949,36 @@ function runCheck() {
     ' (their entrances, pins or shops changed since it ran). Walking distances are fine; only the check is behind. After you Save, ask Claude to refresh it (python build_routes.py).' });
   checked = out;
   if (mark && !out.some(function (f) { return f.k === mark.k && f.place === mark.place && f.alt === mark.alt && f.text.slice(0, 24) === mark.text.slice(0, 24); })) mark = null;
-  var n = {}; out.forEach(function (f) { if (f.k) n[f.k] = 1; });
+  out.forEach(function (f) { f.hidden = !!f.type && isOk(f); });
+  var vis = out.filter(function (f) { return !f.hidden; }), nHid = out.length - vis.length, showOk = $('showOk').checked, n = {};
+  vis.forEach(function (f) { if (f.k) n[f.k] = 1; });
   $('checkSum').innerHTML = '<b>' + keys.length + ' routes' + (nAlts ? ' and ' + nAlts + ' alternate' + (nAlts > 1 ? 's' : '') : '') + ' checked.</b> ' +
-    (out.length ? out.length + ' thing' + (out.length > 1 ? 's' : '') + ' to look at' + (Object.keys(n).length ? ' on ' + Object.keys(n).length + ' route' + (Object.keys(n).length > 1 ? 's' : '') : '') + ':' : 'All look fine.');
+    (vis.length ? vis.length + ' thing' + (vis.length > 1 ? 's' : '') + ' to look at' + (Object.keys(n).length ? ' on ' + Object.keys(n).length + ' route' + (Object.keys(n).length > 1 ? 's' : '') : '') + ':' : 'All look fine.') +
+    (nHid ? ' <span class="muted">(' + nHid + ' marked right' + (showOk ? ', shown faded' : ', hidden') + ')</span>' : '');
   var box = $('checkList'); box.innerHTML = '';
   out.forEach(function (f, i) {
-    var b = document.createElement('button'); b.type = 'button'; b.dataset.find = i;
-    var ab = f.k ? f.k.split('|') : null;
-    b.innerHTML = '<b></b><br><span></span>';
+    if (f.hidden && !showOk) return;
+    var row = document.createElement('div'); row.className = 'find' + (f.hidden ? ' ok' : '');
+    row.innerHTML = '<button type="button" class="open" data-find="' + i + '"><b></b><br><span></span></button>' +
+      (f.type ? '<button type="button" class="okbtn" data-ok="' + i + '" title="' + (f.hidden ? 'List it again' : 'Hide it while the line stays about the same') + '">' + (f.hidden ? 'Not right after all' : 'It\'s right') + '</button>' : '');
+    var b = row.querySelector('.open'), ab = f.k ? f.k.split('|') : null;
     b.querySelector('b').textContent = ab ? label(ab[0]) + ' → ' + label(ab[1]) + (f.alt ? ' · ' + f.alt + ' (alternate)' : '') : f.place ? label(f.place) : f.title;
     b.querySelector('span').textContent = f.text;
     if (mark && mark.text === f.text && mark.k === f.k && mark.alt === f.alt) b.classList.add('on');
-    box.appendChild(b);
+    box.appendChild(row);
   });
   return out;
 }
+$('showOk').onchange = function () { if (checked) { runCheck(); render(); } };
 $('check').onclick = function () { runCheck(); render(); };
 $('checkList').addEventListener('click', function (e) {
+  var okb = e.target.closest('[data-ok]');
+  if (okb && checked) {
+    var g = checked[+okb.dataset.ok], o = okOwner(g, true);
+    if (g.hidden) { delete o.ok[g.type]; if (!Object.keys(o.ok).length) delete o.ok; }
+    else { o.ok = o.ok || {}; o.ok[g.type] = Object.assign({ at: new Date().toISOString().slice(0, 10) }, g.sig); }
+    setDirty(true); runCheck(); render(); return;
+  }
   var b = e.target.closest('[data-find]'); if (!b || !checked) return;
   var f = checked[+b.dataset.find];
   if (drawing) { drawing = null; setMode(null); }
@@ -959,7 +986,7 @@ $('checkList').addEventListener('click', function (e) {
   if (f.k) $('routeSel').value = f.k;
   if (f.place) $('placeSel').value = f.place;
   mark = f;
-  Array.prototype.forEach.call($('checkList').children, function (x) { x.classList.toggle('on', x === b); });
+  Array.prototype.forEach.call($('checkList').querySelectorAll('button.open'), function (x) { x.classList.toggle('on', x === b); });
   refreshInfo(); render(); scrollToPt(f.at);
 });
 function scrollToPt(p) {                       // bring a poster point into view when zoomed in
@@ -998,7 +1025,7 @@ function save() {
           var p = altPts[k] && altPts[k][i];
           return { id: a.id, label: a.label, days: a.days, from: a.from, to: a.to, tip: a.tip || '',
                    points: p || null, metres: altMetres(k, p),
-                   wps: a.wps || [], endFollow: a.endFollow !== false };
+                   wps: a.wps || [], endFollow: a.endFollow !== false, ok: a.ok };
         });
       });
       return o;

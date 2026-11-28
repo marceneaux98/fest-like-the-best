@@ -102,7 +102,7 @@ With the server running, open `tools/poster-routes.html`. For each route:
 - **Alternate routes by day and time**: another way to walk the same pair at certain times, e.g. *Evening · Fri, Sat, Sun · 20:00 to 23:59*, drawn by hand with its own tip. My Day uses it when the walk falls in that window (and its distance for the walking time); the Stage Map lists and draws it.
 
 - **Snap to streets**: for a route drawn by hand with straight hops, keeps the clicks but runs the line along the streets between them.
-- **Check all routes**: lists anything worth a look: lines that leave the drawn streets (fine for a real shortcut), bump out or double back, disagree with the street router's distance, start far from their pin, changed since review, or alternates not drawn yet. Click a finding to open that route with the spot circled; the list updates as you fix things.
+- **Check all routes**: lists anything worth a look: lines that leave the drawn streets (fine for a real shortcut), bump out or double back, disagree with the street router's distance, start far from their pin, changed since review, or alternates not drawn yet. Click a finding to open that route with the spot circled; the list updates as you fix things. When a line leaves the streets or disagrees with the street router on purpose (a walkway or lot the street data doesn't know, like the diagonal path from FrancoSphere to the Pavillon merch booth), click **It's right**: it stays hidden unless that line later changes by more than 10%.
 
 Automatic routes follow the streets' centre lines and are then pulled taut (as straight as the drawn street allows, keeping clear of its edges), so they don't jog at crossings.
 
