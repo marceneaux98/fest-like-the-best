@@ -8,9 +8,11 @@
 //   FIL.store.get(key, fallback)  JSON read from localStorage (never throws)
 //   FIL.store.set(key, value)     JSON write
 //   FIL.store.raw(key) / FIL.store.setRaw(key, value)   plain strings
-//   FIL.stages                    stages in display order: { id, name, color, lat, lng } from locations.json (via routes.js)
+//   FIL.stages                    stages in display order: { id, name, color, ink, lat, lng } from locations.json (via routes.js)
 //   FIL.stageById[id]
 //   FIL.stageColor(id)            colour for a stage id (falls back to brand purple)
+//   FIL.stageInk(id)              the same colour, darkened only as much as needed for white text to pass
+//                                 WCAG AA (4.5:1): use it for fills that carry text (time bars, picked sets)
 //   FIL.walk(a, b)                { meters, seconds } walking between two stages or a stage and a shop, or null:
 //                                 measured along the route drawn on the festival map (assets/poster-routes.json
 //                                 "metres", set by the route editor), else the street router's figure (routes.js).
@@ -47,12 +49,30 @@
     setRaw: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   };
 
+  // Poster colours like Fais Do Do orange are too light for small white text, so each stage also gets
+  // an "ink" shade: the same hue, darkened step by step until white on it reaches 4.6:1.
+  function inkOf(hex) {
+    var m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return FALLBACK;
+    var rgb = [0, 2, 4].map(function (i) { return parseInt(m[1].substr(i, 2), 16); });
+    function lum(c) {
+      var l = c.map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+      return 0.2126 * l[0] + 0.7152 * l[1] + 0.0722 * l[2];
+    }
+    for (var k = 0; k <= 50; k++) {
+      var d = rgb.map(function (v) { return Math.round(v * (1 - k / 50)); });
+      if (1.05 / (lum(d) + 0.05) >= 4.6) return '#' + d.map(function (v) { return (v < 16 ? '0' : '') + v.toString(16); }).join('');
+    }
+    return '#000000';
+  }
   var stages = (R && R.locations ? R.locations : []).map(function (l) {
-    return { id: l.id, name: l.name, color: l.color || FALLBACK, lat: l.lat, lng: l.lng };
+    var color = l.color || FALLBACK;
+    return { id: l.id, name: l.name, color: color, ink: inkOf(color), lat: l.lat, lng: l.lng };
   });
   var stageById = {};
   stages.forEach(function (s) { stageById[s.id] = s; });
   function stageColor(id) { return stageById[id] ? stageById[id].color : FALLBACK; }
+  function stageInk(id) { return stageById[id] ? stageById[id].ink : FALLBACK; }
 
   // ---------- walking distances ----------
   var PACE = (function () {                     // metres per second, from the street router's own figures
@@ -241,6 +261,6 @@
     return s && typeof s === 'object' ? s : shopsFromMerch(store.get('fil-merch', {}));
   }
 
-  window.FIL = { esc: esc, toMin: toMin, store: store, stages: stages, stageById: stageById, stageColor: stageColor, walk: walk,
+  window.FIL = { esc: esc, toMin: toMin, store: store, stages: stages, stageById: stageById, stageColor: stageColor, stageInk: stageInk, walk: walk,
                  ready: ready, stamp: stamp, timeRange: timeRange, plan: { encode: encodePlan, decode: decodePlan, loadShops: loadShops, shopsFromMerch: shopsFromMerch } };
 })();
