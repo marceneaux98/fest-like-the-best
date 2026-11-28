@@ -354,6 +354,7 @@
   <section class="board">
     <div class="legend" id="legend"></div>
     <div id="view"></div>
+    <nav class="day-nav" id="dayNav" data-i18n-aria="day_nav_aria" aria-label="Other days"></nav>
   </section>
   <aside class="panel" aria-live="polite">
     <h2 id="panelTitle">&nbsp;</h2>
@@ -411,13 +412,15 @@ FIL.ready(function () {
 
   // ---------- state (remembered in this browser) ----------
   var picks = new Set(load('fil-picks', []).filter(function (id) { return byId[id]; }));
+  var urlDay = new URLSearchParams(location.search).get('day');   // lineup.html?day=2026-04-25 (My Day links here)
   var state = {
-    day: load('fil-day', S.days[0].date),
+    day: urlDay || load('fil-day', S.days[0].date),
     view: load('fil-view', window.innerWidth < 760 ? 'list' : 'grid'),
     q: '',
     only: false
   };
   if (!S.days.some(function (d) { return d.date === state.day; })) state.day = S.days[0].date;
+  if (urlDay === state.day) save('fil-day', urlDay);
 
   // ---------- helpers ----------
   function fmt(m) { return I18N.time(m, true); }
@@ -670,6 +673,7 @@ FIL.ready(function () {
     renderLegend(dayPerfs);
     if (state.view === 'grid') renderGrid(dayPerfs); else renderList(dayPerfs);
     renderPanel();
+    renderDayNav();
     document.getElementById('viewGrid').setAttribute('aria-pressed', state.view === 'grid');
     document.getElementById('viewList').setAttribute('aria-pressed', state.view === 'list');
 
@@ -686,6 +690,24 @@ FIL.ready(function () {
     lastKey = key;
     FIL.artist.refresh();
   }
+
+  // Under the day's schedule: the previous and next festival day; after the last day, My Day.
+  function renderDayNav() {
+    var i = -1; S.days.forEach(function (d, j) { if (d.date === state.day) i = j; });
+    var prev = S.days[i - 1], next = S.days[i + 1];
+    document.getElementById('dayNav').innerHTML =
+      (prev ? '<button type="button" class="day-prev" data-goday="' + prev.date + '">' + esc(T('day_prev', { weekday: I18N.weekday(prev.date) })) + '</button>' : '') +
+      (next ? '<button type="button" class="day-next" data-goday="' + next.date + '">' + esc(T('day_next', { weekday: I18N.weekday(next.date) })) + '</button>'
+            : picks.size ? '<a class="day-next" href="itinerary.html">' + esc(T('lu_go_myday')) + '</a>' : '');
+  }
+  document.getElementById('dayNav').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-goday]'); if (!b) return;
+    state.day = b.dataset.goday; save('fil-day', state.day); render();
+    // Start the new day from the top, with its tab in view and focused
+    window.scrollTo(0, 0);
+    var tab = document.querySelector('#days [aria-selected="true"]');
+    if (tab) { tab.scrollIntoView({ block: 'nearest', inline: 'nearest' }); tab.focus({ preventScroll: true }); }
+  });
 
   // ---------- events ----------
   document.getElementById('days').addEventListener('click', function (e) {
