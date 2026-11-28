@@ -48,7 +48,7 @@ An artist without a photo or bio still looks fine (a coloured banner with their 
 | An artist's photo, bio or links | The Artist board in Monday (photo: *Preferred Photo* column) | the "Sync schedule" workflow (resizing photos locally needs `python -m pip install pillow`) |
 | Which boards/columns the feed reads, and when an edition may go public | `feed.config.json` | — |
 | The schedule, from a spreadsheet instead (fallback) | Replace `assets/schedule.xlsx` (same columns) | `python build_schedule.py` → writes `data/schedule.json` |
-| Stage pins, names, colours, display order, merch booths | `locations.json` (list order = stage order everywhere) | `python build_routes.py` → fetches walking routes, writes `routes.js` |
+| Stage pins, names, colours, display order, merch booths | `locations.json` (list order = stage order everywhere) | `python build_routes.py` → asks the street router for every walk, writes `routes.js` (a check on the map distances) |
 | Stage pin positions on the map | `overlay.js` → `stages` (fractions of the poster page); optional `entrances` (where a stage meets the street) | with the server running open `tools/poster-routes.html`, check the routes, click Save (writes `assets/poster-routes.json`) |
 | The site map itself (new year's design) | Save the designer's **vector** PDF as `assets/sitemap-vector.pdf`; with the server running open `tools/pdf2svg.html?save=1` (writes `assets/sitemap-raw.svg`) | `python build_sitemap.py` → writes the layered `assets/sitemap.svg`; check layers in `tools/svgview.html?tint=1`; then re-place pins in `overlay.js` and re-save routes with `tools/poster-routes.html` |
 | Colours, fonts, logo bar | `brand.css` | — |
@@ -92,6 +92,23 @@ The test code lives in `tests/` (Playwright needs Node, but only on GitHub; the 
 - Futura, Ando and Thirsty Script are licensed fonts; free look-alikes (Jost, Saira Condensed, Yellowtail) load unless the real fonts are installed or web-licensed.
 - Walking routes use OpenStreetMap streets and don't know about festival fencing or closed gates.
 - Picks are saved in each browser (localStorage), so they don't move between devices.
+
+## Reviewing routes (route editor)
+
+With the server running, open `tools/poster-routes.html`. For each route:
+
+- **Reviewed ✓**: tick it once the route is how people should really walk. The count shows progress ("8 of 21 stage routes reviewed"). If a reviewed route later changes shape by more than 10% (for example after the 2027 map is swapped in), it is marked ⚠ so only those need a second look.
+- **Tip for this walk**: a short note ("Cut through the Chase Bank lot"). Ticked *Show this tip to patrons*, it appears on that walk in My Day and on the Stage Map.
+- **Alternate routes by day and time**: another way to walk the same pair at certain times, e.g. *Evening · Fri, Sat, Sun · 20:00 to 23:59*, drawn by hand with its own tip. My Day uses it when the walk falls in that window (and its distance for the walking time); the Stage Map lists and draws it.
+
+- **Snap to streets**: for a route drawn by hand with straight hops, keeps the clicks but runs the line along the streets between them.
+- **Check all routes**: lists anything worth a look: lines that leave the drawn streets (fine for a real shortcut), bump out or double back, disagree with the street router's distance, start far from their pin, changed since review, or alternates not drawn yet. Click a finding to open that route with the spot circled; the list updates as you fix things. When a line leaves the streets or disagrees with the street router on purpose (a walkway or lot the street data doesn't know, like the diagonal path from FrancoSphere to the Pavillon merch booth), click **It's right**: it stays hidden unless that line later changes by more than 10%.
+
+Automatic routes follow the streets' centre lines and are then pulled taut (as straight as the drawn street allows, keeping clear of its edges), so they don't jog at crossings.
+
+**Walking distances** (and so walking times in My Day, the Stage Map and print) are measured along each drawn line, including the dotted hops from the pins, on the map fitted to real streets. The editor lines the poster's streets up with OpenStreetMap's (`tools/osm-streets.json`) and saves that fit with the routes, so new entrances, shortcuts, shops and alternates all change the distances as soon as you Save. As a check, `python build_routes.py` asks the OpenStreetMap street router for the same walks between the same entrances (writes `routes.js`); *Check all routes* flags big differences, and says when that check is out of date. Run it after saving routes, before publishing. For a new year's map: place the pins, then *Fit the map to real streets again* (and `python tools/fetch_osm_streets.py` if the festival footprint moves).
+
+Save, then ask Claude to publish. Labels in the route list: ✓ reviewed, ⚠ changed since review, ✎ drawn by hand, ⇄ has alternates.
 
 ## Feedback and sharing
 

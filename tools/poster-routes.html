@@ -18,8 +18,21 @@
   button.primary { background: #542e91; color: #fff; border-color: #542e91; font-weight: 600; }
   #hint { background: #fff7d6; border: 1px solid #f0d36b; border-radius: 6px; padding: 7px 9px; font-size: 13px; line-height: 1.35; }
   #routeInfo, #placeInfo, #status { font-size: 12px; color: #444; white-space: pre-wrap; line-height: 1.4; }
+  .muted { font-size: 12px; color: #666; }
+  .lbl { display: block; font-size: 12px; font-weight: 600; margin: 8px 0 3px; }
+  textarea, input[type=text], input[type=time] { font: inherit; font-size: 13px; padding: 4px 6px; border: 1px solid #bbb; border-radius: 6px; box-sizing: border-box; }
+  textarea, input[type=text] { width: 100%; }
+  .alt-row { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; font-size: 13px; padding: 4px 0; border-bottom: 1px dashed #ddd; }
+  .alt-row button { padding: 2px 7px; font-size: 12px; }
+  #altForm { background: #fff7ef; border: 1px solid #f3c79c; border-radius: 8px; padding: 6px 8px; margin-top: 6px; }
   .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 99px; background: #eee; }
   .tag.manual { background: #ffe9a8; } .tag.auto { background: #e6ddff; }
+  #checkSum { font-size: 12px; margin: 4px 0; line-height: 1.35; }
+  #checkList .find { margin: 3px 0 7px; }
+  #checkList button.open { display: block; width: 100%; text-align: left; font-size: 12px; line-height: 1.35; padding: 4px 7px; background: #fff; border-color: #e2d9f3; }
+  #checkList button.open:hover, #checkList button.open.on { background: #f3eeff; border-color: #542e91; color: #111; }
+  #checkList button.okbtn { font-size: 11px; padding: 1px 8px; margin-top: 2px; }
+  #checkList .find.ok button.open { opacity: .55; }
   #wrap { overflow: auto; position: relative; }
   #stage { position: relative; width: 100%; }
   #stage > svg.map { width: 100%; height: auto; display: block; }
@@ -68,8 +81,39 @@
       <button id="cancel" type="button" disabled>Cancel</button>
     </div>
     <div class="row"><label><input type="checkbox" id="follow" checked> Follow the streets between clicks</label></div>
-    <div class="row"><button id="revert" type="button">Use the automatic route</button></div>
+    <div class="row"><button id="revert" type="button">Use the automatic route</button> <button id="snap" type="button" title="Keep your clicks, but run the line along the streets between them">Snap to streets</button></div>
     <div id="routeInfo"></div>
+    <div class="row" style="margin-top:8px"><label><input type="checkbox" id="reviewed"> <b>Reviewed ✓</b></label> <span id="reviewCount" class="muted"></span></div>
+    <label class="lbl" for="tip">Tip for this walk</label>
+    <textarea id="tip" rows="2" placeholder="e.g. Cut through the Chase Bank lot; Jefferson is packed after 8 PM Fri–Sun"></textarea>
+    <div class="row"><label><input type="checkbox" id="tipPublic" checked> Show this tip to patrons</label></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>3 · Alternate routes by day and time</legend>
+    <div class="muted" style="margin-bottom:4px">A different way to walk this route at certain times, e.g. an evening route that avoids a packed street. My Day uses it when the walk falls in its window.</div>
+    <div id="altList"></div>
+    <div id="altForm" hidden>
+      <label class="lbl" for="altLabel">Name</label>
+      <input type="text" id="altLabel" placeholder="e.g. Evening">
+      <div class="lbl">Days</div>
+      <div class="row" id="altDays"></div>
+      <div class="row">From <input type="time" id="altFrom"> to <input type="time" id="altTo"></div>
+      <label class="lbl" for="altTip">Tip for this version (optional, shown to patrons)</label>
+      <textarea id="altTip" rows="2" placeholder="e.g. Jefferson is packed at night; go round by the Chase lot"></textarea>
+      <div class="row"><button id="altDraw" type="button" class="primary">Save and draw this route</button> <button id="altSaveOnly" type="button">Save without redrawing</button> <button id="altCancel" type="button">Cancel</button></div>
+    </div>
+    <div class="row"><button id="altAdd" type="button">Add an alternate route</button></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>4 · Check routes and distances</legend>
+    <div class="muted">Looks for lines that leave the drawn streets, bump out or double back, disagree with the street router's distance, or start far from their pin. Click a finding to open it on the map.</div>
+    <div class="row"><button id="check" type="button">Check all routes</button> <label><input type="checkbox" id="showOk"> Show ones marked right</label></div>
+    <div id="checkSum"></div>
+    <div id="checkList"></div>
+    <div id="geoInfo" class="muted" style="margin-top:8px"></div>
+    <div class="row"><button id="refit" type="button" title="Only needed after swapping in a new map">Fit the map to real streets again</button></div>
   </fieldset>
 
   <fieldset>
@@ -94,7 +138,8 @@
 //   Every street drawn on assets/sitemap.svg is walkable: the wide light-cyan festival streets and the
 //   thin dark-blue side streets. Side streets count as SIDE_COST times longer, so automatic routes keep
 //   to the festival streets unless a side street is clearly shorter. The streets are thinned to centre
-//   lines, and routes are shortest paths along them.
+//   lines, routes are shortest paths along them, and then each route is pulled taut: as straight as the
+//   drawn street allows while keeping clear of its edges (centre lines jog at crossings; taut lines don't).
 //
 // Places
 //   Stages (from locations.json) and shops: merch booths, Marché des Arts and Marché du Monde. Each has
@@ -105,17 +150,38 @@
 // Routes by hand
 //   Pick a route, "Draw this route", click points along the way, Finish. With "Follow the streets" on,
 //   the line runs along the streets between clicks; off, it goes straight (a shortcut). Hand-drawn
-//   routes are kept when pins or entrances move; the rest re-trace automatically.
+//   routes are kept when pins or entrances move; the rest re-trace automatically. "Snap to streets"
+//   turns a hand-drawn route's straight hops into street-following ones (the clicks stay).
 //
-// Distances: stage-to-stage walking distances come from real streets (routes.js). For shops, which have
-//   no real-street measurement, the distance is estimated from the route on the map, scaled by how map
-//   length compares with real distance across all stage pairs.
+// Check all routes: lists lines that leave the drawn streets, bump out or double back, disagree with the
+//   street router's distance, have no street connection, start far from their pin, changed since review,
+//   or are alternates not drawn yet. Click one to open it, with the spot circled on the map. A line that
+//   leaves the streets or disagrees with the router on purpose (a walkway the street data doesn't know)
+//   can be marked "It's right": it stays hidden while the line keeps within 10% of its length then.
 //
-// Save writes assets/poster-routes.json: pins, shops, entrances, routes, estimated shop distances, and
-// the clicks of hand-drawn routes so they can be edited again.
+// Walking distances (what My Day and the Stage Map use for walking times) are measured along each line,
+//   with the dotted hops from the pins, on the map fitted to real streets: the editor lines the poster's
+//   streets up with OpenStreetMap's (tools/osm-streets.json) and saves the fit as "geo". So entrances,
+//   shortcuts, shops and alternates all count. The street router's figures (routes.js, made by
+//   python build_routes.py between the same entrances) are kept as a check: "Check all routes" flags big
+//   differences, and routes whose entrances moved since the router ran.
+//
+// Review, tips and alternates
+//   Tick "Reviewed" when a route is how people should really walk it; the editor remembers the route's
+//   length then, and marks it ⚠ if it later changes by more than 10% (e.g. after swapping in a new map).
+//   A tip is a short note about the walk; ticked "Show to patrons", My Day shows it on that walk.
+//   An alternate route is another way to walk the same pair at certain days and times (e.g. "Evening,
+//   Fri–Sun from 8 PM"), always drawn by hand; My Day uses it when the walk falls in its window.
+//
+// Save writes assets/poster-routes.json: pins, shops, entrances, routes, walking distances (metres) and the fit (geo),
+// review marks and tips (info), alternates (alts) and the clicks of hand-drawn routes so they can be
+// edited again.
 var OC = window.OVERLAY_CONFIG, W = OC.width, H = OC.height, S = 2;
 var SIDE_STREETS = ['#1c68b8', '#1c67b7', '#1d69b9'], SIDE_COST = 1.6;
 var SIMPLIFY = 1.0, FT_PER_M = 3.28084;
+// Taut routes keep CLEAR poster points from the street's edge, or CLEAR_FRAC of the half-width where the
+// street is narrower than that (thin side streets), so the line stays well inside the drawn street.
+var CLEAR = 3, CLEAR_FRAC = 0.7;
 var NS = 'http://www.w3.org/2000/svg';
 var KIND_NAME = { merch: 'Merch booth', arts: 'Marché des Arts', monde: 'Marché du Monde' };
 var KIND_COLOR = { merch: '#f26631', arts: '#e155a9', monde: '#2bb3a3' };
@@ -132,9 +198,13 @@ function hint(t) { $('hint').textContent = t; }
 
 // ---------- state ----------
 var shops = [];                                // [{ id, kind }]
+var info = {}, alts = {}, altPts = {};       // info: key -> { reviewed, reviewedLen, reviewedAt, tip, tipPublic }; alts: key -> [{ id, label, days, from, to, tip, wps, endFollow }]
 var pins = {}, entHint = {}, manual = {};      // entHint: id -> [[x,y]…] placed by hand; manual: key -> { wps: [{p, follow}], endFollow }
 var entNodes = {}, entrances = {}, routes = {}, auto = {}, metres = {}, near = {};
 var mode = null, drawing = null, dirty = false;
+var mPerPt = 0.63, noLink = {};                // metres per poster point; routes with no street link
+var geo = null, osmStreets = null;             // the map's fit to real streets; OpenStreetMap street lines
+var checked = null, mark = null;               // findings of "Check all routes"; the finding circled on the map
 var over = null, graph = null;
 function asList(e) { return !e ? null : typeof e[0] === 'number' ? [e] : e; }
 function isShop(id) { return stageIds.indexOf(id) < 0; }
@@ -157,9 +227,16 @@ function setDirty(d) { dirty = d; $('save').disabled = !d; }
 window.addEventListener('beforeunload', function (e) { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
 // ---------- load ----------
+// Opened straight from disk (file://), the browser blocks loading the map: say how to open it instead.
+if (location.protocol === 'file:') {
+  hint('This page needs the local server to show the map. In the project folder run: python serve.py ' +
+       '— then open http://localhost:8765/tools/poster-routes.html (Claude can start it for you).');
+  throw new Error('opened from disk');
+}
 Promise.all([
   fetch('../' + OC.svg, { cache: 'no-cache' }).then(function (r) { return r.text(); }),
-  fetch('../' + OC.routes, { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+  fetch('../' + OC.routes, { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+  fetch('osm-streets.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
 ]).then(function (res) {
   var stage = $('stage');
   stage.innerHTML = res[0];
@@ -186,10 +263,24 @@ Promise.all([
   }
   (saved.entranceSet || []).forEach(function (id) { var e = asList(saved.entrances && saved.entrances[id]); if (e) entHint[id] = e; });
   manual = saved.manual || {};
+  info = saved.info || {};
+  alts = {};
+  Object.keys(saved.alts || {}).forEach(function (k) {
+    alts[k] = saved.alts[k].map(function (a) { return { id: a.id, label: a.label, days: a.days || [], from: a.from, to: a.to, tip: a.tip || '', wps: a.wps || [], endFollow: a.endFollow !== false, ok: a.ok }; });
+  });
 
   graph = buildGraph(svg);
+  osmStreets = res[2];
+  geo = saved.geo || (osmStreets ? fitGeo() : null);
   retrace();
   hint('Pick a route and click "Draw this route", or pick a stage or shop to move its pin or add entrances. Clicking a pin on the map selects it.');
+  // Lines traced by an older version of this editor: say so, and let Save keep the new ones.
+  var savedAlt = {}; Object.keys(saved.alts || {}).forEach(function (k) { savedAlt[k] = saved.alts[k].map(function (a) { return a.points || null; }); });
+  if (saved.routes && (JSON.stringify(saved.routes) !== JSON.stringify(routes) || JSON.stringify(savedAlt) !== JSON.stringify(altPts) ||
+                       JSON.stringify(saved.metres || {}) !== JSON.stringify(metres) || !saved.geo !== !geo)) {
+    setDirty(true);
+    $('status').textContent = 'This version of the editor re-traced the lines (smoother, same streets) and measures walking distances along them on the map fitted to real streets. Have a look, then Save to keep them.';
+  }
   window.EDITOR_READY = true;
 }).catch(function (err) { hint('Failed: ' + (err && err.stack || err)); });
 
@@ -210,6 +301,7 @@ function buildGraph(svg) {
   var allPx = paint(function () { return true; });
   var img = new Uint8Array(N), list = [];
   for (var i = 0; i < N; i++) if (allPx[i * 4 + 3] > 127) { img[i] = 1; list.push(i); }
+  var dt = edgeDistance(img, cw, ch);          // before thinning changes img
   // Zhang-Suen thinning
   var changed = true, del = [];
   while (changed) {
@@ -241,7 +333,27 @@ function buildGraph(svg) {
     for (var k = 0; k < 8; k++) { var j = nodeOf[p + nb[k]]; if (j >= 0) out.push(j, step[k] * (cost[i] + cost[j]) / 2); }
     return out;
   });
-  return { n: n, xs: xs, ys: ys, cost: cost, adj: adj };
+  return { n: n, xs: xs, ys: ys, cost: cost, adj: adj, dt: dt, cw: cw };
+}
+// For each street pixel, how far it is to the street's edge (canvas px; 0 = not street). Two-pass chamfer.
+function edgeDistance(img, cw, ch) {
+  var N = cw * ch, dt = new Float32Array(N), D = Math.SQRT2, x, y, q, v;
+  for (q = 0; q < N; q++) dt[q] = img[q] ? 1e9 : 0;
+  for (y = 0; y < ch; y++) for (x = 0; x < cw; x++) {
+    q = y * cw + x; if (!dt[q]) continue;
+    v = x > 0 ? Math.min(dt[q], dt[q - 1] + 1) : 1;
+    if (y > 0) { v = Math.min(v, dt[q - cw] + 1); if (x > 0) v = Math.min(v, dt[q - cw - 1] + D); if (x < cw - 1) v = Math.min(v, dt[q - cw + 1] + D); }
+    else v = 1;
+    dt[q] = v;
+  }
+  for (y = ch - 1; y >= 0; y--) for (x = cw - 1; x >= 0; x--) {
+    q = y * cw + x; if (!dt[q]) continue;
+    v = x < cw - 1 ? Math.min(dt[q], dt[q + 1] + 1) : 1;
+    if (y < ch - 1) { v = Math.min(v, dt[q + cw] + 1); if (x < cw - 1) v = Math.min(v, dt[q + cw + 1] + D); if (x > 0) v = Math.min(v, dt[q + cw - 1] + D); }
+    else v = 1;
+    dt[q] = v;
+  }
+  return dt;
 }
 function nodePt(i) { return [Math.round(graph.xs[i] * 10) / 10, Math.round(graph.ys[i] * 10) / 10]; }
 function nearestNode(pt, mainOnly) {
@@ -284,14 +396,131 @@ function simplify(pts, tol) {
 }
 var treeCache = {};
 function tree(node) { return treeCache[node] || (treeCache[node] = shortest(node)); }
-function along(fromPt, toPt) {
-  var a = nearestNode(fromPt), b = nearestNode(toPt), p = chainTo(tree(a), a, b);
-  return p ? simplify(p, SIMPLIFY) : [fromPt, toPt];
+function along(fromPt, toPt) {                 // centre-line points between the streets nearest two points
+  var a = nearestNode(fromPt), b = nearestNode(toPt);
+  return chainTo(tree(a), a, b);
+}
+function dtAt(x, y) {                          // distance to the street's edge at a poster point (canvas px)
+  var cx = Math.round(x * S), cy = Math.round(y * S);
+  return cx < 0 || cy < 0 || cx >= graph.cw || cy * graph.cw >= graph.dt.length ? 0 : graph.dt[cy * graph.cw + cx];
+}
+function clearLine(a, b, need) {               // the straight line a-b stays at least `need` px inside the streets
+  var n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) * S / 0.7);
+  for (var s = 1; s < n; s++) if (dtAt(a[0] + (b[0] - a[0]) * s / n, a[1] + (b[1] - a[1]) * s / n) < need) return false;
+  return true;
+}
+// Pull a centre-line path taut: from each corner, go straight to the farthest point along the path that can
+// be reached in a straight line without coming closer to the street's edge than the path itself did
+// (up to CLEAR). Removes the jogs centre lines make at crossings and cuts corners the way people walk.
+// It looks up to LOOKAHEAD poster points past a point it can't reach, to skip little spurs (a click
+// slightly off a street's centre makes the path go out to it and back).
+var LOOKAHEAD = 25;
+function taut(pts) {
+  if (!pts || pts.length < 3) return pts;
+  var out = [pts[0]], i = 0, last = pts.length - 1, cap = CLEAR * S;
+  while (i < last) {
+    var best = i + 1, low = Math.min(dtAt(pts[i][0], pts[i][1]), dtAt(pts[best][0], pts[best][1])), miss = 0;
+    for (var m = i + 2; m <= last; m++) {
+      low = Math.min(low, dtAt(pts[m][0], pts[m][1]));
+      if (clearLine(pts[i], pts[m], Math.max(1, Math.min(cap, CLEAR_FRAC * low)))) { best = m; miss = 0; }
+      else if ((miss += Math.hypot(pts[m][0] - pts[m - 1][0], pts[m][1] - pts[m - 1][1])) > LOOKAHEAD) break;
+    }
+    out.push(pts[best]); i = best;
+  }
+  return out;
 }
 function plen(pts) { var L = 0; for (var i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return L; }
 function nearestOf(list, pt) {
   return list.reduce(function (best, e) { return Math.hypot(e[0] - pt[0], e[1] - pt[1]) < Math.hypot(best[0] - pt[0], best[1] - pt[1]) ? e : best; });
 }
+
+// ---------- the map fitted to real streets ----------
+// The poster is drawn roughly to scale. To measure walks in real feet it is fitted to OpenStreetMap's street
+// centre lines (tools/osm-streets.json, from tools/fetch_osm_streets.py): start from the stage pins and the
+// stages' real positions (routes.js), then match real street points to the nearest drawn street and re-fit,
+// tightening the match each round. The fit is affine (scale, rotation, a little skew): geo.m turns poster
+// points into metres east and north of geo.origin [lat, lng].
+var GEO_ORIGIN = [30.2245, -92.0185];
+function llToM(ll, o) { return [(ll[1] - o[1]) * Math.cos(o[0] * Math.PI / 180) * 111320, (ll[0] - o[0]) * 110574]; }
+function geoFwd(m, p) { return [m[0][0] * p[0] + m[0][1] * p[1] + m[0][2], m[1][0] * p[0] + m[1][1] * p[1] + m[1][2]]; }
+function geoInv(m, q) {
+  var a = m[0][0], b = m[0][1], c = m[1][0], d = m[1][1], det = a * d - b * c, x = q[0] - m[0][2], y = q[1] - m[1][2];
+  return [(d * x - b * y) / det, (-c * x + a * y) / det];
+}
+function geoToPoster(ll) { return geoInv(geo.m, llToM(ll, geo.origin)); }
+function geoScale() { var m = geo.m; return Math.sqrt(Math.abs(m[0][0] * m[1][1] - m[0][1] * m[1][0])); }
+function geoLen(pts) {                         // metres along a path of poster points
+  var m = geo.m, L = 0;
+  for (var i = 1; i < pts.length; i++) {
+    var dx = pts[i][0] - pts[i - 1][0], dy = pts[i][1] - pts[i - 1][1];
+    L += Math.hypot(m[0][0] * dx + m[0][1] * dy, m[1][0] * dx + m[1][1] * dy);
+  }
+  return L;
+}
+function affineFit(P, Q) {                     // least-squares affine map taking points P to points Q
+  function solve(col) {
+    var M = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], c, r, j, f, t;
+    P.forEach(function (p, k) { var v = [p[0], p[1], 1]; for (var i = 0; i < 3; i++) { for (var jj = 0; jj < 3; jj++) M[i][jj] += v[i] * v[jj]; M[i][3] += v[i] * Q[k][col]; } });
+    for (c = 0; c < 3; c++) {
+      var piv = c; for (r = c + 1; r < 3; r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
+      t = M[c]; M[c] = M[piv]; M[piv] = t;
+      for (r = 0; r < 3; r++) if (r !== c) { f = M[r][c] / M[c][c]; for (j = c; j < 4; j++) M[r][j] -= f * M[c][j]; }
+    }
+    return [M[0][3] / M[0][0], M[1][3] / M[1][1], M[2][3] / M[2][2]];
+  }
+  return [solve(0), solve(1)];
+}
+function fitGeo() {
+  var o = GEO_ORIGIN, locs = LOC.filter(function (l) { return pins[l.id] && l.lat != null; });
+  var m = affineFit(locs.map(function (l) { return pins[l.id]; }), locs.map(function (l) { return llToM([l.lat, l.lng], o); }));
+  var Q = [];                                  // real street points every ~4 m
+  osmStreets.ways.forEach(function (w) {
+    for (var i = 1; i < w.pts.length; i++) {
+      var a = llToM(w.pts[i - 1], o), b = llToM(w.pts[i], o), n = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / 4));
+      for (var s = 0; s < n; s++) Q.push([a[0] + (b[0] - a[0]) * s / n, a[1] + (b[1] - a[1]) * s / n]);
+    }
+  });
+  var G = 8, cells = {};                       // drawn-street centre-line points, bucketed for quick look-ups
+  for (var i = 0; i < graph.n; i++) { var key = Math.floor(graph.xs[i] / G) + ',' + Math.floor(graph.ys[i] / G); (cells[key] = cells[key] || []).push(i); }
+  function nearest(p, R) {
+    var best = -1, bd = R * R, cx = Math.floor(p[0] / G), cy = Math.floor(p[1] / G), rr = Math.ceil(R / G);
+    for (var x = cx - rr; x <= cx + rr; x++) for (var y = cy - rr; y <= cy + rr; y++) (cells[x + ',' + y] || []).forEach(function (j) {
+      var dx = graph.xs[j] - p[0], dy = graph.ys[j] - p[1], dd = dx * dx + dy * dy; if (dd < bd) { bd = dd; best = j; }
+    });
+    return best;
+  }
+  var P = [], R2 = [];
+  [40, 30, 20, 14, 10, 8, 8].forEach(function (thr) {    // match distance in poster points, tightening
+    var p2 = [], q2 = [];
+    Q.forEach(function (q) {
+      var p = geoInv(m, q); if (p[0] < 0 || p[1] < 0 || p[0] > W || p[1] > H) return;
+      var j = nearest(p, thr); if (j >= 0) { p2.push([graph.xs[j], graph.ys[j]]); q2.push(q); }
+    });
+    if (p2.length >= 20) { m = affineFit(p2, q2); P = p2; R2 = q2; }
+  });
+  var gaps = P.map(function (p, k) { var f = geoFwd(m, p); return Math.hypot(f[0] - R2[k][0], f[1] - R2[k][1]); }).sort(function (a, b) { return a - b; });
+  return { origin: o, m: m.map(function (row) { return row.map(function (v) { return Math.round(v * 1e6) / 1e6; }); }),
+           points: P.length, gap: gaps.length ? Math.round(gaps[gaps.length >> 1] * 10) / 10 : null, fitted: new Date().toISOString().slice(0, 10) };
+}
+function refreshGeoInfo() {
+  $('geoInfo').textContent = geo
+    ? 'Walking distances are measured along each line on the map fitted to real streets (' + geo.fitted + ': ' + geo.points + ' street points, typical gap ' + geo.gap + ' m' +
+      (geo.gap > 8 ? '. ⚠ That gap is large: check the stage pins, then fit again' : '') + ').'
+    : 'The map is not fitted to real streets (tools/osm-streets.json is missing), so stage-to-stage distances come from the street router and shop distances are estimates.';
+  $('refit').disabled = !osmStreets;
+}
+$('refit').onclick = function () {
+  if (!osmStreets) return;
+  confirmClick($('refit'), 'Click again to fit (changes every walking distance)', function () { geo = fitGeo(); setDirty(true); retrace(); });
+};
+function fullPts(k, line) { var ab = k.split('|'); return [pins[ab[0]]].concat(line, [pins[ab[1]]]); }
+function altMetres(k, p) {                     // walking distance of an alternate's line
+  if (!p) return null;
+  if (geo) return Math.round(geoLen(fullPts(k, p)));
+  var base = realMetres(k) || metres[k];
+  return base ? Math.round(base * plen(fullPts(k, p)) / plen(fullPts(k, routes[k]))) : null;
+}
+function ftOf(m) { return Math.round(m * FT_PER_M / 10) * 10; }
 
 // ---------- routes ----------
 function retrace() {
@@ -320,28 +549,48 @@ function retrace() {
   routeKeys().forEach(function (k) {
     var ab = k.split('|'), b = best(ab[0], ab[1]);
     var p = b && isFinite(b.d) ? chainTo(tree(b.ea), b.ea, b.eb) : null;
-    auto[k] = p ? simplify(p, SIMPLIFY) : [entrances[ab[0]][0], entrances[ab[1]][0]];
+    auto[k] = p ? taut(p) : [entrances[ab[0]][0], entrances[ab[1]][0]];
+    if (p) delete noLink[k]; else noLink[k] = true;
     routes[k] = manual[k] ? buildManual(k, manual[k].wps, manual[k].endFollow) : auto[k];
   });
-  // Shop distances: map length (with the hops to the pins) x how map length compares with real distance.
-  function fullLen(k) { var ab = k.split('|'), r = routes[k]; return plen([pins[ab[0]]].concat(r, [pins[ab[1]]])); }
-  var ratios = routeKeys().filter(function (k) { return realMetres(k); }).map(function (k) { return realMetres(k) / fullLen(k); }).sort(function (a, b) { return a - b; });
-  var scale = ratios.length ? ratios[Math.floor(ratios.length / 2)] : 0.63;
+  // Walking distances: each line with the dotted hops from the pins, measured on the map fitted to real
+  // streets. Without a fit, shops get map length x the median ratio of street-router distance to map length.
   metres = {};
-  routeKeys().forEach(function (k) { if (!realMetres(k)) metres[k] = Math.round(fullLen(k) * scale); });
-  refreshSelects(); refreshInfo(); render();
+  if (geo) {
+    mPerPt = geoScale();
+    routeKeys().forEach(function (k) { metres[k] = Math.round(geoLen(fullPts(k, routes[k]))); });
+  } else {
+    var ratios = stageKeys().filter(function (k) { return realMetres(k); }).map(function (k) { return realMetres(k) / plen(fullPts(k, routes[k])); }).sort(function (a, b) { return a - b; });
+    mPerPt = ratios.length ? ratios[Math.floor(ratios.length / 2)] : 0.63;
+    routeKeys().forEach(function (k) { if (!realMetres(k)) metres[k] = Math.round(plen(fullPts(k, routes[k])) * mPerPt); });
+  }
+  altPts = {};
+  Object.keys(alts).forEach(function (k) {
+    if (!routes[k]) { delete alts[k]; return; }              // its shop was removed
+    altPts[k] = alts[k].map(function (a) { return a.wps && a.wps.length ? buildManual(k, a.wps, a.endFollow) : null; });
+  });
+  if (checked) runCheck();                     // keep the findings current while fixing them
+  refreshSelects(); refreshInfo(); refreshGeoInfo(); render();
 }
 function buildManual(k, wps, endFollow) {
   // Starts at the entrance nearest the first click, ends at the other place's entrance nearest the last.
   var ab = k.split('|');
   var start = nearestOf(entrances[ab[0]], wps.length ? wps[0].p : entrances[ab[1]][0]);
   var end = nearestOf(entrances[ab[1]], wps.length ? wps[wps.length - 1].p : start);
-  var out = [start], cur = start;
+  // Clicks in a row that follow the streets make one stretch, pulled taut as a whole; straight hops stay as drawn.
+  var out = [start], cur = start, run = null;
+  function flush() {
+    if (!run) return;
+    var t = taut(run), o = out[out.length - 1];
+    out = out.concat(t[0][0] === o[0] && t[0][1] === o[1] ? t.slice(1) : t);
+    run = null;
+  }
   wps.concat([{ p: end, follow: endFollow }]).forEach(function (w) {
-    var seg = w.follow ? along(cur, w.p) : [cur, w.p];
-    out = out.concat(seg.slice(1));
-    cur = w.follow ? seg[seg.length - 1] : w.p;
+    var seg = w.follow ? along(cur, w.p) : null;
+    if (seg) { run = run ? run.concat(seg.slice(1)) : seg; cur = seg[seg.length - 1]; }
+    else { flush(); out.push(w.p); cur = w.p; }
   });
+  flush();
   return out.map(function (p) { return [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10]; });
 }
 
@@ -358,7 +607,7 @@ function refreshSelects() {
   var r2 = document.createElement('optgroup'); r2.label = 'Stage to shop';
   routeKeys().forEach(function (k) {
     var ab = k.split('|');
-    (isShop(ab[1]) ? r2 : r1).appendChild(new Option((manual[k] ? '✎ ' : '') + label(ab[0]) + ' → ' + label(ab[1]), k));
+    (isShop(ab[1]) ? r2 : r1).appendChild(new Option(routePrefix(k) + label(ab[0]) + ' → ' + label(ab[1]), k));
   });
   rs.appendChild(r1); rs.appendChild(r2);
   if (keepP && places().indexOf(keepP) >= 0) ps.value = keepP;
@@ -370,10 +619,110 @@ function refreshInfo() {
   $('delShop').disabled = !isShop(id);
   var k = $('routeSel').value, r = routes[k] || [], real = realMetres(k);
   if (!k) return;
+  $('revert').disabled = !manual[k];
+  $('snap').disabled = !manual[k] || !hasStraight(manual[k]);
   $('routeInfo').innerHTML = (manual[k] ? '<span class="tag manual">drawn by hand</span>' : '<span class="tag auto">automatic</span>') +
-    '\n' + (real ? 'Real street distance ' + Math.round(real * FT_PER_M) + ' ft (used for walking times).'
-                 : 'Estimated ' + Math.round(metres[k] * FT_PER_M) + ' ft from the map (no real-street measurement for shops).');
+    '\n' + (geo ? 'Walking distance ' + ftOf(metres[k]) + ' ft, measured along this line and the dotted hops (used for walking times).' +
+                   (real ? '\nStreet router, for comparison: ' + ftOf(real) + ' ft.' : '')
+           : real ? 'Street router distance ' + ftOf(real) + ' ft (used for walking times).'
+                  : 'Estimated ' + ftOf(metres[k]) + ' ft from the map.') +
+    (changedSinceReview(k) ? '\n⚠ This route has changed since you reviewed it. Check it and tick Reviewed again.' : '');
+  var inf = info[k] || {};
+  $('reviewed').checked = !!inf.reviewed;
+  $('tip').value = inf.tip || '';
+  $('tipPublic').checked = inf.tipPublic !== false;
+  var sk = stageKeys(), done = sk.filter(function (x) { return info[x] && info[x].reviewed; }).length;
+  $('reviewCount').textContent = done + ' of ' + sk.length + ' stage routes reviewed';
+  renderAltList();
 }
+
+// ---------- review, tips and alternates ----------
+var DAYS = ['wed', 'thu', 'fri', 'sat', 'sun'], DAY_NAME = { wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
+var editingAlt = null;                        // index of the alternate in the form, or 'new'
+function stageKeys() { return routeKeys().filter(function (k) { return !isShop(k.split('|')[1]); }); }
+function changedSinceReview(k) {
+  var i = info[k]; if (!i || !i.reviewed || !i.reviewedLen || !routes[k]) return false;
+  return Math.abs(plen(routes[k]) - i.reviewedLen) / i.reviewedLen > 0.1;
+}
+function routePrefix(k) {
+  var i = info[k] || {};
+  return (changedSinceReview(k) ? '⚠ ' : i.reviewed ? '✓ ' : '') + (manual[k] ? '✎ ' : '') + ((alts[k] || []).length ? '⇄ ' : '');
+}
+function whenText(a) {
+  var d = a.days && a.days.length && a.days.length < DAYS.length ? a.days.map(function (x) { return DAY_NAME[x]; }).join(', ') + ' · ' : 'Every day · ';
+  return d + (a.from || '00:00') + '–' + (a.to || '23:59');
+}
+function renderAltList() {
+  var k = $('routeSel').value, list = alts[k] || [], box = $('altList');
+  box.innerHTML = list.length ? '' : '<div class="muted">No alternate routes for this walk.</div>';
+  list.forEach(function (a, i) {
+    var row = document.createElement('div'); row.className = 'alt-row';
+    row.innerHTML = '<b></b><span class="muted"></span><button type="button" data-alt-edit="' + i + '">Edit</button>' +
+      (hasStraight(a) ? '<button type="button" data-alt-snap="' + i + '" title="Run the line along the streets between your clicks">Snap to streets</button>' : '') +
+      '<button type="button" data-alt-del="' + i + '">Delete</button>';
+    row.querySelector('b').textContent = a.label || 'Alternate';
+    var am = altMetres(k, altPts[k] && altPts[k][i]);
+    row.querySelector('span').textContent = whenText(a) + (a.wps && a.wps.length ? (am ? ' · ' + ftOf(am) + ' ft' : '') : ' · not drawn yet');
+    box.appendChild(row);
+  });
+}
+function openAltForm(i) {
+  var k = $('routeSel').value, a = i === 'new' ? { label: 'Evening', days: ['fri', 'sat', 'sun'], from: '20:00', to: '23:59', tip: '' } : alts[k][i];
+  editingAlt = i;
+  $('altLabel').value = a.label || ''; $('altFrom').value = a.from || '00:00'; $('altTo').value = a.to || '23:59'; $('altTip').value = a.tip || '';
+  $('altDays').innerHTML = DAYS.map(function (d) { return '<label><input type="checkbox" value="' + d + '"' + ((a.days || []).indexOf(d) >= 0 ? ' checked' : '') + '> ' + DAY_NAME[d] + '</label>'; }).join(' ');
+  $('altForm').hidden = false; $('altAdd').hidden = true;
+}
+function closeAltForm() { editingAlt = null; $('altForm').hidden = true; $('altAdd').hidden = false; }
+function saveAltForm() {
+  var k = $('routeSel').value;
+  var a = {
+    label: $('altLabel').value.trim() || 'Alternate',
+    days: Array.prototype.map.call($('altDays').querySelectorAll('input:checked'), function (c) { return c.value; }),
+    from: $('altFrom').value || '00:00', to: $('altTo').value || '23:59', tip: $('altTip').value.trim()
+  };
+  if (!a.days.length) a.days = DAYS.slice();
+  var list = alts[k] = alts[k] || [];
+  if (editingAlt === 'new') { a.id = 'alt' + Date.now().toString(36); a.wps = []; a.endFollow = true; list.push(a); return list.length - 1; }
+  Object.keys(a).forEach(function (f) { list[editingAlt][f] = a[f]; });
+  return editingAlt;
+}
+$('altAdd').onclick = function () { openAltForm('new'); };
+$('altCancel').onclick = closeAltForm;
+$('altSaveOnly').onclick = function () { saveAltForm(); closeAltForm(); setDirty(true); retrace(); };
+$('altDraw').onclick = function () {
+  var i = saveAltForm(); closeAltForm(); setDirty(true);
+  drawing = { key: $('routeSel').value, wps: [], alt: i }; setMode('draw'); refreshSelects(); renderAltList(); render();
+};
+// Two-step confirmation without pop-ups (the Claude Browser pane blocks confirm() boxes): the first click
+// changes the button's text for 4 seconds; a second click within that time does it.
+function confirmClick(btn, text, action) {
+  if (btn.dataset.armed === '1') { disarm(btn); action(); return; }
+  btn.dataset.label = btn.textContent; btn.dataset.armed = '1'; btn.textContent = text;
+  btn._t = setTimeout(function () { disarm(btn); }, 4000);
+}
+function disarm(btn) {
+  if (btn.dataset.armed !== '1') return;
+  clearTimeout(btn._t); btn.dataset.armed = ''; btn.textContent = btn.dataset.label;
+}
+$('altList').addEventListener('click', function (e) {
+  var k = $('routeSel').value, ed = e.target.closest('[data-alt-edit]'), del = e.target.closest('[data-alt-del]'), sn = e.target.closest('[data-alt-snap]');
+  if (ed) openAltForm(+ed.dataset.altEdit);
+  if (sn) { snap(alts[k][+sn.dataset.altSnap]); setDirty(true); retrace(); }
+  if (del) confirmClick(del, 'Click again to delete', function () {
+    alts[k].splice(+del.dataset.altDel, 1); if (!alts[k].length) delete alts[k];
+    setDirty(true); retrace();
+  });
+});
+$('reviewed').onchange = function () {
+  var k = $('routeSel').value, i = info[k] = info[k] || {};
+  i.reviewed = $('reviewed').checked;
+  if (i.reviewed) { i.reviewedLen = Math.round(plen(routes[k]) * 10) / 10; i.reviewedAt = new Date().toISOString().slice(0, 10); }
+  else { delete i.reviewedLen; delete i.reviewedAt; }
+  setDirty(true); refreshSelects(); refreshInfo();
+};
+$('tip').oninput = function () { var k = $('routeSel').value; (info[k] = info[k] || {}).tip = $('tip').value; setDirty(true); };
+$('tipPublic').onchange = function () { var k = $('routeSel').value; (info[k] = info[k] || {}).tipPublic = $('tipPublic').checked; setDirty(true); };
 
 // ---------- drawing ----------
 function el(tag, attrs, parent) { var e = document.createElementNS(NS, tag); for (var a in attrs) e.setAttribute(a, attrs[a]); (parent || over).appendChild(e); return e; }
@@ -394,7 +743,18 @@ function render() {
     el('polyline', { points: pts2(cur), fill: 'none', stroke: '#fff', 'stroke-width': 7, 'stroke-linejoin': 'round' });
     el('polyline', { points: pts2(cur), fill: 'none', stroke: drawing ? '#f26631' : '#542e91', 'stroke-width': 4, 'stroke-linejoin': 'round' });
   }
+  if (!drawing) (altPts[sel] || []).forEach(function (p, i) {
+    if (!p) return;
+    el('polyline', { points: pts2(p), fill: 'none', stroke: '#ff9a3c', 'stroke-width': 3, 'stroke-dasharray': '6 4', 'stroke-linejoin': 'round' });
+    var m = p[Math.floor(p.length / 2)];
+    var t = el('text', { x: m[0] + 4, y: m[1] - 4, fill: '#ffd8b0', 'font-size': 10, 'font-weight': 700, stroke: '#162061', 'stroke-width': 3, 'paint-order': 'stroke' });
+    t.textContent = (alts[sel][i].label || 'Alternate') + ' (alternate)';
+  });
   if (drawing) drawing.wps.forEach(function (w) { el('circle', { cx: w.p[0], cy: w.p[1], r: 3.5, fill: w.follow ? '#f26631' : '#fff', stroke: '#f26631', 'stroke-width': 1.5 }); });
+  if (mark && mark.at && (mark.k ? mark.k === sel : mark.place === pl)) {
+    el('circle', { cx: mark.at[0], cy: mark.at[1], r: 10, fill: 'none', stroke: '#fff', 'stroke-width': 5 });
+    el('circle', { cx: mark.at[0], cy: mark.at[1], r: 10, fill: 'none', stroke: '#e0115f', 'stroke-width': 2.5 });
+  }
   var ab = sel.split('|');
   places().forEach(function (id) {
     var on = id === pl, inRoute = ab.indexOf(id) >= 0, shop = isShop(id);
@@ -429,7 +789,7 @@ function setMode(m) {
   hint(m === 'pin' ? 'Click on the map where the ' + who + ' pin should sit.' :
        m === 'ent' ? 'Click on a street where people walk into ' + who + ' (side streets work too). Add as many as it has; each route uses the closest.' :
        m === 'shop' ? 'Click on the map where the new ' + KIND_NAME[$('shopKind').value] + ' is.' :
-       m === 'draw' ? 'Click points along the way, one at each turn. Untick "Follow the streets" before a click to go straight there (a shortcut). Then Finish.' : IDLE);
+       m === 'draw' ? (drawing && drawing.alt != null ? 'Drawing the alternate "' + (alts[drawing.key][drawing.alt].label || '') + '". ' : '') + 'Click points along the way, one at each turn. Untick "Follow the streets" before a click to go straight there (a shortcut). Then Finish.' : IDLE);
 }
 function evtPt(e) {
   var p = over.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
@@ -455,11 +815,13 @@ $('setPin').onclick = function () { setMode(mode === 'pin' ? null : 'pin'); };
 $('setEnt').onclick = function () { setMode(mode === 'ent' ? null : 'ent'); };
 $('addShop').onclick = function () { setMode(mode === 'shop' ? null : 'shop'); };
 $('delShop').onclick = function () {
-  var id = $('placeSel').value; if (!isShop(id) || !confirm('Remove ' + label(id) + '?')) return;
-  shops = shops.filter(function (s) { return s.id !== id; });
-  delete pins[id]; delete entHint[id];
-  Object.keys(manual).forEach(function (k) { if (k.split('|').indexOf(id) >= 0) delete manual[k]; });
-  $('placeSel').value = stageIds[0]; setDirty(true); retrace();
+  var id = $('placeSel').value; if (!isShop(id)) return;
+  confirmClick($('delShop'), 'Click again to remove ' + label(id), function () {
+    shops = shops.filter(function (s) { return s.id !== id; });
+    delete pins[id]; delete entHint[id];
+    Object.keys(manual).forEach(function (k) { if (k.split('|').indexOf(id) >= 0) delete manual[k]; });
+    $('placeSel').value = stageIds[0]; setDirty(true); retrace();
+  });
 };
 $('autoEnt').onclick = function () { delete entHint[$('placeSel').value]; setDirty(true); retrace(); };
 $('popEnt').onclick = function () {
@@ -467,17 +829,172 @@ $('popEnt').onclick = function () {
   entHint[id].pop(); if (!entHint[id].length) delete entHint[id];
   setDirty(true); retrace();
 };
-$('placeSel').onchange = function () { refreshInfo(); render(); if (mode !== 'draw') setMode(null); };
-$('routeSel').onchange = function () { if (drawing) { drawing = null; setMode(null); } refreshInfo(); render(); };
+$('placeSel').onchange = function () { disarm($('delShop')); refreshInfo(); render(); if (mode !== 'draw') setMode(null); };
+$('routeSel').onchange = function () { if (drawing) { drawing = null; setMode(null); } closeAltForm(); refreshInfo(); render(); };
 $('draw').onclick = function () { drawing = { key: $('routeSel').value, wps: [] }; setMode('draw'); render(); };
 $('undo').onclick = function () { if (drawing) { drawing.wps.pop(); render(); } };
 $('cancel').onclick = function () { drawing = null; setMode(null); render(); };
 $('finish').onclick = function () {
   if (!drawing) return;
-  manual[drawing.key] = { wps: drawing.wps, endFollow: $('follow').checked };
+  if (drawing.alt != null) {
+    var a = alts[drawing.key][drawing.alt];
+    a.wps = drawing.wps; a.endFollow = $('follow').checked;
+  } else manual[drawing.key] = { wps: drawing.wps, endFollow: $('follow').checked };
   drawing = null; setMode(null); setDirty(true); retrace();
 };
 $('revert').onclick = function () { delete manual[$('routeSel').value]; setDirty(true); retrace(); };
+function hasStraight(m) { return m.wps && (m.wps.some(function (w) { return !w.follow; }) || m.endFollow === false); }
+function snap(m) { m.wps.forEach(function (w) { w.follow = true; }); m.endFollow = true; }
+$('snap').onclick = function () { var k = $('routeSel').value; if (!manual[k]) return; snap(manual[k]); setDirty(true); retrace(); };
+
+// ---------- check all routes ----------
+function dist(a, b) { return Math.hypot(b[0] - a[0], b[1] - a[1]); }
+function ft(pt) { return Math.round(pt * mPerPt * FT_PER_M / 10) * 10; }
+function offStreet(pts) {                      // the longest stretch outside the drawn streets (poster pt) and its middle
+  var best = { len: 0, at: null }, run = 0, from = null;
+  for (var i = 1; i < pts.length; i++) {
+    var a = pts[i - 1], b = pts[i], L = dist(a, b), n = Math.max(1, Math.ceil(L / 0.5));
+    for (var s = 0; s < n; s++) {
+      var x = a[0] + (b[0] - a[0]) * (s + 0.5) / n, y = a[1] + (b[1] - a[1]) * (s + 0.5) / n;
+      if (dtAt(x, y) > 0) { run = 0; continue; }
+      if (!run) from = [x, y];
+      run += L / n;
+      if (run > best.len) best = { len: run, at: [(from[0] + x) / 2, (from[1] + y) / 2] };
+    }
+  }
+  return best;
+}
+function bump(pts) {                           // the worst place the line goes out and back where it could run straight
+  var worst = null;
+  for (var i = 0; i < pts.length - 2; i++) {
+    var arc = dist(pts[i], pts[i + 1]);
+    for (var j = i + 2; j < pts.length; j++) {
+      arc += dist(pts[j - 1], pts[j]);
+      if (arc > 150) break;
+      var chord = dist(pts[i], pts[j]), extra = arc - chord;
+      if (extra < 4 || extra < 0.1 * chord || (worst && extra <= worst.extra)) continue;
+      if (!clearLine(pts[i], pts[j], 2)) continue;
+      var far = null, fd = -1;
+      for (var m = i + 1; m < j; m++) {
+        var d = Math.abs((pts[j][1] - pts[i][1]) * pts[m][0] - (pts[j][0] - pts[i][0]) * pts[m][1] + pts[j][0] * pts[i][1] - pts[j][1] * pts[i][0]) / (chord || 1e-9);
+        if (d > fd) { fd = d; far = pts[m]; }
+      }
+      worst = { extra: extra, at: far };
+    }
+  }
+  return worst;
+}
+function doubleBack(pts) {                     // a corner sharper than 150 degrees (the line turns back on itself)
+  for (var i = 1; i < pts.length - 1; i++) {
+    var ax = pts[i][0] - pts[i - 1][0], ay = pts[i][1] - pts[i - 1][1], bx = pts[i + 1][0] - pts[i][0], by = pts[i + 1][1] - pts[i][1];
+    var la = Math.hypot(ax, ay), lb = Math.hypot(bx, by);
+    if (la > 0.5 && lb > 0.5 && (ax * bx + ay * by) / (la * lb) < -0.866) return pts[i];
+  }
+  return null;
+}
+function lineIssues(pts, out, base) {
+  var o = offStreet(pts);
+  if (o.len > 6) out.push(Object.assign({ type: 'off', sig: { len: Math.round(plen(pts)) }, text: 'Leaves the drawn streets for about ' + ft(o.len) + ' ft. Fine if it is a shortcut people really take (a parking lot, a passage); if not, use Snap to streets.', at: o.at }, base));
+  var b = bump(pts);
+  if (b) out.push(Object.assign({ text: 'Bumps out about ' + ft(b.extra) + ' ft where it could run straight. Redraw that bit, or Snap to streets.', at: b.at }, base));
+  var d = doubleBack(pts);
+  if (d) out.push(Object.assign({ text: 'Doubles back on itself here (a click off to the side?).', at: d }, base));
+}
+// The street router's distance for the same walk (routes.js, from python build_routes.py), as a check on the
+// distance measured along the line. 'stale' when the router ran for other entrances (or before the fit).
+function routerCheck(k, line) {
+  var ab = k.split('|'), r = ROUTE_DATA.routes[k], rev = false;
+  if (!r) { r = ROUTE_DATA.routes[ab[1] + '|' + ab[0]]; rev = !!r; }
+  if (!r || !geo) return null;
+  if (!r.ends) return 'stale';
+  var e0 = geoToPoster(r.ends[rev ? 1 : 0]), e1 = geoToPoster(r.ends[rev ? 0 : 1]);
+  if (dist(e0, line[0]) > 8 || dist(e1, line[line.length - 1]) > 8) return 'stale';
+  var mine = geoLen(line), q = mine / r.meters;
+  if (Math.abs(mine - r.meters) < 30 || (q >= 0.75 && q <= 1.33)) return null;
+  return { sig: { len: Math.round(mine), router: r.meters },
+    text: 'From entrance to entrance this line is ' + ftOf(mine) + ' ft; the street router (OpenStreetMap) makes it ' + ftOf(r.meters) + ' ft. ' +
+    (q < 1 ? 'Fine if the line takes a way the street data doesn\'t know (a lot, a passage, a closed-off street): then click It\'s right. Otherwise check it.'
+           : 'There may be a shorter way: check the line goes the way people should walk.') };
+}
+// "It's right": a finding the user confirmed (a real shortcut, a walkway the street data doesn't know) stays
+// hidden while the line keeps within 10% of its length then (and the router's figure, for router checks).
+// Kept on the route's info (or on the alternate) as ok[type] = { len, router, at }.
+function near10(a, b) { return a != null && b != null && Math.abs(a - b) <= 0.1 * Math.max(a, b); }
+function okOwner(f, make) { return f.altI != null ? alts[f.k][f.altI] : make ? (info[f.k] = info[f.k] || {}) : info[f.k]; }
+function isOk(f) {
+  var o = okOwner(f), ok = o && o.ok && o.ok[f.type];
+  return !!ok && near10(ok.len, f.sig.len) && (f.sig.router == null || near10(ok.router, f.sig.router));
+}
+function runCheck() {
+  var out = [], keys = routeKeys(), nAlts = 0, stale = [];
+  places().forEach(function (id) {
+    var closest = entrances[id].reduce(function (m, e) { return Math.min(m, dist(pins[id], e)); }, Infinity);
+    if (closest > 60) out.push({ place: id, at: pins[id], text: 'The pin is about ' + ft(closest) + ' ft from its nearest entrance, so the dotted line from the pin to every route is long. Fine for a big stage ground; otherwise add an entrance nearer the pin, or move the pin.' });
+  });
+  keys.forEach(function (k) {
+    var ab = k.split('|'), r = routes[k], base = { k: k };
+    if (noLink[k] && !manual[k]) out.push({ k: k, at: r[0], text: 'No street connection found, so it is drawn as a straight line. Draw it by hand.' });
+    else lineIssues(r, out, base);
+    var rc = routerCheck(k, r);
+    if (rc === 'stale') stale.push(k); else if (rc) out.push({ k: k, type: 'router', sig: rc.sig, at: r[Math.floor(r.length / 2)], text: rc.text });
+    if (changedSinceReview(k)) out.push({ k: k, at: r[Math.floor(r.length / 2)], text: 'Changed by more than 10% since you reviewed it. Look again and tick Reviewed.' });
+    (alts[k] || []).forEach(function (a, i) {
+      nAlts++;
+      var p = altPts[k] && altPts[k][i], ab2 = { k: k, alt: a.label || 'Alternate', altI: i };
+      if (!p) out.push(Object.assign({ at: r[0], text: 'Not drawn yet.' }, ab2));
+      else lineIssues(p, out, ab2);
+    });
+  });
+  if (stale.length) out.push({ title: 'Street-router check', at: null, text: 'Out of date for ' + stale.length + ' route' + (stale.length > 1 ? 's' : '') +
+    ' (their entrances, pins or shops changed since it ran). Walking distances are fine; only the check is behind. After you Save, ask Claude to refresh it (python build_routes.py).' });
+  checked = out;
+  if (mark && !out.some(function (f) { return f.k === mark.k && f.place === mark.place && f.alt === mark.alt && f.text.slice(0, 24) === mark.text.slice(0, 24); })) mark = null;
+  out.forEach(function (f) { f.hidden = !!f.type && isOk(f); });
+  var vis = out.filter(function (f) { return !f.hidden; }), nHid = out.length - vis.length, showOk = $('showOk').checked, n = {};
+  vis.forEach(function (f) { if (f.k) n[f.k] = 1; });
+  $('checkSum').innerHTML = '<b>' + keys.length + ' routes' + (nAlts ? ' and ' + nAlts + ' alternate' + (nAlts > 1 ? 's' : '') : '') + ' checked.</b> ' +
+    (vis.length ? vis.length + ' thing' + (vis.length > 1 ? 's' : '') + ' to look at' + (Object.keys(n).length ? ' on ' + Object.keys(n).length + ' route' + (Object.keys(n).length > 1 ? 's' : '') : '') + ':' : 'All look fine.') +
+    (nHid ? ' <span class="muted">(' + nHid + ' marked right' + (showOk ? ', shown faded' : ', hidden') + ')</span>' : '');
+  var box = $('checkList'); box.innerHTML = '';
+  out.forEach(function (f, i) {
+    if (f.hidden && !showOk) return;
+    var row = document.createElement('div'); row.className = 'find' + (f.hidden ? ' ok' : '');
+    row.innerHTML = '<button type="button" class="open" data-find="' + i + '"><b></b><br><span></span></button>' +
+      (f.type ? '<button type="button" class="okbtn" data-ok="' + i + '" title="' + (f.hidden ? 'List it again' : 'Hide it while the line stays about the same') + '">' + (f.hidden ? 'Not right after all' : 'It\'s right') + '</button>' : '');
+    var b = row.querySelector('.open'), ab = f.k ? f.k.split('|') : null;
+    b.querySelector('b').textContent = ab ? label(ab[0]) + ' → ' + label(ab[1]) + (f.alt ? ' · ' + f.alt + ' (alternate)' : '') : f.place ? label(f.place) : f.title;
+    b.querySelector('span').textContent = f.text;
+    if (mark && mark.text === f.text && mark.k === f.k && mark.alt === f.alt) b.classList.add('on');
+    box.appendChild(row);
+  });
+  return out;
+}
+$('showOk').onchange = function () { if (checked) { runCheck(); render(); } };
+$('check').onclick = function () { runCheck(); render(); };
+$('checkList').addEventListener('click', function (e) {
+  var okb = e.target.closest('[data-ok]');
+  if (okb && checked) {
+    var g = checked[+okb.dataset.ok], o = okOwner(g, true);
+    if (g.hidden) { delete o.ok[g.type]; if (!Object.keys(o.ok).length) delete o.ok; }
+    else { o.ok = o.ok || {}; o.ok[g.type] = Object.assign({ at: new Date().toISOString().slice(0, 10) }, g.sig); }
+    setDirty(true); runCheck(); render(); return;
+  }
+  var b = e.target.closest('[data-find]'); if (!b || !checked) return;
+  var f = checked[+b.dataset.find];
+  if (drawing) { drawing = null; setMode(null); }
+  closeAltForm();
+  if (f.k) $('routeSel').value = f.k;
+  if (f.place) $('placeSel').value = f.place;
+  mark = f;
+  Array.prototype.forEach.call($('checkList').querySelectorAll('button.open'), function (x) { x.classList.toggle('on', x === b); });
+  refreshInfo(); render(); scrollToPt(f.at);
+});
+function scrollToPt(p) {                       // bring a poster point into view when zoomed in
+  if (!p) return;
+  var wrap = $('wrap'), st = $('stage');
+  wrap.scrollLeft = p[0] / W * st.clientWidth - wrap.clientWidth / 2;
+  wrap.scrollTop = p[1] / H * st.clientHeight - wrap.clientHeight / 2;
+}
 $('follow').onchange = function () { if (drawing) render(); };
 $('showAll').onchange = render;
 $('showNet').onchange = render;
@@ -494,10 +1011,25 @@ function save() {
     built: new Date().toISOString().slice(0, 16).replace('T', ' '), width: W, height: H,
     note: 'Made with tools/poster-routes.html. Points are poster points [x, y] on the ' + W + ' x ' + H + ' page. ' +
           'entrances: id -> list of street points. Routes run between the entrances they use; the app draws a dotted ' +
-          'hop from each pin to the route ends. metres: estimated distances for routes to shops.',
+          'hop from each pin to the route ends. metres: walking distance of each route including those hops, measured ' +
+          'on the map fitted to real streets (geo: poster point -> metres east/north of geo.origin).',
     pins: pins,
     shops: shops.map(function (s) { return { id: s.id, kind: s.kind, near: near[s.id] }; }),
-    entrances: entrances, entranceSet: Object.keys(entHint), routes: routes, metres: metres, manual: manual
+    entrances: entrances, entranceSet: Object.keys(entHint), routes: routes, metres: metres, geo: geo, manual: manual,
+    info: (function () { var o = {}; Object.keys(info).forEach(function (k) { if (routes[k]) o[k] = info[k]; }); return o; })(),
+    alts: (function () {
+      // points: the drawn path; metres: its walking distance, measured the same way as the main route's
+      var o = {};
+      Object.keys(alts).forEach(function (k) {
+        o[k] = alts[k].map(function (a, i) {
+          var p = altPts[k] && altPts[k][i];
+          return { id: a.id, label: a.label, days: a.days, from: a.from, to: a.to, tip: a.tip || '',
+                   points: p || null, metres: altMetres(k, p),
+                   wps: a.wps || [], endFollow: a.endFollow !== false, ok: a.ok };
+        });
+      });
+      return o;
+    })()
   };
   $('status').textContent = 'Saving…';
   return fetch('/__save/poster-routes.json', { method: 'POST', headers: { 'X-FLTB-Save': '1', 'Content-Type': 'application/json' }, body: JSON.stringify(out) })
