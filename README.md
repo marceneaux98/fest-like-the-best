@@ -54,6 +54,16 @@ An artist without a photo or bio still looks fine (a coloured banner with their 
 | Colours, fonts, logo bar | `brand.css` | — |
 | Interface wording / translations | `i18n.js` (one dictionary per language; missing keys fall back to English) | — |
 
+## Offline and home screen
+
+After a patron opens the site once with signal, the whole site is kept on their phone (about 0.6 MB compressed), so it still opens on the festival grounds with no signal. `sw.js` (a "service worker") does this; `common.js` switches it on for every page.
+
+- **Schedule and map data** are fetched fresh whenever there is signal. If no answer comes within about 3.5 seconds, the copy saved on the phone is shown, with a strip at the top: *No signal: showing the schedule saved on this phone (time)*.
+- **Everything else** (pages, scripts, the map, fonts, artist photos once seen) opens from the saved copy straight away and is refreshed in the background, so after a deploy patrons get the new version on their next visit.
+- **Add to home screen:** `manifest.json` and the icons in `assets/icons/` give it an app icon ("Fest Best") that opens full screen.
+- **On this computer it is off** (`localhost`), so edits show at once. To test it, open a page with `?sw=1` (stays on in that browser); `?sw=0` switches it off and clears the saved copies. Stop `serve.py` to see the "no signal" behaviour.
+- **Adding a file every page needs:** add it to `CORE` in `sw.js` and raise `VERSION`. The static check fails if a listed file is missing. Changing an existing file needs nothing.
+
 ## Checks
 
 Every push to `main` and every pull request runs three automatic checks on GitHub (nothing to install; they run on GitHub's computers). See them at **GitHub → Actions → "Checks"**: green tick = all good, red cross = open the run, and the **Summary** page says what failed in plain words. Dependabot also opens a pull request about once a week when one of the GitHub Actions the workflows use has a newer version; the checks run on that pull request too, so it is safe to merge when green.
@@ -74,6 +84,7 @@ The test code lives in `tests/` (Playwright needs Node, but only on GitHub; the 
 - `site-overlay.js` + `overlay.js`: the map, which is the festival poster (`assets/sitemap.svg`) shown upright with pan/zoom, stage pins, routes along its drawn streets (`assets/poster-routes.json`) and layer toggles (streets, areas, icons & vendors, labels, legend, logo)
 - `tools/poster-routes.html`: traces stage-to-stage routes along the streets drawn on the poster and saves them
 - `build_sitemap.py`, `tools/pdf2svg.html`, `tools/svgview.html`: turn the designer's vector PDF into the layered SVG and check the result
+- `sw.js` + `manifest.json` + `assets/icons/`: offline support and the home-screen app (see *Offline and home screen*)
 - `serve.py`: local server that always serves fresh files (no stale cache after a rebuild)
 - `build_feed.py` + `feed.config.json`: the Monday.com feed (allowlisted columns, validation, publish gate, artist photos); `.github/workflows/sync-schedule.yml` runs it on demand
 - `artist.js`: the "About this artist" sheet shared by Lineup and My day (its styles are at the end of `brand.css`)

@@ -25,6 +25,8 @@
 //   FIL.plan.encode(edition, { picks, modes, merch, by }) / FIL.plan.decode(location.hash)
 //                                 a whole plan in a share link (see "share links" below)
 //
+// It also registers sw.js (offline support) on the public site; see "offline support" below.
+//
 // The brand bar (logo, product name, page links) is built here from a placeholder:
 //   <div class="brand-bar" data-page="lineup"></div>
 // so the three pages share one copy. i18n.js fills in the link text and adds the language menu.
@@ -128,6 +130,9 @@
     if (!loading) {
       var schedule = fetch(DATA_URL, { cache: 'no-cache' }).then(function (r) {
         if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+        // No signal: sw.js answered with the copy saved on this phone (and when it was saved).
+        var saved = r.headers.get('X-FIL-Saved');
+        if (saved !== null) showSaved(saved);
         return r.json();
       }).then(function (d) { window.SCHEDULE_DATA = d; }, function (err) {
         window.SCHEDULE_DATA = null;
@@ -142,6 +147,45 @@
     }
     loading.then(fn);
   }
+  // A strip at the top of the brand bar (the preview strip's place) saying the schedule is the saved copy.
+  function showSaved(when) {
+    var d = when ? new Date(when) : null;
+    var txt = d && !isNaN(d) ? I18N.t('offline_saved', { when: stamp(d.toISOString()) }) : I18N.t('offline_saved_nodate');
+    document.querySelectorAll('.brand-bar').forEach(function (bar) {
+      var note = bar.querySelector('.preview-note');
+      if (!note) { note = document.createElement('p'); bar.insertBefore(note, bar.firstChild); }
+      note.className = 'preview-note offline-note';
+      note.setAttribute('role', 'status');
+      note.textContent = txt;
+    });
+  }
+
+  // ---------- offline support (sw.js) ----------
+  // On the public site every page registers sw.js, which keeps the site on the phone for use without
+  // signal. On this computer (localhost) it stays off so edits show at once; ?sw=1 switches it on for
+  // testing in that browser, ?sw=0 off again (and clears the saved copies).
+  (function () {
+    if (!('serviceWorker' in navigator) || /\/tools\//.test(location.pathname)) return;
+    var local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+    var flag = /[?&]sw=([01])\b/.exec(location.search);
+    if (flag) store.setRaw('fil-sw', flag[1]);
+    if (local && store.raw('fil-sw') !== '1') {
+      navigator.serviceWorker.getRegistrations().then(function (regs) { regs.forEach(function (r) { r.unregister(); }); });
+      if (window.caches) caches.keys().then(function (ks) { ks.forEach(function (k) { if (k.indexOf('fil-') === 0) caches.delete(k); }); });
+      return;
+    }
+    var src = document.currentScript && document.currentScript.src;
+    var url = src ? new URL('sw.js', src).href : 'sw.js';
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register(url).then(function () { return navigator.serviceWorker.ready; }).then(function (reg) {
+        // Files this page loaded before the worker was running (fonts, the map library, photos): save them too.
+        var urls = performance.getEntriesByType('resource').map(function (e) { return e.name; });
+        urls.push(location.href.split(/[?#]/)[0]);
+        if (reg.active) reg.active.postMessage({ type: 'save', urls: urls });
+      }).catch(function () {});
+    });
+  })();
+
   var stampFmt = null;
   function stamp(iso) {
     if (!iso) return '';
