@@ -164,13 +164,7 @@ FIL.ready(function () {
   var crowd = document.getElementById('crowd'), crowdVal = document.getElementById('crowdVal');
   var resultEl = document.getElementById('result');
 
-  function getRoute(a, b) {
-    var r = D.routes[a + '|' + b];
-    if (r) return r;
-    r = D.routes[b + '|' + a];
-    if (r) return { meters: r.meters, seconds: r.seconds };
-    return null;
-  }
+  function getRoute(a, b) { return FIL.walk(a, b); }  // measured along the route drawn on the map (common.js)
   var T = I18N.t;
   function mins(sec) { return sec * parseFloat(crowd.value) / 60; }
   var nf1 = new Intl.NumberFormat(I18N.locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
