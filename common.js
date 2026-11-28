@@ -20,8 +20,11 @@
 //                                 window.POSTER_ROUTES, then calls fn(). Pages wrap their code in this.
 //   FIL.stamp(iso)                "Nov 16, 7:37 PM" in the current language, for "schedule updated" lines
 //   FIL.timeRange(s, e)           "4–5:15 PM" from minutes since midnight (English drops the first AM/PM when both match)
-//   FIL.plan.encode(edition, { picks, modes, merch, by }) / FIL.plan.decode(location.hash)
+//   FIL.plan.encode(edition, { picks, modes, shops, by }) / FIL.plan.decode(location.hash)
 //                                 a whole plan in a share link (see "share links" below)
+//   FIL.plan.loadShops()          the patron's shopping stops, once each over the festival:
+//                                 { merch|arts|monde: 'none' | { date, slot, booth } } (localStorage fil-shops;
+//                                 older saves kept one stop per day in fil-merch and are carried over)
 //
 // The brand bar (logo, product name, page links) is built here from a placeholder:
 //   <div class="brand-bar" data-page="lineup"></div>
@@ -143,8 +146,9 @@
   //   e  edition (year); set ids are '<year>-<MM>-<DD>-<stage>-<HHMM>', so only MMDD+stage+HHMM is kept
   //   p  picks, '.'-separated
   //   o  overlap choices: pick index ~ pick index ~ e (leave early) | h (split) | s (stay to the end)
-  //   m  shopping stop per day: MMDD~n (no thanks) | MMDD~b|a~shop (before first / after last set)
-  //      | MMDD~i_j~shop (between picks i and j)
+  //   s  shopping stops, once each over the festival: kind~n (no thanks) | kind~MMDD~b|a~shop (before
+  //      first / after last set that day) | kind~MMDD~i_j~shop (between picks i and j). kind: merch, arts, monde
+  //   m  (older links) one shopping stop per day: MMDD~n | MMDD~b|a~shop | MMDD~i_j~shop
   //   by optional first name, shown to whoever opens the link
   // Only unreserved URL characters are used, so mail and chat apps keep the link in one piece.
   var MODE_CODE = { early: 'e', split: 'h', end: 's' }, CODE_MODE = { e: 'early', h: 'split', s: 'end' };
@@ -160,23 +164,24 @@
       if (idx[ab[0]] != null && idx[ab[1]] != null && MODE_CODE[plan.modes[k]]) o.push(idx[ab[0]] + '~' + idx[ab[1]] + '~' + MODE_CODE[plan.modes[k]]);
     });
     var days = {}; ids.forEach(function (id) { days[id.slice(0, 10)] = 1; });
-    var m = [];
-    Object.keys(plan.merch || {}).forEach(function (date) {
-      var c = plan.merch[date];
-      if (!days[date] || !c) return;
-      if (c === 'none') { m.push(mmdd(date) + '~n'); return; }
+    var s = [];
+    Object.keys(plan.shops || {}).forEach(function (kind) {
+      var c = plan.shops[kind];
+      if (!/^[a-z]+$/.test(kind) || !c) return;
+      if (c === 'none') { s.push(kind + '~n'); return; }
+      if (!days[c.date]) return;
       var slot = SLOT_CODE[c.slot];
       if (!slot) { var ab = c.slot.split('>'); if (idx[ab[0]] == null || idx[ab[1]] == null) return; slot = idx[ab[0]] + '_' + idx[ab[1]]; }
-      m.push(mmdd(date) + '~' + slot + '~' + c.booth);
+      s.push(kind + '~' + mmdd(c.date) + '~' + slot + '~' + c.booth);
     });
     var h = 'e=' + edition + '&p=' + p.join('.');
     if (o.length) h += '&o=' + o.join('.');
-    if (m.length) h += '&m=' + m.join('.');
+    if (s.length) h += '&s=' + s.join('.');
     var by = (plan.by || '').trim().slice(0, 30);
     if (by) h += '&by=' + encodeURIComponent(by);
     return h;
   }
-  // -> null if the text isn't a plan link, else { edition, picks, modes, merch, by }
+  // -> null if the text isn't a plan link, else { edition, picks, modes, shops, by }
   function decodePlan(hash) {
     var q = {};
     String(hash || '').replace(/^#/, '').split('&').forEach(function (kv) {
@@ -204,11 +209,38 @@
       if (!slot) { var ij = a[1].split('_'); if (!picks[ij[0]] || !picks[ij[1]]) return; slot = picks[ij[0]] + '>' + picks[ij[1]]; }
       merch[date] = { slot: slot, booth: a[2] };
     });
+    var shops = {};
+    (q.s || '').split('.').forEach(function (t) {
+      var a = t.split('~');
+      if (!/^[a-z]+$/.test(a[0] || '')) return;
+      if (a.length === 2 && a[1] === 'n') { shops[a[0]] = 'none'; return; }
+      if (a.length !== 4 || !/^\d{4}$/.test(a[1]) || !a[3]) return;
+      var slot = CODE_SLOT[a[2]];
+      if (!slot) { var ij = a[2].split('_'); if (!picks[ij[0]] || !picks[ij[1]]) return; slot = picks[ij[0]] + '>' + picks[ij[1]]; }
+      shops[a[0]] = { date: e + '-' + a[1].slice(0, 2) + '-' + a[1].slice(2), slot: slot, booth: a[3] };
+    });
+    if (q.s == null) shops = shopsFromMerch(merch);
     var by = '';
     try { by = decodeURIComponent(q.by || '').trim().slice(0, 30); } catch (err) {}
-    return { edition: e, picks: picks, modes: modes, merch: merch, by: by };
+    return { edition: e, picks: picks, modes: modes, shops: shops, by: by };
+  }
+  // Older saves and links kept one shopping stop per day ({ date: 'none' | { slot, booth } }); now each kind
+  // of shop is planned once over the festival. The kind is the start of the shop's id (merch-1, arts-2…).
+  function shopsFromMerch(merch) {
+    var out = {};
+    Object.keys(merch || {}).sort().forEach(function (date) {
+      var c = merch[date];
+      if (!c || c === 'none' || !c.booth) return;
+      var kind = String(c.booth).split('-')[0];
+      if (!out[kind]) out[kind] = { date: date, slot: c.slot, booth: c.booth };
+    });
+    return out;
+  }
+  function loadShops() {
+    var s = store.get('fil-shops', null);
+    return s && typeof s === 'object' ? s : shopsFromMerch(store.get('fil-merch', {}));
   }
 
   window.FIL = { esc: esc, toMin: toMin, store: store, stages: stages, stageById: stageById, stageColor: stageColor, walk: walk,
-                 ready: ready, stamp: stamp, timeRange: timeRange, plan: { encode: encodePlan, decode: decodePlan } };
+                 ready: ready, stamp: stamp, timeRange: timeRange, plan: { encode: encodePlan, decode: decodePlan, loadShops: loadShops, shopsFromMerch: shopsFromMerch } };
 })();

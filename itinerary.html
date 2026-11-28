@@ -158,6 +158,20 @@
   .mopt span { color: var(--muted); }
   .merch-line { color: var(--orange); font-weight: 700; margin-top: 6px; display: flex; gap: 6px; align-items: center; }
   .merch-sub { color: var(--muted); margin-top: 4px; }
+  /* shopping checklist: one card per kind of shop, each planned once over the festival */
+  .shops-head { display: flex; align-items: center; justify-content: space-between; gap: 4px 10px; flex-wrap: wrap; }
+  .shops-count { font-size: .8rem; font-weight: 700; color: var(--muted); }
+  .shops-count.done { color: #1f7a45; }          /* --ok darkened to pass AA (5.3:1 on white) for small text */
+  .shops .shops-intro { margin: 2px 0 0; font-size: .8rem; color: var(--muted); }
+  .shop-card { --kind: #f26631; border: 1px solid var(--line); border-left: 4px solid var(--kind); border-radius: 10px; padding: 9px 11px; margin-top: 9px; }
+  .shop-card.arts { --kind: #c2187a; }
+  .shop-card.monde { --kind: #11867a; }
+  .shop-card.other, .shop-card.skipped { background: var(--bg); }
+  .shop-head { display: flex; align-items: baseline; justify-content: space-between; gap: 2px 8px; flex-wrap: wrap; }
+  .shop-head h4 { margin: 0; font-size: .92rem; }
+  .shop-head .badge { font-size: .76rem; font-weight: 700; color: var(--muted); }
+  .shop-card.today .badge, .shop-card.other .badge { color: #1f7a45; }
+  .merch .shop-card p { margin: 4px 0 8px; font-size: .85rem; }
   .stop.merchstop { --stage: var(--orange); border-style: dashed; border-left-style: solid; }
   .stop.merchstop .act { color: var(--orange); }
   .merch-pin {
@@ -316,13 +330,12 @@ FIL.ready(function () {
     : (R.merch_booths || []).filter(function (b) { return locs[b.at]; }).map(function (b) { return { id: b.id, kind: 'merch', at: b.at, near: b.at }; });
   var boothById = {}; booths.forEach(function (b) { boothById[b.id] = b; });
   var KINDS = ['merch', 'arts', 'monde'].filter(function (k) { return booths.some(function (b) { return b.kind === k; }); });
-  var shopKind = loadRaw('fil-shopkind');
-  if (KINDS.indexOf(shopKind) < 0) shopKind = KINDS[0];
-  function kindBooths() { return booths.filter(function (b) { return b.kind === shopKind; }); }
-  // Per day: undefined = show a suggestion, 'none' = patron said no thanks, {slot, booth} = chosen.
+  function boothsOf(kind) { return booths.filter(function (b) { return b.kind === kind; }); }
+  // Shopping stops, each kind once over the whole festival (FIL.plan.loadShops in common.js):
+  // kind -> undefined (not planned yet: My Day suggests a time), 'none' (no thanks) or { date, slot, booth }.
   // slot is 'before', 'after', or the key of the walk between two picks.
-  var merchChoices = loadJSON('fil-merch', {});
-  var showMerchOptions = false;
+  var shopChoices = FIL.plan.loadShops();
+  var openOpts = null;   // the kind of shop whose list of times is open
   var BAG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 8h13l-1 12.5h-11z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg>';
 
   // ---------- share links (see FIL.plan in common.js) ----------
@@ -332,11 +345,11 @@ FIL.ready(function () {
   var own = null;       // your own plan while previewing
   var undo = null;      // your plan before "use"/"add", for Undo
   var sharedMsg = null; // banner above the summary: { kind, ... }
-  function current() { return { picks: Array.from(picks), modes: Object.assign({}, legModes), merch: Object.assign({}, merchChoices) }; }
-  function usePlan(pl) { picks = new Set(pl.picks); legModes = Object.assign({}, pl.modes); merchChoices = Object.assign({}, pl.merch); }
+  function current() { return { picks: Array.from(picks), modes: Object.assign({}, legModes), shops: Object.assign({}, shopChoices) }; }
+  function usePlan(pl) { picks = new Set(pl.picks); legModes = Object.assign({}, pl.modes); shopChoices = Object.assign({}, pl.shops); }
   function savePlan() {
     if (preview) return;
-    saveJSON('fil-picks', Array.from(picks)); saveJSON('fil-legmodes', legModes); saveJSON('fil-merch', merchChoices);
+    saveJSON('fil-picks', Array.from(picks)); saveJSON('fil-legmodes', legModes); saveJSON('fil-shops', shopChoices);
   }
   var incoming = FIL.plan.decode(location.hash);
   if (incoming) {
@@ -345,7 +358,7 @@ FIL.ready(function () {
     if (incoming.edition !== String(S.edition)) sharedMsg = { kind: 'old', year: incoming.edition };
     else {
       var found = incoming.picks.filter(function (id) { return byId[id]; });
-      var shared = { picks: found, modes: incoming.modes, merch: incoming.merch, by: incoming.by, lost: incoming.picks.length - found.length };
+      var shared = { picks: found, modes: incoming.modes, shops: incoming.shops, by: incoming.by, lost: incoming.picks.length - found.length };
       var mine = Array.from(picks).sort().join();
       if (!found.length) sharedMsg = { kind: 'nothing', lost: shared.lost };
       else if (!picks.size || mine === found.slice().sort().join()) {
@@ -396,9 +409,10 @@ FIL.ready(function () {
   // the patron chooses: leave early, split the difference, or stay to the end and arrive late.
   function walkMin(a, b) { return route(a, b).seconds * parseFloat(crowd.value) / 60; }
 
-  // merch: null, or { slot, booth } — a merch stop folded into the plan.
-  function buildPlan(merch) {
+  // shopStops: null, or today's shopping stops [{ kind, slot, booth }] (at most one per slot), folded into the plan.
+  function buildPlan(shopStops) {
     var cf = parseFloat(crowd.value), buf = +buffer.value, shop = +shopSel.value;
+    var bySlot = {}; (shopStops || []).forEach(function (s) { if (boothById[s.booth]) bySlot[s.slot] = boothById[s.booth]; });
     var list = perfs.filter(function (p) { return p.date === day && picks.has(p.id); }).sort(function (a, b) { return a.s - b.s || a.e - b.e; });
     var stops = list.map(function (p) { return { p: p }; }), legs = [];
     if (!stops.length) return { stops: stops, legs: legs };
@@ -413,7 +427,7 @@ FIL.ready(function () {
       var when = { date: day, at: next.p.s - buf };   // the walk happens just before the next set
       var r = route(cur.p.stage, next.p.stage, when);
       var walk = r.seconds * cf / 60, walkOnly = walk, merchInfo = null;
-      var mb = merch && merch.slot === key ? boothById[merch.booth] : null;
+      var mb = bySlot[key] || null;
       if (mb) {
         // Detour: current stage -> booth -> shop -> next stage. Counts as "travel time" for this leg.
         var r1 = route(cur.p.stage, mb.at, when), r2 = route(mb.at, next.p.stage, when);
@@ -452,13 +466,14 @@ FIL.ready(function () {
 
     // Merch before the first set or after the last one.
     var plan = { stops: stops, legs: legs, pre: null, post: null };
-    var b = merch && boothById[merch.booth];
-    if (b && merch.slot === 'before') {
+    var b = bySlot.before;
+    if (b) {
       var first = stops[0].p, rb = route(b.at, first.stage), wb = rb.seconds * cf / 60;
       var shopEnd = first.s - buf - wb;
       plan.pre = { booth: b, start: shopEnd - shop, end: shopEnd, walk: wb, meters: rb.meters, path: rb.path, shape: rb.shape, to: first };
     }
-    if (b && merch.slot === 'after') {
+    b = bySlot.after;
+    if (b) {
       var last = stops[stops.length - 1], ra = route(last.p.stage, b.at), wa = ra.seconds * cf / 60;
       var startShop = last.leave + wa;
       plan.post = { booth: b, start: startShop, end: startShop + shop, walk: wa, meters: ra.meters, path: ra.path, shape: ra.shape, from: last.p };
@@ -469,8 +484,9 @@ FIL.ready(function () {
   // Every sensible merch stop for the day, best booth per slot, in time order.
   // In-between options only count if the detour + shopping fits in the free time without cutting a set.
   var MIN_SPARE = 3; // minutes of slack a break must leave after the merch detour
-  function merchOptions(base) {
-    var shop = +shopSel.value, out = [], booths = kindBooths();
+  // kind: which kind of shop; taken: { slot: true } breaks other shops already use today (one stop per break).
+  function merchOptions(base, kind, taken) {
+    var shop = +shopSel.value, out = [], booths = boothsOf(kind);
     if (!booths.length || !base.stops.length) return out;
     function nearest(fn) { return booths.map(fn).sort(function (a, b) { return a.walk - b.walk; })[0]; }
     var first = base.stops[0].p, last = base.stops[base.stops.length - 1];
@@ -493,7 +509,7 @@ FIL.ready(function () {
     var post = nearest(function (b) { return { booth: b, walk: walkMin(last.p.stage, b.at) }; });
     out.push({ slot: 'after', booth: post.booth.id, start: last.leave + post.walk, slack: null,
                where: T('it_where_after', { act: last.p.act }) });
-    return out;
+    return out.filter(function (o) { return !taken[o.slot]; });
   }
   // Suggestion: the in-between slot with the most spare time; otherwise before the first set.
   function bestMerch(opts) {
@@ -508,12 +524,11 @@ FIL.ready(function () {
   var mapLayer = L.layerGroup().addTo(map), legLines = [];
   var LINE = '#542e91', LINE_HI = '#f26631';
 
-  function drawMap(plan, chosenBooth, keepView) {
+  function drawMap(plan, chosen, keepView) {
     mapLayer.clearLayers(); legLines = [];
-    // Shops of the kind the patron is shopping for (plus the chosen one); the chosen one stays bright.
+    // Every shop; once some are in today's plan, the others fade.
     booths.forEach(function (b) {
-      if (b.kind !== shopKind && b.id !== chosenBooth) return;
-      var cls = (PRS.shops ? 'shop-pin ' + b.kind : 'merch-pin') + (chosenBooth && chosenBooth !== b.id ? ' off' : '');
+      var cls = (PRS.shops ? 'shop-pin ' + b.kind : 'merch-pin') + (chosen.length && chosen.indexOf(b.id) < 0 ? ' off' : '');
       L.marker(sm.pt(b.at), { icon: L.divIcon({ className: '', html: '<span class="' + cls + '">' + esc(T('shop_tag_' + b.kind)) + '</span>', iconSize: null }),
         zIndexOffset: 1500, interactive: false }).addTo(mapLayer);
     });
@@ -665,13 +680,9 @@ FIL.ready(function () {
     }
     document.getElementById('title').textContent = T('it_title_day', { weekday: I18N.weekday(day) });
 
-    // Merch: work out the options from the plan without a merch stop, then fold in the patron's choice.
-    var base = buildPlan(null), opts = merchOptions(base), choice = merchChoices[day];
-    if (choice && choice !== 'none' && !(choice.slot === 'before' || choice.slot === 'after' ||
-        base.legs.some(function (l) { return l.key === choice.slot; })) || (choice && choice.booth && !boothById[choice.booth])) {
-      choice = undefined; // picks changed since this was chosen
-    }
-    var plan = (choice && choice !== 'none') ? buildPlan(choice) : base;
+    // Shopping: the plan without stops gives the free time; then fold in the stops planned for today.
+    var base = buildPlan(null), todayStops = stopsOn(day);
+    var plan = todayStops.length ? buildPlan(todayStops) : base;
 
     var walkMinutes = plan.legs.reduce(function (a, l) { return a + l.walkOnly; }, 0) +
                   (plan.pre ? plan.pre.walk : 0) + (plan.post ? plan.post.walk : 0);
@@ -687,7 +698,7 @@ FIL.ready(function () {
     if (missed) h += '<div class="alert warn">' + esc(TN('it_missed', missed)) + '</div>';
     else if (unresolved) h += '<div class="alert warn">' + esc(TN('it_tight', unresolved)) + '</div>';
     else if (plan.stops.length > 1) h += '<div class="alert ok">' + esc(T('it_all_fits')) + '</div>';
-    h += merchHTML(opts, choice, plan);
+    h += shopsHTML(base, plan, todayStops);
     document.getElementById('summary').innerHTML = h;
 
     var out = '';
@@ -705,8 +716,7 @@ FIL.ready(function () {
         merchStopHTML(plan.post);
     }
     tl.innerHTML = out;
-    var chosen = plan.pre || plan.post || (plan.legs.filter(function (l) { return l.merch; })[0] || {}).merch;
-    drawMap(plan, chosen ? chosen.booth.id : null, sameDay);
+    drawMap(plan, todayStops.map(function (s) { return s.booth; }), sameDay);
   }
 
   function merchStopHTML(m) {
@@ -727,36 +737,105 @@ FIL.ready(function () {
     var b = boothById[id];
     return b.kind === 'merch' ? T('it_booth', { stage: stageName(b.near || b.at) }) : T('shop_the', { name: boothName(b) });
   }
-  function optHTML(o, choice) {
-    var on = choice && choice !== 'none' && choice.slot === o.slot && choice.booth === o.booth;
-    return '<button type="button" class="mopt" data-merch-pick="' + o.slot + '|' + o.booth + '" aria-pressed="' + !!on + '">' +
+  function optHTML(o, kind) {
+    var c = shopChoices[kind], on = c && c !== 'none' && c.date === day && c.slot === o.slot && c.booth === o.booth;
+    return '<button type="button" class="mopt" data-shop-pick="' + kind + '|' + o.slot + '|' + o.booth + '" aria-pressed="' + !!on + '">' +
       '<b>' + esc(fmt(o.start)) + '</b><div>' + esc(boothName(boothById[o.booth])) + '</div>' +
       '<span>' + esc(o.where + (o.slack !== null ? ' · ' + T('it_spare', { n: Math.floor(o.slack) }) : '')) + '</span></button>';
   }
-  function merchHTML(opts, choice, plan) {
-    if (!booths.length) return '';
-    var h = '<div class="merch"><h3>' + BAG + esc(T(KINDS.length > 1 ? 'shop_title' : 'it_merch_title')) + '</h3>';
-    if (KINDS.length > 1) h += '<div class="kinds" role="group" aria-label="' + esc(T('shop_pick')) + '"><span>' + esc(T('shop_pick')) + '</span>' +
-      KINDS.map(function (k) { return '<button type="button" class="kind" data-shopkind="' + k + '" aria-pressed="' + (k === shopKind) + '">' + esc(T('shop_kind_' + k)) + '</button>'; }).join('') + '</div>';
-    if (!opts.length) return h + '</div>';
-    if (choice === 'none') {
-      h += '<p>' + esc(T('it_shop_none')) + '</p><div class="btns"><button type="button" class="mbtn link" data-merch="options">' + esc(T('it_merch_find')) + '</button></div>';
-    } else if (choice) {
-      var at = plan.pre ? plan.pre.start : plan.post ? plan.post.start :
-        (function () { var l = plan.legs.filter(function (x) { return x.merch; })[0]; return l ? l.leave + l.merch.w1 : null; })();
-      var o = opts.filter(function (x) { return x.slot === choice.slot; })[0];
-      h += '<p>' + T('it_shop_set', { time: '<b>' + esc(fmt(at)) + '</b>', booth: esc(boothText(choice.booth)), where: esc(o ? o.where : '') }) + '</p>' +
-        '<div class="btns"><button type="button" class="mbtn" data-merch="options">' + esc(T('it_merch_change')) + '</button>' +
-        '<button type="button" class="mbtn link" data-merch="none">' + esc(T('it_merch_remove')) + '</button></div>';
-    } else {
-      var best = bestMerch(opts);
-      var vars = { time: '<b>' + esc(fmt(best.start)) + '</b>', booth: esc(boothText(best.booth)), where: esc(best.where), n: best.slack !== null ? Math.floor(best.slack) : '' };
-      h += '<p>' + T(best.slack !== null ? 'it_merch_best_fit' : 'it_merch_best_nofit', vars) + '</p>' +
-        '<div class="btns"><button type="button" class="mbtn primary" data-merch-pick="' + best.slot + '|' + best.booth + '">' + esc(T('it_merch_add')) + '</button>' +
-        '<button type="button" class="mbtn" data-merch="options">' + esc(T('it_merch_other')) + '</button>' +
-        '<button type="button" class="mbtn link" data-merch="none">' + esc(T('it_merch_no')) + '</button></div>';
-    }
-    if (showMerchOptions) h += '<div class="mopts">' + opts.map(function (o) { return optHTML(o, choice); }).join('') + '</div>';
+  // ---------- shopping checklist ----------
+  // Each kind of shop (festival merch first, then Marché des Arts and Marché du Monde) is planned once over
+  // the festival. Each gets a card: planned today, planned on another day, skipped, or not planned yet
+  // (with a suggested time today). Suggestions never share a break, and a break holds one shop.
+  function dayList(date) {
+    return perfs.filter(function (p) { return p.date === date && picks.has(p.id); }).sort(function (a, b) { return a.s - b.s || a.e - b.e; });
+  }
+  function stopValid(c) {                       // still fits that day's picks (they may have changed since)
+    if (!c || c === 'none' || !boothById[c.booth]) return false;
+    var list = dayList(c.date);
+    if (!list.length) return false;
+    if (c.slot === 'before' || c.slot === 'after') return true;
+    for (var i = 0; i + 1 < list.length; i++) if (list[i].id + '>' + list[i + 1].id === c.slot) return true;
+    return false;
+  }
+  function stopsOn(date) {                      // that day's stops; if two kinds share a break, the first kind keeps it
+    var seen = {}, out = [];
+    KINDS.forEach(function (k) {
+      var c = shopChoices[k];
+      if (!stopValid(c) || c.date !== date || seen[c.slot]) return;
+      seen[c.slot] = true; out.push({ kind: k, slot: c.slot, booth: c.booth });
+    });
+    return out;
+  }
+  function stopStart(plan, st) {
+    if (st.slot === 'before') return plan.pre && plan.pre.start;
+    if (st.slot === 'after') return plan.post && plan.post.start;
+    var l = plan.legs.filter(function (x) { return x.key === st.slot; })[0];
+    return l && l.merch ? l.leave + l.merch.w1 : null;
+  }
+  function whereOf(base, slot) {
+    if (slot === 'before') return T('it_where_before', { act: base.stops[0].p.act });
+    if (slot === 'after') return T('it_where_after', { act: base.stops[base.stops.length - 1].p.act });
+    var l = base.legs.filter(function (x) { return x.key === slot; })[0];
+    return l ? T('it_where_between', { a: l.from.p.act, b: l.to.p.act }) : '';
+  }
+  function shopBtn(cls, act, kind, label, extra) {
+    return '<button type="button" class="mbtn' + (cls ? ' ' + cls : '') + '" data-shop-act="' + act + '" data-kind="' + kind + '"' + (extra || '') + '>' + esc(label) + '</button>';
+  }
+  function shopsHTML(base, plan, todayStops) {
+    if (!booths.length || !base.stops.length) return '';
+    var taken = {}; todayStops.forEach(function (st) { taken[st.slot] = st.kind; });
+    var reserved = Object.assign({}, taken), states = {}, planned = 0, skipped = 0;
+    KINDS.forEach(function (k) {
+      var c = shopChoices[k];
+      states[k] = c === 'none' ? 'skipped' : todayStops.some(function (st) { return st.kind === k; }) ? 'today' :
+                  stopValid(c) && c.date !== day ? 'other' : 'open';
+      if (states[k] === 'today' || states[k] === 'other') planned++;
+      if (states[k] === 'skipped') skipped++;
+    });
+    var many = KINDS.length > 1, total = KINDS.length;
+    var count = !many ? '' : planned === total ? T('shop_all') : planned + skipped === total ? T('shop_all_set', { n: planned, s: skipped }) :
+      T('shop_count', { n: planned, total: total });
+    var h = '<div class="merch shops"><div class="shops-head"><h3>' + BAG + esc(T(many ? 'shop_title' : 'it_merch_title')) + '</h3>' +
+      (count ? '<span class="shops-count' + (planned + skipped === total ? ' done' : '') + '">' + esc(count) + '</span>' : '') + '</div>' +
+      (many ? '<p class="shops-intro">' + esc(T('shop_intro')) + '</p>' : '');
+    KINDS.forEach(function (k) {
+      var c = shopChoices[k], st = states[k], others = {};
+      Object.keys(taken).forEach(function (sl) { if (taken[sl] !== k) others[sl] = true; });
+      var opts = merchOptions(base, k, others), body = '', badge;
+      if (st === 'today') {
+        var at = stopStart(plan, todayStops.filter(function (x) { return x.kind === k; })[0]);
+        badge = '✓ ' + T('shop_badge_today', { time: fmt(at) });
+        body = '<p>' + T('it_shop_set', { time: '<b>' + esc(fmt(at)) + '</b>', booth: esc(boothText(c.booth)), where: esc(whereOf(base, c.slot)) }) + '</p>' +
+          '<div class="btns">' + shopBtn('', 'options', k, T('it_merch_change')) + shopBtn('link', 'none', k, T('it_merch_remove')) + '</div>';
+      } else if (st === 'other') {
+        var wd = I18N.weekday(c.date);
+        badge = '✓ ' + wd;
+        body = '<p>' + esc(T('shop_other_day', { weekday: wd, booth: boothText(c.booth) })) + '</p>' +
+          '<div class="btns">' + shopBtn('', 'goto', k, T('shop_go_day', { weekday: wd }), ' data-date="' + c.date + '"') +
+          (opts.length ? shopBtn('link', 'options', k, T('shop_today_instead')) : '') + '</div>';
+      } else if (st === 'skipped') {
+        badge = T('shop_badge_skipped');
+        body = '<p>' + esc(T('shop_skipped')) + '</p>' +
+          (opts.length ? '<div class="btns">' + shopBtn('link', 'options', k, T('shop_find_today')) + '</div>' : '');
+      } else {
+        badge = T('shop_badge_open');
+        var best = bestMerch(opts.filter(function (o) { return !reserved[o.slot]; }));
+        if (best) {
+          reserved[best.slot] = k;
+          var vars = { time: '<b>' + esc(fmt(best.start)) + '</b>', booth: esc(boothText(best.booth)), where: esc(best.where), n: best.slack !== null ? Math.floor(best.slack) : '' };
+          body = '<p>' + T(best.slack !== null ? 'it_merch_best_fit' : 'it_merch_best_nofit', vars) + '</p>' +
+            '<div class="btns"><button type="button" class="mbtn primary" data-shop-pick="' + k + '|' + best.slot + '|' + best.booth + '">' + esc(T('it_merch_add')) + '</button>' +
+            (opts.length > 1 ? shopBtn('', 'options', k, T('it_merch_other')) : '') + shopBtn('link', 'none', k, T('it_merch_no')) + '</div>';
+        } else {
+          body = '<p>' + esc(T('shop_no_slot')) + '</p><div class="btns">' +
+            (opts.length ? shopBtn('', 'options', k, T('it_merch_other')) : '') + shopBtn('link', 'none', k, T('it_merch_no')) + '</div>';
+        }
+      }
+      if (openOpts === k && opts.length) body += '<div class="mopts">' + opts.map(function (o) { return optHTML(o, k); }).join('') + '</div>';
+      h += '<div class="shop-card ' + k + ' ' + st + '"><div class="shop-head">' + (many ? '<h4>' + esc(T('shop_kind_' + k)) + '</h4>' : '') +
+        '<span class="badge">' + esc(badge) + '</span></div>' + body + '</div>';
+    });
     return h + '</div>';
   }
 
@@ -793,25 +872,22 @@ FIL.ready(function () {
     if (leg) highlight(+leg.dataset.leg);
   });
   document.getElementById('summary').addEventListener('click', function (e) {
-    var pick = e.target.closest('[data-merch-pick]'), act = e.target.closest('[data-merch]'), kind = e.target.closest('[data-shopkind]');
-    if (kind) {
-      // A different kind of shopping: drop today's stop of the old kind and suggest one of the new kind.
-      shopKind = kind.dataset.shopkind; saveRaw('fil-shopkind', shopKind);
-      var c = merchChoices[day];
-      if (c && c !== 'none' && boothById[c.booth] && boothById[c.booth].kind !== shopKind) delete merchChoices[day];
-      if (c === 'none') delete merchChoices[day];
-      showMerchOptions = false;
-    } else if (pick) {
-      var parts = pick.dataset.merchPick.split('|');
-      merchChoices[day] = { slot: parts[0], booth: parts[1] };
-      showMerchOptions = false;
-    } else if (act && act.dataset.merch === 'options') {
-      showMerchOptions = !showMerchOptions;
-    } else if (act && act.dataset.merch === 'none') {
-      merchChoices[day] = 'none';
-      showMerchOptions = false;
+    var pick = e.target.closest('[data-shop-pick]'), act = e.target.closest('[data-shop-act]');
+    if (pick) {
+      var parts = pick.dataset.shopPick.split('|');   // kind | slot | booth: plan it today (moves it from another day)
+      shopChoices[parts[0]] = { date: day, slot: parts[1], booth: parts[2] };
+      openOpts = null;
+    } else if (act && act.dataset.shopAct === 'options') {
+      openOpts = openOpts === act.dataset.kind ? null : act.dataset.kind;
+    } else if (act && act.dataset.shopAct === 'none') {
+      shopChoices[act.dataset.kind] = 'none';
+      openOpts = null;
+    } else if (act && act.dataset.shopAct === 'goto') {
+      day = act.dataset.date; openOpts = null;
+      history.replaceState(null, '', '?day=' + day);
+      render(); return;
     } else return;
-    if (!preview) saveJSON('fil-merch', merchChoices);
+    if (!preview) saveJSON('fil-shops', shopChoices);
     render();
   });
 
@@ -826,13 +902,13 @@ FIL.ready(function () {
       var theirs = current();
       undo = own;
       usePlan({ picks: own.picks.concat(theirs.picks.filter(function (id) { return own.picks.indexOf(id) < 0; })),
-                modes: Object.assign({}, theirs.modes, own.modes), merch: Object.assign({}, theirs.merch, own.merch) });
+                modes: Object.assign({}, theirs.modes, own.modes), shops: Object.assign({}, theirs.shops, own.shops) });
       preview = own = null; savePlan(); sharedMsg = { kind: 'added' };
     }
     else if (act === 'mine') { usePlan(own); preview = own = null; sharedMsg = null; }
     else if (act === 'undo') { usePlan(undo); undo = null; savePlan(); sharedMsg = null; }
     else return;
-    refreshDays(day); lastDay = null; showMerchOptions = false;
+    refreshDays(day); lastDay = null; openOpts = null;
     render();
   });
 
@@ -842,7 +918,7 @@ FIL.ready(function () {
   nativeBtn.hidden = !navigator.share;
   function shareURL() {
     var base = location.href.split('#')[0].split('?')[0].replace(/[^/]*$/, '') + 'itinerary.html';
-    return base + '#' + FIL.plan.encode(S.edition, { picks: Array.from(picks), modes: legModes, merch: merchChoices, by: nameIn.value });
+    return base + '#' + FIL.plan.encode(S.edition, { picks: Array.from(picks), modes: legModes, shops: shopChoices, by: nameIn.value });
   }
   function shareText() {
     var by = nameIn.value.trim();

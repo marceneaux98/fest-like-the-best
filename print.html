@@ -332,7 +332,7 @@ FIL.ready(function () {
   // plan rules change.
   var cf = parseFloat(store.raw('crowdFactor')) || R.crowd_factor_default || 1.3;
   var buf = +(store.raw('fil-buffer') || 5), shop = +(store.raw('fil-shop') || 15);
-  var legModes = store.get('fil-legmodes', {}), merchChoices = store.get('fil-merch', {});
+  var legModes = store.get('fil-legmodes', {}), shopChoices = FIL.plan.loadShops();
   // Shops come from the festival map's route file; older route files only know the three merch booths at their stages.
   var PRS = window.POSTER_ROUTES || {};
   var booths = PRS.shops
@@ -345,7 +345,8 @@ FIL.ready(function () {
     return FIL.walk(a, b) || { meters: 0, seconds: 0 };
   }
   function stageName(id) { return stageById[id] ? stageById[id].name : id; }
-  function buildPlan(date, merch) {
+  function buildPlan(date, shopStops) {
+    var bySlot = {}; (shopStops || []).forEach(function (s) { if (boothById[s.booth]) bySlot[s.slot] = boothById[s.booth]; });
     var stops = dayPicks(date).map(function (p) { return { p: p }; }), legs = [];
     var plan = { stops: stops, legs: legs, pre: null, post: null };
     if (!stops.length) return plan;
@@ -356,7 +357,7 @@ FIL.ready(function () {
       if (!next) { cur.leave = cur.p.e; break; }
       var key = cur.p.id + '>' + next.p.id;
       var r = route(cur.p.stage, next.p.stage), walk = r.seconds * cf / 60, merchInfo = null;
-      var mb = merch && merch.slot === key ? boothById[merch.booth] : null;
+      var mb = bySlot[key] || null;
       if (mb) {
         var r1 = route(cur.p.stage, mb.at), r2 = route(mb.at, next.p.stage);
         var w1 = r1.seconds * cf / 60, w2 = r2.seconds * cf / 60;
@@ -381,24 +382,29 @@ FIL.ready(function () {
       st.watchFrom = Math.max(st.arrive, st.p.s); st.watchTo = Math.min(st.leave, st.p.e);
       st.watched = Math.max(0, st.watchTo - st.watchFrom); st.length = st.p.e - st.p.s;
     });
-    var b = merch && boothById[merch.booth];
-    if (b && merch.slot === 'before') {
+    var b = bySlot.before;
+    if (b) {
       var first = stops[0].p, rb = route(b.at, first.stage), wb = rb.seconds * cf / 60, shopEnd = first.s - buf - wb;
       plan.pre = { booth: b, start: shopEnd - shop, end: shopEnd, walk: wb, meters: rb.meters, to: first };
     }
-    if (b && merch.slot === 'after') {
+    b = bySlot.after;
+    if (b) {
       var last = stops[stops.length - 1], ra = route(last.p.stage, b.at), wa = ra.seconds * cf / 60, startShop = last.leave + wa;
       plan.post = { booth: b, start: startShop, end: startShop + shop, walk: wa, meters: ra.meters };
     }
     return plan;
   }
+  // That day's shopping stops (each kind planned once over the festival; same checks as My Day): skipped when the
+  // picks changed since, and one shop per break.
   function planFor(date) {
-    var base = buildPlan(date, null), choice = merchChoices[date];
-    if (choice && choice !== 'none' && !(choice.slot === 'before' || choice.slot === 'after' ||
-        base.legs.some(function (l) { return l.from.p.id + '>' + l.to.p.id === choice.slot; })) || (choice && choice.booth && !boothById[choice.booth])) {
-      choice = undefined;   // picks changed since this was chosen (My Day does the same)
-    }
-    return (choice && choice !== 'none' && booths.length) ? buildPlan(date, choice) : base;
+    var base = buildPlan(date, null), seen = {}, list = [];
+    ['merch', 'arts', 'monde'].forEach(function (k) {
+      var c = shopChoices[k];
+      if (!c || c === 'none' || c.date !== date || !boothById[c.booth] || seen[c.slot]) return;
+      if (!(c.slot === 'before' || c.slot === 'after' || base.legs.some(function (l) { return l.from.p.id + '>' + l.to.p.id === c.slot; }))) return;
+      seen[c.slot] = true; list.push({ kind: k, slot: c.slot, booth: c.booth });
+    });
+    return list.length && base.stops.length ? buildPlan(date, list) : base;
   }
 
   var BAG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 8h13l-1 12.5h-11z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg>';
